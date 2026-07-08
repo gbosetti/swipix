@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;
@@ -12,6 +12,10 @@ interface SwipeDeckProps<T extends { id: string }> {
   onSwipeLeft?: (item: T) => void;
   onSwipeRight?: (item: T) => void;
   onEmpty?: () => void;
+  /** Shown as a fading stamp on the card while dragging right. */
+  rightLabel?: string;
+  /** Shown as a fading stamp on the card while dragging left. */
+  leftLabel?: string;
 }
 
 /**
@@ -30,6 +34,8 @@ export default function SwipeDeck<T extends { id: string }>({
   onSwipeLeft,
   onSwipeRight,
   onEmpty,
+  rightLabel,
+  leftLabel,
 }: SwipeDeckProps<T>) {
   const position = useRef(new Animated.ValueXY()).current;
   const indexRef = useRef(0);
@@ -89,6 +95,17 @@ export default function SwipeDeck<T extends { id: string }>({
     return { ...position.getLayout(), transform: [{ rotate }] };
   };
 
+  const rightStampOpacity = position.x.interpolate({
+    inputRange: [0, SWIPE_THRESHOLD],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const leftStampOpacity = position.x.interpolate({
+    inputRange: [-SWIPE_THRESHOLD, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   if (indexRef.current >= data.length) return null;
 
   return (
@@ -105,6 +122,20 @@ export default function SwipeDeck<T extends { id: string }>({
               {...panResponder.panHandlers}
             >
               {renderCard(item)}
+              {rightLabel && (
+                <Animated.View
+                  style={[styles.stamp, styles.rightStamp, { opacity: rightStampOpacity }]}
+                >
+                  <Text style={[styles.stampText, styles.rightStampText]}>{rightLabel}</Text>
+                </Animated.View>
+              )}
+              {leftLabel && (
+                <Animated.View
+                  style={[styles.stamp, styles.leftStamp, { opacity: leftStampOpacity }]}
+                >
+                  <Text style={[styles.stampText, styles.leftStampText]}>{leftLabel}</Text>
+                </Animated.View>
+              )}
             </Animated.View>
           ) : (
             <Animated.View key={item.id} style={[styles.card, { top: 6 * i, opacity: 0.7 }]}>
@@ -119,4 +150,17 @@ export default function SwipeDeck<T extends { id: string }>({
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: { position: 'absolute', width: SCREEN_WIDTH * 0.9, height: '75%' },
+  stamp: {
+    position: 'absolute',
+    top: 32,
+    borderWidth: 3,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  rightStamp: { left: 20, borderColor: '#34c759', transform: [{ rotate: '-12deg' }] },
+  leftStamp: { right: 20, borderColor: '#ff3b30', transform: [{ rotate: '12deg' }] },
+  stampText: { fontSize: 26, fontWeight: '800', letterSpacing: 1 },
+  rightStampText: { color: '#34c759' },
+  leftStampText: { color: '#ff3b30' },
 });

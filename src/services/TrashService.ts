@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PhotoLibraryService } from './PhotoLibraryService';
 import { Asset, TrashedAsset } from '../types';
 
 const TRASH_KEY = '@swipix/trash';
@@ -39,9 +40,7 @@ export const TrashService = {
   },
 
   async permanentlyDelete(assetIds: string[]): Promise<void> {
-    // Wire this to MediaLibrary.deleteAssetsAsync(assetIds) once you're
-    // ready to test real deletion — keep it isolated here so it's the
-    // one place you review carefully before shipping.
+    await PhotoLibraryService.deleteAssets(assetIds);
     const trash = await this._load();
     const updated = trash.filter((item) => !assetIds.includes(item.id));
     await this._save(updated);
