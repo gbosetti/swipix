@@ -4,4 +4,6 @@ export type RootStackParamList = {
   CategoryPicker: undefined;
   Swipe: { strategy: CategoryStrategy };
   Trash: undefined;
+  Settings: undefined;
+  Terms: undefined;
 };
