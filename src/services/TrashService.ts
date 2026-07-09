@@ -3,7 +3,7 @@ import { PhotoLibraryService } from './PhotoLibraryService';
 import { Asset, TrashedAsset } from '../types';
 
 const TRASH_KEY = '@swipix/trash';
-const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000; // 24 hours
+const GRACE_PERIOD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
  * Deletion is NEVER instant. This is the single most important UX decision

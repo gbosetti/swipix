@@ -3,18 +3,26 @@ import { Text, Pressable, StyleSheet, ScrollView, View } from 'react-native';
 import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { TrashService } from '../services/TrashService';
-import { RootStackParamList } from '../navigation/types';
+import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
 
 const DEFAULT_BRIGHTNESS_THRESHOLD = 40; // matches BrightnessStrategy's own default
 const BRIGHTNESS_THRESHOLD_KEY = '@swipix/brightnessThreshold';
 const brightnessMeta = new BrightnessStrategy().meta;
 const screenshotStrategy = new ScreenshotStrategy();
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CategoryPicker'>;
+// Composite because this screen needs to navigate both within its own
+// stack (to Swipe) and across to a sibling tab (Trash) when the user
+// taps "Review" on the trash banner.
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<CategoriesStackParamList, 'CategoryPicker'>,
+  BottomTabScreenProps<RootTabParamList>
+>;
 
 export default function CategoryPickerScreen({ navigation }: Props) {
   const [brightnessThreshold, setBrightnessThreshold] = useState(DEFAULT_BRIGHTNESS_THRESHOLD);
@@ -49,7 +57,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           <Text style={styles.trashBannerText}>
             🗑 {trashCount} photo{trashCount === 1 ? '' : 's'} pending deletion
           </Text>
-          <Pressable onPress={() => navigation.navigate('Trash')} style={styles.trashButton}>
+          <Pressable onPress={() => navigation.navigate('TrashTab')} style={styles.trashButton}>
             <Text style={styles.trashButtonText}>Review</Text>
           </Pressable>
         </View>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -6,10 +6,14 @@ import SwipeDeck from '../components/SwipeDeck';
 import PhotoCard from '../components/PhotoCard';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { TrashService } from '../services/TrashService';
-import { RootStackParamList } from '../navigation/types';
+import { SwipeRouteParams } from '../navigation/types';
 import { Asset } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Swipe'>;
+// Loosely typed against just the 'Swipe' route shape rather than one
+// specific stack's full param list — this screen is mounted from two
+// different stacks (pushed from Categories, or as the standalone Swipe
+// tab's root), and only needs goBack/canGoBack, not sibling route names.
+type Props = NativeStackScreenProps<{ Swipe: SwipeRouteParams }, 'Swipe'>;
 
 /**
  * This screen is the "composition root" for one swipe session: it asks
@@ -25,8 +29,14 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [freedCount, setFreedCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  // Bumping this re-runs the fetch below — used by "Swipe again" when
+  // there's no previous screen to go back to (the standalone Swipe tab).
+  const [sessionKey, setSessionKey] = useState(0);
 
   useEffect(() => {
+    setCandidates(null);
+    setFinished(false);
+    setFreedCount(0);
     (async () => {
       const granted = await PhotoLibraryService.requestPermission();
       if (!granted) {
@@ -37,11 +47,11 @@ export default function SwipeScreen({ route, navigation }: Props) {
       const matched = await strategy.match(all);
       setCandidates(matched);
     })();
-  }, [strategy]);
+  }, [strategy, sessionKey]);
 
   const handleSwipeLeft = async (asset: Asset) => {
     // Left = delete. Never permanent — see TrashService for the
-    // 24h grace period. This is the single most important safety
+    // grace period. This is the single most important safety
     // decision in the whole app.
     await TrashService.moveToTrash(asset);
     setFreedCount((c) => c + 1);
@@ -50,6 +60,14 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const handleSwipeRight = () => {
     // Right = keep. No action needed, just move to next card.
   };
+
+  const handleDoneAction = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      setSessionKey((k) => k + 1);
+    }
+  }, [navigation]);
 
   let content;
   if (permissionDenied) {
@@ -80,8 +98,10 @@ export default function SwipeScreen({ route, navigation }: Props) {
             ? `${freedCount} photo${freedCount === 1 ? '' : 's'} queued for deletion.`
             : 'Nothing queued for deletion.'}
         </Text>
-        <Pressable style={styles.doneButton} onPress={() => navigation.navigate('CategoryPicker')}>
-          <Text style={styles.doneButtonText}>Back to categories</Text>
+        <Pressable style={styles.doneButton} onPress={handleDoneAction}>
+          <Text style={styles.doneButtonText}>
+            {navigation.canGoBack() ? 'Back to categories' : 'Swipe again'}
+          </Text>
         </Pressable>
       </View>
     );

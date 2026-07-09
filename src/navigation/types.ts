@@ -1,9 +1,28 @@
 import { CategoryStrategy } from '../strategies/CategoryStrategy';
 
-export type RootStackParamList = {
+export type SwipeRouteParams = { strategy: CategoryStrategy };
+
+export type CategoriesStackParamList = {
   CategoryPicker: undefined;
-  Swipe: { strategy: CategoryStrategy };
+  Swipe: SwipeRouteParams;
+};
+
+export type SwipeTabStackParamList = {
+  Swipe: SwipeRouteParams;
+};
+
+export type TrashStackParamList = {
   Trash: undefined;
+};
+
+export type SettingsStackParamList = {
   Settings: undefined;
   Terms: undefined;
+};
+
+export type RootTabParamList = {
+  CategoriesTab: undefined;
+  SwipeTab: undefined;
+  TrashTab: undefined;
+  SettingsTab: undefined;
 };

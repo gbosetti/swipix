@@ -1,85 +1,58 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import CategoryPickerScreen from '../screens/CategoryPickerScreen';
-import SwipeScreen from '../screens/SwipeScreen';
-import TrashScreen from '../screens/TrashScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import TermsScreen from '../screens/TermsScreen';
-import { RootStackParamList } from './types';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
+import CategoriesStackNavigator from './CategoriesStackNavigator';
+import SwipeTabNavigator from './SwipeTabNavigator';
+import TrashStackNavigator from './TrashStackNavigator';
+import SettingsStackNavigator from './SettingsStackNavigator';
+import { RootTabParamList } from './types';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<RootTabParamList>();
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const ICONS: Record<keyof RootTabParamList, { focused: IoniconName; unfocused: IoniconName }> = {
+  CategoriesTab: { focused: 'pencil', unfocused: 'pencil-outline' },
+  SwipeTab: { focused: 'swap-horizontal', unfocused: 'swap-horizontal-outline' },
+  TrashTab: { focused: 'trash', unfocused: 'trash-outline' },
+  SettingsTab: { focused: 'settings', unfocused: 'settings-outline' },
+};
 
 export default function RootNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="CategoryPicker"
-          component={CategoryPickerScreen}
-          options={({ navigation }) => ({
-            headerShown: true,
-            headerTitle: 'Swipix',
-            headerStyle: { backgroundColor: '#000' },
-            headerTintColor: 'white',
-            headerShadowVisible: false,
-            headerRight: () => (
-              <Pressable onPress={() => navigation.navigate('Settings')} hitSlop={8}>
-                <Text style={styles.gearIcon}>⚙️</Text>
-              </Pressable>
-            ),
-          })}
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarActiveTintColor: '#0a84ff',
+          tabBarInactiveTintColor: '#8e8e93',
+          tabBarStyle: { backgroundColor: '#000', borderTopColor: '#1c1c1e' },
+          tabBarIcon: ({ color, size, focused }) => {
+            const icon = ICONS[route.name];
+            return (
+              <Ionicons
+                name={focused ? icon.focused : icon.unfocused}
+                size={size}
+                color={color}
+              />
+            );
+          },
+        })}
+      >
+        <Tab.Screen
+          name="CategoriesTab"
+          component={CategoriesStackNavigator}
+          options={{ title: 'Categories' }}
         />
-        <Stack.Screen
-          name="Swipe"
-          component={SwipeScreen}
-          options={{
-            headerShown: true,
-            headerTitle: '',
-            headerBackTitle: 'Back',
-            headerTransparent: true,
-            headerTintColor: 'white',
-          }}
+        <Tab.Screen name="SwipeTab" component={SwipeTabNavigator} options={{ title: 'Swipe' }} />
+        <Tab.Screen name="TrashTab" component={TrashStackNavigator} options={{ title: 'Trash' }} />
+        <Tab.Screen
+          name="SettingsTab"
+          component={SettingsStackNavigator}
+          options={{ title: 'Settings' }}
         />
-        <Stack.Screen
-          name="Trash"
-          component={TrashScreen}
-          options={{
-            headerShown: true,
-            headerTitle: 'Trash',
-            headerBackTitle: 'Back',
-            headerStyle: { backgroundColor: '#000' },
-            headerTintColor: 'white',
-          }}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{
-            headerShown: true,
-            headerTitle: 'Settings',
-            headerBackTitle: 'Back',
-            headerStyle: { backgroundColor: '#000' },
-            headerTintColor: 'white',
-          }}
-        />
-        <Stack.Screen
-          name="Terms"
-          component={TermsScreen}
-          options={{
-            headerShown: true,
-            headerTitle: 'Terms of Use',
-            headerBackTitle: 'Back',
-            headerStyle: { backgroundColor: '#000' },
-            headerTintColor: 'white',
-          }}
-        />
-      </Stack.Navigator>
+      </Tab.Navigator>
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  gearIcon: { fontSize: 20 },
-});
