@@ -53,6 +53,9 @@ export const PhotoLibraryService = {
           uri: info.localUri,
           mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
           creationTime: asset.creationTime,
+          duration: asset.duration,
+          width: asset.width,
+          height: asset.height,
           mediaSubtypes: info.mediaSubtypes ?? [],
           location: info.location ?? null,
         };

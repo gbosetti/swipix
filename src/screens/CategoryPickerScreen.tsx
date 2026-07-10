@@ -6,25 +6,33 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import RangeSlider from '../components/RangeSlider';
-import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
+import { SimilarPicturesStrategy } from '../strategies/SimilarPicturesStrategy';
+import { ExactDuplicatesStrategy } from '../strategies/ExactDuplicatesStrategy';
+import { ShortVideosStrategy } from '../strategies/ShortVideosStrategy';
 import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
 import { BlurredImagesStrategy } from '../strategies/BlurredImagesStrategy';
-import { SimilarPicturesStrategy } from '../strategies/SimilarPicturesStrategy';
+import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { TrashService } from '../services/TrashService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
 
-const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
-const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
+// Ordered by real-world impact/confidence: cheap-and-trustworthy signals
+// first (metadata-based, no judgment call), stub-based analysis last.
+const DEFAULT_SHORT_VIDEO_RANGE: [number, number] = [0, 3]; // matches ShortVideosStrategy's own defaults
+const SHORT_VIDEO_RANGE_KEY = '@swipix/shortVideoRange';
 const DEFAULT_BIG_FILE_RANGE_MB: [number, number] = [20, 200]; // matches BigFilesStrategy's own defaults
 const BIG_FILE_RANGE_KEY = '@swipix/bigFileRangeMB';
+const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
+const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 
-const brightnessMeta = new BrightnessStrategy().meta;
 const screenshotStrategy = new ScreenshotStrategy();
+const similarPicturesStrategy = new SimilarPicturesStrategy();
+const exactDuplicatesStrategy = new ExactDuplicatesStrategy();
+const shortVideosMeta = new ShortVideosStrategy().meta;
 const bigFilesMeta = new BigFilesStrategy().meta;
 const blurredImagesStrategy = new BlurredImagesStrategy();
-const similarPicturesStrategy = new SimilarPicturesStrategy();
+const brightnessMeta = new BrightnessStrategy().meta;
 
 // Composite because this screen needs to navigate both within its own
 // stack (to Swipe) and across to a sibling tab (Trash) when the user
@@ -46,23 +54,23 @@ function TitleRow({ title }: { title: string }) {
 }
 
 export default function CategoryPickerScreen({ navigation }: Props) {
-  const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
+  const [shortVideoRange, setShortVideoRange] = useState(DEFAULT_SHORT_VIDEO_RANGE);
   const [bigFileRangeMB, setBigFileRangeMB] = useState(DEFAULT_BIG_FILE_RANGE_MB);
+  const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
   const [trashCount, setTrashCount] = useState(0);
 
   useEffect(() => {
-    AsyncStorage.getItem(BRIGHTNESS_RANGE_KEY).then((stored) => {
-      if (stored != null) {
-        const [low, high] = stored.split(',').map(Number);
-        setBrightnessRange([low, high]);
-      }
-    });
-    AsyncStorage.getItem(BIG_FILE_RANGE_KEY).then((stored) => {
-      if (stored != null) {
-        const [low, high] = stored.split(',').map(Number);
-        setBigFileRangeMB([low, high]);
-      }
-    });
+    const loadRange = (key: string, setter: (range: [number, number]) => void) => {
+      AsyncStorage.getItem(key).then((stored) => {
+        if (stored != null) {
+          const [low, high] = stored.split(',').map(Number);
+          setter([low, high]);
+        }
+      });
+    };
+    loadRange(SHORT_VIDEO_RANGE_KEY, setShortVideoRange);
+    loadRange(BIG_FILE_RANGE_KEY, setBigFileRangeMB);
+    loadRange(BRIGHTNESS_RANGE_KEY, setBrightnessRange);
   }, []);
 
   const refreshTrashCount = useCallback(() => {
@@ -77,12 +85,16 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     }, [refreshTrashCount])
   );
 
-  const persistBrightnessRange = (low: number, high: number) => {
-    AsyncStorage.setItem(BRIGHTNESS_RANGE_KEY, `${low},${high}`);
+  const persistShortVideoRange = (low: number, high: number) => {
+    AsyncStorage.setItem(SHORT_VIDEO_RANGE_KEY, `${low},${high}`);
   };
 
   const persistBigFileRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_FILE_RANGE_KEY, `${low},${high}`);
+  };
+
+  const persistBrightnessRange = (low: number, high: number) => {
+    AsyncStorage.setItem(BRIGHTNESS_RANGE_KEY, `${low},${high}`);
   };
 
   return (
@@ -100,36 +112,50 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         </View>
       )}
 
-      <View style={styles.card}>
-        <Pressable
-          onPress={() =>
-            navigation.navigate('Swipe', {
-              strategy: new BrightnessStrategy(brightnessRange[0], brightnessRange[1]),
-            })
-          }
-        >
-          <TitleRow title={brightnessMeta.title} />
-        </Pressable>
-        <Text style={styles.sliderLabel}>
-          Flag photos between {brightnessRange[0]} and {brightnessRange[1]}/255 brightness
-        </Text>
-        <RangeSlider
-          minimumValue={0}
-          maximumValue={255}
-          step={5}
-          lowValue={brightnessRange[0]}
-          highValue={brightnessRange[1]}
-          onValuesChange={(low, high) => setBrightnessRange([low, high])}
-          onSlidingComplete={persistBrightnessRange}
-        />
-      </View>
-
       <Pressable
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: screenshotStrategy })}
       >
         <TitleRow title={screenshotStrategy.meta.title} />
       </Pressable>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: similarPicturesStrategy })}
+      >
+        <TitleRow title={similarPicturesStrategy.meta.title} />
+      </Pressable>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: exactDuplicatesStrategy })}
+      >
+        <TitleRow title={exactDuplicatesStrategy.meta.title} />
+      </Pressable>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]),
+            })
+          }
+        >
+          <TitleRow title={shortVideosMeta.title} />
+        </Pressable>
+        <Text style={styles.sliderLabel}>
+          Flag videos between {shortVideoRange[0]}s and {shortVideoRange[1]}s long
+        </Text>
+        <RangeSlider
+          minimumValue={0}
+          maximumValue={10}
+          step={1}
+          lowValue={shortVideoRange[0]}
+          highValue={shortVideoRange[1]}
+          onValuesChange={(low, high) => setShortVideoRange([low, high])}
+          onSlidingComplete={persistShortVideoRange}
+        />
+      </View>
 
       <View style={styles.card}>
         <Pressable
@@ -165,12 +191,29 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <TitleRow title={blurredImagesStrategy.meta.title} />
       </Pressable>
 
-      <Pressable
-        style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: similarPicturesStrategy })}
-      >
-        <TitleRow title={similarPicturesStrategy.meta.title} />
-      </Pressable>
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new BrightnessStrategy(brightnessRange[0], brightnessRange[1]),
+            })
+          }
+        >
+          <TitleRow title={brightnessMeta.title} />
+        </Pressable>
+        <Text style={styles.sliderLabel}>
+          Flag photos between {brightnessRange[0]} and {brightnessRange[1]}/255 brightness
+        </Text>
+        <RangeSlider
+          minimumValue={0}
+          maximumValue={255}
+          step={5}
+          lowValue={brightnessRange[0]}
+          highValue={brightnessRange[1]}
+          onValuesChange={(low, high) => setBrightnessRange([low, high])}
+          onSlidingComplete={persistBrightnessRange}
+        />
+      </View>
     </ScrollView>
   );
 }
