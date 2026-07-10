@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Text, Pressable, StyleSheet, ScrollView, View } from 'react-native';
-import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import RangeSlider from '../components/RangeSlider';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
@@ -15,10 +15,11 @@ import { TrashService } from '../services/TrashService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
 
-const DEFAULT_BRIGHTNESS_THRESHOLD = 40; // matches BrightnessStrategy's own default
-const BRIGHTNESS_THRESHOLD_KEY = '@swipix/brightnessThreshold';
-const DEFAULT_BIG_FILE_THRESHOLD_MB = 20; // matches BigFilesStrategy's own default
-const BIG_FILE_THRESHOLD_KEY = '@swipix/bigFileThresholdMB';
+const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
+const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
+const DEFAULT_BIG_FILE_RANGE_MB: [number, number] = [20, 200]; // matches BigFilesStrategy's own defaults
+const BIG_FILE_RANGE_KEY = '@swipix/bigFileRangeMB';
+
 const brightnessMeta = new BrightnessStrategy().meta;
 const screenshotStrategy = new ScreenshotStrategy();
 const bigFilesMeta = new BigFilesStrategy().meta;
@@ -34,16 +35,22 @@ type Props = CompositeScreenProps<
 >;
 
 export default function CategoryPickerScreen({ navigation }: Props) {
-  const [brightnessThreshold, setBrightnessThreshold] = useState(DEFAULT_BRIGHTNESS_THRESHOLD);
-  const [bigFileThresholdMB, setBigFileThresholdMB] = useState(DEFAULT_BIG_FILE_THRESHOLD_MB);
+  const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
+  const [bigFileRangeMB, setBigFileRangeMB] = useState(DEFAULT_BIG_FILE_RANGE_MB);
   const [trashCount, setTrashCount] = useState(0);
 
   useEffect(() => {
-    AsyncStorage.getItem(BRIGHTNESS_THRESHOLD_KEY).then((stored) => {
-      if (stored != null) setBrightnessThreshold(Number(stored));
+    AsyncStorage.getItem(BRIGHTNESS_RANGE_KEY).then((stored) => {
+      if (stored != null) {
+        const [low, high] = stored.split(',').map(Number);
+        setBrightnessRange([low, high]);
+      }
     });
-    AsyncStorage.getItem(BIG_FILE_THRESHOLD_KEY).then((stored) => {
-      if (stored != null) setBigFileThresholdMB(Number(stored));
+    AsyncStorage.getItem(BIG_FILE_RANGE_KEY).then((stored) => {
+      if (stored != null) {
+        const [low, high] = stored.split(',').map(Number);
+        setBigFileRangeMB([low, high]);
+      }
     });
   }, []);
 
@@ -59,12 +66,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     }, [refreshTrashCount])
   );
 
-  const persistThreshold = (value: number) => {
-    AsyncStorage.setItem(BRIGHTNESS_THRESHOLD_KEY, String(value));
+  const persistBrightnessRange = (low: number, high: number) => {
+    AsyncStorage.setItem(BRIGHTNESS_RANGE_KEY, `${low},${high}`);
   };
 
-  const persistBigFileThreshold = (value: number) => {
-    AsyncStorage.setItem(BIG_FILE_THRESHOLD_KEY, String(value));
+  const persistBigFileRange = (low: number, high: number) => {
+    AsyncStorage.setItem(BIG_FILE_RANGE_KEY, `${low},${high}`);
   };
 
   return (
@@ -86,25 +93,23 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new BrightnessStrategy(brightnessThreshold),
+              strategy: new BrightnessStrategy(brightnessRange[0], brightnessRange[1]),
             })
           }
         >
           <Text style={styles.title}>{brightnessMeta.title}</Text>
           <Text style={styles.sliderLabel}>
-            Flag photos darker than {brightnessThreshold}/255
+            Flag photos between {brightnessRange[0]} and {brightnessRange[1]}/255 brightness
           </Text>
         </Pressable>
-        <Slider
+        <RangeSlider
           minimumValue={0}
           maximumValue={255}
           step={5}
-          value={brightnessThreshold}
-          onValueChange={setBrightnessThreshold}
-          onSlidingComplete={persistThreshold}
-          minimumTrackTintColor="#0a84ff"
-          maximumTrackTintColor="#3a3a3c"
-          thumbTintColor="#0a84ff"
+          lowValue={brightnessRange[0]}
+          highValue={brightnessRange[1]}
+          onValuesChange={(low, high) => setBrightnessRange([low, high])}
+          onSlidingComplete={persistBrightnessRange}
         />
       </View>
 
@@ -119,23 +124,26 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new BigFilesStrategy(bigFileThresholdMB * 1024 * 1024),
+              strategy: new BigFilesStrategy(
+                bigFileRangeMB[0] * 1024 * 1024,
+                bigFileRangeMB[1] * 1024 * 1024
+              ),
             })
           }
         >
           <Text style={styles.title}>{bigFilesMeta.title}</Text>
-          <Text style={styles.sliderLabel}>Flag photos and videos over {bigFileThresholdMB} MB</Text>
+          <Text style={styles.sliderLabel}>
+            Flag photos and videos between {bigFileRangeMB[0]} and {bigFileRangeMB[1]} MB
+          </Text>
         </Pressable>
-        <Slider
+        <RangeSlider
           minimumValue={5}
           maximumValue={200}
           step={5}
-          value={bigFileThresholdMB}
-          onValueChange={setBigFileThresholdMB}
-          onSlidingComplete={persistBigFileThreshold}
-          minimumTrackTintColor="#0a84ff"
-          maximumTrackTintColor="#3a3a3c"
-          thumbTintColor="#0a84ff"
+          lowValue={bigFileRangeMB[0]}
+          highValue={bigFileRangeMB[1]}
+          onValuesChange={(low, high) => setBigFileRangeMB([low, high])}
+          onSlidingComplete={persistBigFileRange}
         />
       </View>
 
@@ -165,7 +173,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: { color: 'white', fontSize: 18, fontWeight: '600' },
-  sliderLabel: { color: '#8e8e93', fontSize: 13, marginTop: 12 },
+  sliderLabel: { color: '#8e8e93', fontSize: 13, marginTop: 12, marginBottom: 8 },
   trashBanner: {
     backgroundColor: '#2c1c1e',
     borderRadius: 18,

@@ -1,0 +1,160 @@
+import React, { useCallback, useRef, useState } from 'react';
+import { View, PanResponder, LayoutChangeEvent, StyleSheet } from 'react-native';
+
+interface RangeSliderProps {
+  minimumValue: number;
+  maximumValue: number;
+  step?: number;
+  lowValue: number;
+  highValue: number;
+  onValuesChange: (low: number, high: number) => void;
+  onSlidingComplete?: (low: number, high: number) => void;
+  minimumTrackTintColor?: string;
+  maximumTrackTintColor?: string;
+  thumbTintColor?: string;
+}
+
+const THUMB_SIZE = 24;
+const TRACK_HEIGHT = 4;
+const CONTAINER_HEIGHT = 32;
+
+/**
+ * A minimal two-thumb range slider, hand-built with PanResponder (same
+ * technique as SwipeDeck) rather than adding a third-party dependency —
+ * no actively-maintained range-slider library for this exact need was
+ * worth the added supply-chain surface for something this small.
+ *
+ * Position is tracked via gesture.dx (movement relative to where the
+ * drag started), not absolute screen coordinates — the same approach
+ * SwipeDeck already uses successfully. An earlier version tried to
+ * convert absolute touch position to a track-relative fraction via
+ * View.measure(), which is unreliable enough (especially under the New
+ * Architecture) that it made the thumbs effectively undraggable.
+ *
+ * Values read inside the PanResponder callbacks come from refs, not
+ * directly from props/closures: the PanResponder instance is created
+ * once (via useRef) and its callbacks would otherwise capture stale
+ * lowValue/highValue from the render they were created in.
+ */
+export default function RangeSlider({
+  minimumValue,
+  maximumValue,
+  step = 1,
+  lowValue,
+  highValue,
+  onValuesChange,
+  onSlidingComplete,
+  minimumTrackTintColor = '#0a84ff',
+  maximumTrackTintColor = '#3a3a3c',
+  thumbTintColor = '#0a84ff',
+}: RangeSliderProps) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const trackWidthRef = useRef(0);
+
+  const lowValueRef = useRef(lowValue);
+  lowValueRef.current = lowValue;
+  const highValueRef = useRef(highValue);
+  highValueRef.current = highValue;
+  const onValuesChangeRef = useRef(onValuesChange);
+  onValuesChangeRef.current = onValuesChange;
+  const onSlidingCompleteRef = useRef(onSlidingComplete);
+  onSlidingCompleteRef.current = onSlidingComplete;
+
+  const fractionToValue = useCallback(
+    (fraction: number) => {
+      const raw = minimumValue + fraction * (maximumValue - minimumValue);
+      const stepped = Math.round(raw / step) * step;
+      return Math.min(maximumValue, Math.max(minimumValue, stepped));
+    },
+    [minimumValue, maximumValue, step]
+  );
+
+  const handleLayout = (e: LayoutChangeEvent) => {
+    trackWidthRef.current = e.nativeEvent.layout.width;
+    setTrackWidth(e.nativeEvent.layout.width);
+  };
+
+  const makeResponder = (thumb: 'low' | 'high') => {
+    let startFraction = 0;
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        const value = thumb === 'low' ? lowValueRef.current : highValueRef.current;
+        startFraction = (value - minimumValue) / (maximumValue - minimumValue);
+      },
+      onPanResponderMove: (_, gesture) => {
+        if (trackWidthRef.current === 0) return;
+        const fraction = Math.min(1, Math.max(0, startFraction + gesture.dx / trackWidthRef.current));
+        const value = fractionToValue(fraction);
+        if (thumb === 'low') {
+          const clamped = Math.min(value, highValueRef.current - step);
+          onValuesChangeRef.current(Math.max(minimumValue, clamped), highValueRef.current);
+        } else {
+          const clamped = Math.max(value, lowValueRef.current + step);
+          onValuesChangeRef.current(lowValueRef.current, Math.min(maximumValue, clamped));
+        }
+      },
+      onPanResponderRelease: () => {
+        onSlidingCompleteRef.current?.(lowValueRef.current, highValueRef.current);
+      },
+    });
+  };
+
+  const lowResponder = useRef(makeResponder('low')).current;
+  const highResponder = useRef(makeResponder('high')).current;
+
+  const lowFraction = (lowValue - minimumValue) / (maximumValue - minimumValue);
+  const highFraction = (highValue - minimumValue) / (maximumValue - minimumValue);
+
+  return (
+    <View style={styles.container}>
+      <View
+        style={[styles.track, { backgroundColor: maximumTrackTintColor }]}
+        onLayout={handleLayout}
+      >
+        <View
+          style={[
+            styles.fill,
+            {
+              left: `${lowFraction * 100}%`,
+              right: `${(1 - highFraction) * 100}%`,
+              backgroundColor: minimumTrackTintColor,
+            },
+          ]}
+        />
+      </View>
+      <View
+        style={[
+          styles.thumb,
+          { left: lowFraction * trackWidth - THUMB_SIZE / 2, backgroundColor: thumbTintColor },
+        ]}
+        {...lowResponder.panHandlers}
+      />
+      <View
+        style={[
+          styles.thumb,
+          { left: highFraction * trackWidth - THUMB_SIZE / 2, backgroundColor: thumbTintColor },
+        ]}
+        {...highResponder.panHandlers}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { height: CONTAINER_HEIGHT, justifyContent: 'center' },
+  track: { height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2, overflow: 'hidden' },
+  fill: { position: 'absolute', height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2 },
+  thumb: {
+    position: 'absolute',
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
+    top: (CONTAINER_HEIGHT - THUMB_SIZE) / 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+});

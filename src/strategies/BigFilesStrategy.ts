@@ -3,7 +3,8 @@ import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 
-const DEFAULT_THRESHOLD_BYTES = 20 * 1024 * 1024; // 20 MB
+const DEFAULT_MIN_BYTES = 20 * 1024 * 1024; // 20 MB
+const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
 
 /**
  * Large files are usually videos, not photos — this is the one category
@@ -12,16 +13,21 @@ const DEFAULT_THRESHOLD_BYTES = 20 * 1024 * 1024; // 20 MB
  * filtering whatever SwipeScreen already fetched (which is photo-only).
  */
 export class BigFilesStrategy extends CategoryStrategy {
-  thresholdBytes: number;
+  minBytes: number;
+  maxBytes: number;
 
-  constructor(thresholdBytes = DEFAULT_THRESHOLD_BYTES) {
+  constructor(minBytes = DEFAULT_MIN_BYTES, maxBytes = DEFAULT_MAX_BYTES) {
     super();
-    this.thresholdBytes = thresholdBytes;
+    this.minBytes = minBytes;
+    this.maxBytes = maxBytes;
   }
 
   async match(_assets: Asset[]): Promise<Asset[]> {
     const media = await PhotoLibraryService.getAllMedia();
-    return media.filter((asset) => new File(asset.uri).size >= this.thresholdBytes);
+    return media.filter((asset) => {
+      const size = new File(asset.uri).size;
+      return size >= this.minBytes && size <= this.maxBytes;
+    });
   }
 
   get meta(): CategoryMeta {
