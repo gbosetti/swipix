@@ -112,6 +112,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         </View>
       )}
 
+      <Text style={styles.sectionHeader}>Categories</Text>
+
       <Pressable
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: screenshotStrategy })}
@@ -225,6 +227,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#1c1c1e',
     borderRadius: 18,
     padding: 20,
+  },
+  sectionHeader: {
+    color: '#8e8e93',
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 8,
+    marginBottom: -4,
   },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: 'white', fontSize: 18, fontWeight: '600' },
