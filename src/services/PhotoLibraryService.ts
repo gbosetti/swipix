@@ -17,8 +17,22 @@ export const PhotoLibraryService = {
   },
 
   async getAllPhotos({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
+    return this._fetchAssets('photo', first);
+  },
+
+  /** Photos and videos together — only categories that genuinely need
+   * videos (e.g. Big Files) should use this; everything else stays on
+   * getAllPhotos so existing categories are unaffected. */
+  async getAllMedia({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
+    return this._fetchAssets(['photo', 'video'], first);
+  },
+
+  async _fetchAssets(
+    mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
+    first: number
+  ): Promise<Asset[]> {
     const page = await MediaLibrary.getAssetsAsync({
-      mediaType: 'photo',
+      mediaType,
       first,
       sortBy: [MediaLibrary.SortBy.creationTime],
     });
@@ -37,6 +51,7 @@ export const PhotoLibraryService = {
         return {
           id: asset.id,
           uri: info.localUri,
+          mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
           creationTime: asset.creationTime,
           mediaSubtypes: info.mediaSubtypes ?? [],
           location: info.location ?? null,

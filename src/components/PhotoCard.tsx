@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Image, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Asset } from '../types';
 
 interface PhotoCardProps {
@@ -17,8 +18,21 @@ interface PhotoCardProps {
  *  - Large corner radius (24) matches iOS 18+ card conventions
  *  - Soft shadow, not a hard border — cards should feel like physical objects
  *  - Full-bleed image so the photo IS the interface, chrome stays minimal
+ *
+ * Videos get a placeholder rather than a real thumbnail/player for now —
+ * that's a separate feature (frame extraction or expo-video) worth its
+ * own scope, not something to bolt on here.
  */
 export default function PhotoCard({ asset }: PhotoCardProps) {
+  if (asset.mediaType === 'video') {
+    return (
+      <View style={[styles.card, styles.videoPlaceholder]}>
+        <Ionicons name="videocam" size={48} color="#8e8e93" />
+        <Text style={styles.videoLabel}>Video</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.card}>
       <Image source={{ uri: asset.uri }} style={styles.image} resizeMode="cover" />
@@ -39,4 +53,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   image: { width: '100%', height: '100%' },
+  videoPlaceholder: { justifyContent: 'center', alignItems: 'center', gap: 8 },
+  videoLabel: { color: '#8e8e93', fontSize: 14, fontWeight: '600' },
 });

@@ -8,14 +8,22 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
+import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
+import { BlurredImagesStrategy } from '../strategies/BlurredImagesStrategy';
+import { SimilarPicturesStrategy } from '../strategies/SimilarPicturesStrategy';
 import { TrashService } from '../services/TrashService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
 
 const DEFAULT_BRIGHTNESS_THRESHOLD = 40; // matches BrightnessStrategy's own default
 const BRIGHTNESS_THRESHOLD_KEY = '@swipix/brightnessThreshold';
+const DEFAULT_BIG_FILE_THRESHOLD_MB = 20; // matches BigFilesStrategy's own default
+const BIG_FILE_THRESHOLD_KEY = '@swipix/bigFileThresholdMB';
 const brightnessMeta = new BrightnessStrategy().meta;
 const screenshotStrategy = new ScreenshotStrategy();
+const bigFilesMeta = new BigFilesStrategy().meta;
+const blurredImagesStrategy = new BlurredImagesStrategy();
+const similarPicturesStrategy = new SimilarPicturesStrategy();
 
 // Composite because this screen needs to navigate both within its own
 // stack (to Swipe) and across to a sibling tab (Trash) when the user
@@ -27,11 +35,15 @@ type Props = CompositeScreenProps<
 
 export default function CategoryPickerScreen({ navigation }: Props) {
   const [brightnessThreshold, setBrightnessThreshold] = useState(DEFAULT_BRIGHTNESS_THRESHOLD);
+  const [bigFileThresholdMB, setBigFileThresholdMB] = useState(DEFAULT_BIG_FILE_THRESHOLD_MB);
   const [trashCount, setTrashCount] = useState(0);
 
   useEffect(() => {
     AsyncStorage.getItem(BRIGHTNESS_THRESHOLD_KEY).then((stored) => {
       if (stored != null) setBrightnessThreshold(Number(stored));
+    });
+    AsyncStorage.getItem(BIG_FILE_THRESHOLD_KEY).then((stored) => {
+      if (stored != null) setBigFileThresholdMB(Number(stored));
     });
   }, []);
 
@@ -49,6 +61,10 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistThreshold = (value: number) => {
     AsyncStorage.setItem(BRIGHTNESS_THRESHOLD_KEY, String(value));
+  };
+
+  const persistBigFileThreshold = (value: number) => {
+    AsyncStorage.setItem(BIG_FILE_THRESHOLD_KEY, String(value));
   };
 
   return (
@@ -97,6 +113,44 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         onPress={() => navigation.navigate('Swipe', { strategy: screenshotStrategy })}
       >
         <Text style={styles.title}>{screenshotStrategy.meta.title}</Text>
+      </Pressable>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new BigFilesStrategy(bigFileThresholdMB * 1024 * 1024),
+            })
+          }
+        >
+          <Text style={styles.title}>{bigFilesMeta.title}</Text>
+          <Text style={styles.sliderLabel}>Flag photos and videos over {bigFileThresholdMB} MB</Text>
+        </Pressable>
+        <Slider
+          minimumValue={5}
+          maximumValue={200}
+          step={5}
+          value={bigFileThresholdMB}
+          onValueChange={setBigFileThresholdMB}
+          onSlidingComplete={persistBigFileThreshold}
+          minimumTrackTintColor="#0a84ff"
+          maximumTrackTintColor="#3a3a3c"
+          thumbTintColor="#0a84ff"
+        />
+      </View>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: blurredImagesStrategy })}
+      >
+        <Text style={styles.title}>{blurredImagesStrategy.meta.title}</Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: similarPicturesStrategy })}
+      >
+        <Text style={styles.title}>{similarPicturesStrategy.meta.title}</Text>
       </Pressable>
     </ScrollView>
   );
