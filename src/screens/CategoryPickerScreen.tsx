@@ -9,6 +9,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { TrashService } from '../services/TrashService';
+import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
 
 const DEFAULT_BRIGHTNESS_THRESHOLD = 40; // matches BrightnessStrategy's own default
@@ -52,6 +53,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <StorageMeter />
+
       {trashCount > 0 && (
         <View style={styles.trashBanner}>
           <Text style={styles.trashBannerText}>
