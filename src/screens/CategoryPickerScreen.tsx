@@ -34,6 +34,17 @@ type Props = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList>
 >;
 
+/** Same title + chevron affordance on every card, whether or not it also
+ * has a slider — one consistent signifier for "tap this to go swiping." */
+function TitleRow({ title }: { title: string }) {
+  return (
+    <View style={styles.titleRow}>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.chevron}>›</Text>
+    </View>
+  );
+}
+
 export default function CategoryPickerScreen({ navigation }: Props) {
   const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
   const [bigFileRangeMB, setBigFileRangeMB] = useState(DEFAULT_BIG_FILE_RANGE_MB);
@@ -97,11 +108,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <Text style={styles.title}>{brightnessMeta.title}</Text>
-          <Text style={styles.sliderLabel}>
-            Flag photos between {brightnessRange[0]} and {brightnessRange[1]}/255 brightness
-          </Text>
+          <TitleRow title={brightnessMeta.title} />
         </Pressable>
+        <Text style={styles.sliderLabel}>
+          Flag photos between {brightnessRange[0]} and {brightnessRange[1]}/255 brightness
+        </Text>
         <RangeSlider
           minimumValue={0}
           maximumValue={255}
@@ -117,7 +128,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: screenshotStrategy })}
       >
-        <Text style={styles.title}>{screenshotStrategy.meta.title}</Text>
+        <TitleRow title={screenshotStrategy.meta.title} />
       </Pressable>
 
       <View style={styles.card}>
@@ -131,11 +142,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <Text style={styles.title}>{bigFilesMeta.title}</Text>
-          <Text style={styles.sliderLabel}>
-            Flag photos and videos between {bigFileRangeMB[0]} and {bigFileRangeMB[1]} MB
-          </Text>
+          <TitleRow title={bigFilesMeta.title} />
         </Pressable>
+        <Text style={styles.sliderLabel}>
+          Flag photos and videos between {bigFileRangeMB[0]} and {bigFileRangeMB[1]} MB
+        </Text>
         <RangeSlider
           minimumValue={5}
           maximumValue={200}
@@ -151,14 +162,14 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: blurredImagesStrategy })}
       >
-        <Text style={styles.title}>{blurredImagesStrategy.meta.title}</Text>
+        <TitleRow title={blurredImagesStrategy.meta.title} />
       </Pressable>
 
       <Pressable
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: similarPicturesStrategy })}
       >
-        <Text style={styles.title}>{similarPicturesStrategy.meta.title}</Text>
+        <TitleRow title={similarPicturesStrategy.meta.title} />
       </Pressable>
     </ScrollView>
   );
@@ -172,7 +183,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 20,
   },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: 'white', fontSize: 18, fontWeight: '600' },
+  chevron: { color: '#8e8e93', fontSize: 22, fontWeight: '400' },
   sliderLabel: { color: '#8e8e93', fontSize: 13, marginTop: 12, marginBottom: 8 },
   trashBanner: {
     backgroundColor: '#2c1c1e',
