@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Alert, BackHandler, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import TermsContent from '../components/TermsContent';
+import PrivacyContent from '../components/PrivacyContent';
 import { Colors } from '../theme/colors';
+
+type LegalModal = 'terms' | 'privacy' | null;
 
 interface OnboardingScreenProps {
   onAccept: () => void;
@@ -18,7 +21,7 @@ interface OnboardingScreenProps {
 export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
-  const [termsVisible, setTermsVisible] = useState(false);
+  const [legalModal, setLegalModal] = useState<LegalModal>(null);
 
   const steps = [
     { icon: '👋', title: t('onboarding.step1Title'), body: t('onboarding.step1Body') },
@@ -51,12 +54,26 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
       </View>
 
       {isLastStep && (
-        <Pressable onPress={() => setTermsVisible(true)} hitSlop={8} style={styles.termsLinkWrap}>
+        <View style={styles.termsLinkWrap}>
           <Text style={styles.termsLink}>
             {t('onboarding.termsLinkPrefix')}
-            <Text style={styles.termsLinkUnderline}>{t('onboarding.termsLinkUnderline')}</Text>
+            <Text
+              style={styles.termsLinkUnderline}
+              onPress={() => setLegalModal('terms')}
+              suppressHighlighting
+            >
+              {t('onboarding.termsLinkUnderline')}
+            </Text>
+            {t('onboarding.andConnector')}
+            <Text
+              style={styles.termsLinkUnderline}
+              onPress={() => setLegalModal('privacy')}
+              suppressHighlighting
+            >
+              {t('nav.privacy')}
+            </Text>
           </Text>
-        </Pressable>
+        </View>
       )}
 
       <Pressable
@@ -70,18 +87,20 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
       </Pressable>
 
       <Modal
-        visible={termsVisible}
+        visible={legalModal !== null}
         animationType="slide"
-        onRequestClose={() => setTermsVisible(false)}
+        onRequestClose={() => setLegalModal(null)}
       >
         <View style={styles.termsModal}>
           <ScrollView contentContainerStyle={styles.termsContent}>
-            <Text style={styles.termsTitle}>{t('onboarding.termsTitle')}</Text>
-            <TermsContent />
+            <Text style={styles.termsTitle}>
+              {legalModal === 'privacy' ? t('nav.privacy') : t('onboarding.termsTitle')}
+            </Text>
+            {legalModal === 'privacy' ? <PrivacyContent /> : <TermsContent />}
           </ScrollView>
           <Pressable
             style={styles.closeTermsButton}
-            onPress={() => setTermsVisible(false)}
+            onPress={() => setLegalModal(null)}
           >
             <Text style={styles.closeTermsButtonText}>{t('onboarding.close')}</Text>
           </Pressable>

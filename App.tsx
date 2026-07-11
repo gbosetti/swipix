@@ -8,7 +8,20 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import { Colors } from './src/theme/colors';
 import { initI18n } from './src/i18n';
 
-const ONBOARDING_COMPLETE_KEY = '@swipix/onboardingComplete';
+const CONSENT_KEY = '@swipix/consent';
+
+// Bump this whenever TERMS.md or PRIVACY.md changes in a way that
+// affects what the user agreed to. A version bump makes any previously
+// stored consent stale, so onboarding (and re-acceptance) is shown
+// again — consent is tied to a specific, provable version and
+// timestamp, not just "the user tapped Accept at some point." Keep in
+// sync with both docs' "Last updated" dates.
+const CONSENT_VERSION = '2026-07-12';
+
+interface Consent {
+  version: string;
+  acceptedAt: number;
+}
 
 // Keeps the native (black) splash on screen until the onboarding check
 // below resolves — without this, Expo hides the splash as soon as the JS
@@ -17,23 +30,27 @@ const ONBOARDING_COMPLETE_KEY = '@swipix/onboardingComplete';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function App() {
-  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const [hasCurrentConsent, setHasCurrentConsent] = useState<boolean | null>(null);
 
   useEffect(() => {
     Promise.all([
       initI18n(),
-      AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY).then((value) => setOnboardingComplete(value === 'true')),
+      AsyncStorage.getItem(CONSENT_KEY).then((raw) => {
+        const consent: Consent | null = raw ? JSON.parse(raw) : null;
+        setHasCurrentConsent(consent?.version === CONSENT_VERSION);
+      }),
     ]).then(() => {
       SplashScreen.hideAsync().catch(() => {});
     });
   }, []);
 
   const completeOnboarding = () => {
-    AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
-    setOnboardingComplete(true);
+    const consent: Consent = { version: CONSENT_VERSION, acceptedAt: Date.now() };
+    AsyncStorage.setItem(CONSENT_KEY, JSON.stringify(consent));
+    setHasCurrentConsent(true);
   };
 
-  if (onboardingComplete === null) {
+  if (hasCurrentConsent === null) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" />
@@ -44,7 +61,7 @@ export default function App() {
   return (
     <>
       <StatusBar style="light" />
-      {onboardingComplete ? (
+      {hasCurrentConsent ? (
         <RootNavigator />
       ) : (
         <OnboardingScreen onAccept={completeOnboarding} />

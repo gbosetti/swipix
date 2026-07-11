@@ -18,5 +18,12 @@ first, since they're legal-facing and the user may want to review or
 phrase it themselves. If it's unclear whether a change is legally
 relevant, ask rather than skip it.
 
+Consent is versioned: `App.tsx` stores `{ version, acceptedAt }` (not a
+bare boolean) and re-shows onboarding whenever the stored version
+doesn't match `CONSENT_VERSION`. Whenever `TERMS.md`/`PRIVACY.md` change
+in a way that affects what the user agreed to, bump `CONSENT_VERSION`
+(and its "Last updated" dates) in the same change — otherwise existing
+users keep being treated as having agreed to terms they never saw.
+
 Swipix ships in es/it/fr as well as English, so the global GDPR
 conventions apply concretely here — real EU users, not a hypothetical.

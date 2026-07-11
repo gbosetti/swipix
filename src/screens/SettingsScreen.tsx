@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, DevSettings } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '../navigation/types';
 import { Colors } from '../theme/colors';
@@ -23,6 +25,17 @@ export default function SettingsScreen({ navigation }: Props) {
         <Text style={styles.rowText}>{t('settings.privacyRow')}</Text>
         <Text style={styles.chevron}>›</Text>
       </Pressable>
+      {__DEV__ && (
+        <Pressable
+          style={styles.row}
+          onPress={() => AsyncStorage.clear().then(() => DevSettings.reload())}
+        >
+          <View style={styles.devRowLabel}>
+            <Ionicons name="bug-outline" size={18} color={Colors.textSecondary} />
+            <Text style={styles.rowText}>Reset Onboarding</Text>
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -40,4 +53,5 @@ const styles = StyleSheet.create({
   },
   rowText: { color: Colors.textPrimary, fontSize: 16 },
   chevron: { color: Colors.textSecondary, fontSize: 20 },
+  devRowLabel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 });
