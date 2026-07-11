@@ -79,7 +79,8 @@
     "p3": "The app is provided \"as is,\" with no warranty of any kind, including the accuracy of any automatic photo categorization (like blurry, similar, or large files). To the fullest extent permitted by law, the developer isn't liable for any loss of photos or data, or losses from mistaken deletions, from using this app.",
     "p4": "These terms may change at any time, for any reason, including to reflect new features, pricing, or legal requirements. Continuing to use the app after a change means you accept the updated terms.",
     "p5": "Swipix may add, change, or remove features at any time, including introducing subscriptions, one-time purchases, or advertising in the future.",
-    "p6": "Full terms are in TERMS.md."
+    "p6": "Full terms are in TERMS.md.",
+    "p7": "Questions? Contact swipix@bosetti.dev"
   },
   "privacy": {
     "p1": "Swipix has no backend, no accounts, and no analytics or ad tracking — nothing you do in the app is ever sent anywhere.",
@@ -87,7 +88,8 @@
     "p3": "A few small preferences — your language, filter settings, and what's currently in the trash — are stored locally on your device and removed when you uninstall the app.",
     "p4": "Swipix currently has no ads and no payments. If that changes in the future, this policy will be updated first, and you'll be asked for any consent required at that time.",
     "p5": "This policy may be updated at any time. Continuing to use the app after a change means you accept the updated policy.",
-    "p6": "Full details are in PRIVACY.md."
+    "p6": "Full details are in PRIVACY.md.",
+    "p7": "Questions? Contact swipix@bosetti.dev"
   },
   "language": {
     "title": "Language",

@@ -11,7 +11,7 @@ import { Colors } from '../theme/colors';
  * Translated like the rest of the UI, but note: these paragraphs are
  * plain-language translations, not legal review — if the wording needs
  * to hold up in a specific jurisdiction, have a native-speaking legal
- * reviewer check the es/it/fr/de copy in src/i18n/locales before shipping.
+ * reviewer check the es/it/fr copy in src/i18n/locales before shipping.
  */
 export default function TermsContent() {
   const { t } = useTranslation();
@@ -23,6 +23,7 @@ export default function TermsContent() {
       <Text style={styles.paragraph}>{t('terms.p4')}</Text>
       <Text style={styles.paragraph}>{t('terms.p5')}</Text>
       <Text style={styles.paragraph}>{t('terms.p6')}</Text>
+      <Text style={styles.paragraph}>{t('terms.p7')}</Text>
     </>
   );
 }

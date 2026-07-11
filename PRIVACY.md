@@ -70,4 +70,5 @@ published constitutes acceptance of the updated policy.
 
 ## 9. Contact
 
-[Contact email to be added.]
+Questions about this policy, or requests related to your data, can be
+sent to swipix@bosetti.dev

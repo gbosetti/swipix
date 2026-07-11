@@ -69,4 +69,4 @@ introduced, consistent with our approach to privacy.
 
 ## 8. Contact
 
-[Contact email to be added.]
+Questions about these terms can be sent to swipix@bosetti.dev

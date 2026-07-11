@@ -79,7 +79,8 @@
     "p3": "L'application est fournie \"telle quelle\", sans garantie d'aucune sorte, y compris quant à la précision de toute catégorisation automatique des photos (floues, similaires ou volumineuses, par exemple). Dans toute la mesure permise par la loi, le développeur n'est pas responsable de toute perte de photos ou de données, ni des pertes dues à des suppressions faites par erreur, résultant de l'utilisation de cette application.",
     "p4": "Ces conditions peuvent changer à tout moment et pour quelque raison que ce soit, notamment pour refléter de nouvelles fonctionnalités, une nouvelle tarification ou des exigences légales. Continuer à utiliser l'application après une modification vaut acceptation des conditions mises à jour.",
     "p5": "Swipix peut ajouter, modifier ou supprimer des fonctionnalités à tout moment, y compris en introduisant à l'avenir des abonnements, des achats uniques ou de la publicité.",
-    "p6": "Les conditions complètes se trouvent dans TERMS.md."
+    "p6": "Les conditions complètes se trouvent dans TERMS.md.",
+    "p7": "Des questions ? Contactez swipix@bosetti.dev"
   },
   "privacy": {
     "p1": "Swipix n'a pas de serveur, pas de comptes, et aucun suivi analytique ou publicitaire : rien de ce que vous faites dans l'application n'est jamais envoyé où que ce soit.",
@@ -87,7 +88,8 @@
     "p3": "Quelques préférences minimes — votre langue, vos réglages de filtres et ce qui se trouve actuellement dans la corbeille — sont stockées localement sur votre appareil et supprimées lorsque vous désinstallez l'application.",
     "p4": "Swipix n'a actuellement ni publicité ni paiement. Si cela venait à changer, cette politique serait mise à jour au préalable, et votre consentement vous serait demandé le moment venu.",
     "p5": "Cette politique peut être mise à jour à tout moment. Continuer à utiliser l'application après une modification vaut acceptation de la politique mise à jour.",
-    "p6": "Les détails complets se trouvent dans PRIVACY.md."
+    "p6": "Les détails complets se trouvent dans PRIVACY.md.",
+    "p7": "Des questions ? Contactez swipix@bosetti.dev"
   },
   "language": {
     "title": "Langue",

@@ -79,7 +79,8 @@
     "p3": "La aplicación se ofrece \"tal cual\", sin garantía de ningún tipo, incluida la precisión de cualquier categorización automática de fotos (como borrosas, similares o de gran tamaño). En la máxima medida permitida por la ley, el desarrollador no se hace responsable de ninguna pérdida de fotos o datos, ni de pérdidas por eliminaciones equivocadas, derivadas del uso de esta aplicación.",
     "p4": "Estos términos pueden cambiar en cualquier momento y por cualquier motivo, incluido para reflejar nuevas funciones, precios o requisitos legales. Si sigues usando la aplicación después de un cambio, se entiende que aceptas los términos actualizados.",
     "p5": "Swipix puede añadir, modificar o eliminar funciones en cualquier momento, incluida la introducción de suscripciones, compras únicas o publicidad en el futuro.",
-    "p6": "Los términos completos están en TERMS.md."
+    "p6": "Los términos completos están en TERMS.md.",
+    "p7": "¿Preguntas? Escribe a swipix@bosetti.dev"
   },
   "privacy": {
     "p1": "Swipix no tiene servidor, ni cuentas, ni análisis o seguimiento publicitario: nada de lo que haces en la app se envía a ningún sitio.",
@@ -87,7 +88,8 @@
     "p3": "Algunas preferencias pequeñas —tu idioma, los ajustes de filtros y lo que hay actualmente en la papelera— se guardan localmente en tu dispositivo y se eliminan al desinstalar la app.",
     "p4": "Swipix actualmente no tiene anuncios ni pagos. Si eso cambia en el futuro, esta política se actualizará primero y se te pedirá el consentimiento que sea necesario en ese momento.",
     "p5": "Esta política puede actualizarse en cualquier momento. Si sigues usando la app después de un cambio, se entiende que aceptas la política actualizada.",
-    "p6": "Los detalles completos están en PRIVACY.md."
+    "p6": "Los detalles completos están en PRIVACY.md.",
+    "p7": "¿Preguntas? Escribe a swipix@bosetti.dev"
   },
   "language": {
     "title": "Idioma",
