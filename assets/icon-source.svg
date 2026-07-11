@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="letterGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4da3ff"/>
+      <stop offset="100%" stop-color="#0a84ff"/>
+    </linearGradient>
+    <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="#000000"/>
+  <path
+    d="M 662,260 C 520,180 356,232 356,354 C 356,458 468,486 512,502 C 556,518 668,546 668,650 C 668,772 504,824 362,744"
+    fill="none"
+    stroke="url(#letterGradient)"
+    stroke-width="86"
+    stroke-linecap="square"
+    filter="url(#softShadow)"
+  />
+</svg>
