@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
+import { Colors } from '../theme/colors';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;
@@ -158,9 +159,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  rightStamp: { left: 20, borderColor: '#34c759', transform: [{ rotate: '-12deg' }] },
-  leftStamp: { right: 20, borderColor: '#ff3b30', transform: [{ rotate: '12deg' }] },
+  rightStamp: { left: 20, borderColor: Colors.success, transform: [{ rotate: '-12deg' }] },
+  leftStamp: { right: 20, borderColor: Colors.danger, transform: [{ rotate: '12deg' }] },
   stampText: { fontSize: 26, fontWeight: '800', letterSpacing: 1 },
-  rightStampText: { color: '#34c759' },
-  leftStampText: { color: '#ff3b30' },
+  rightStampText: { color: Colors.success },
+  leftStampText: { color: Colors.danger },
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Image, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Asset } from '../types';
+import { Colors } from '../theme/colors';
 
 interface PhotoCardProps {
   asset: Asset;
@@ -27,7 +28,7 @@ export default function PhotoCard({ asset }: PhotoCardProps) {
   if (asset.mediaType === 'video') {
     return (
       <View style={[styles.card, styles.videoPlaceholder]}>
-        <Ionicons name="videocam" size={48} color="#8e8e93" />
+        <Ionicons name="videocam" size={48} color={Colors.textSecondary} />
         <Text style={styles.videoLabel}>Video</Text>
       </View>
     );
@@ -45,8 +46,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#111',
-    shadowColor: '#000',
+    backgroundColor: Colors.cardDark,
+    shadowColor: Colors.background,
     shadowOpacity: 0.25,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -54,5 +55,5 @@ const styles = StyleSheet.create({
   },
   image: { width: '100%', height: '100%' },
   videoPlaceholder: { justifyContent: 'center', alignItems: 'center', gap: 8 },
-  videoLabel: { color: '#8e8e93', fontSize: 14, fontWeight: '600' },
+  videoLabel: { color: Colors.textSecondary, fontSize: 14, fontWeight: '600' },
 });

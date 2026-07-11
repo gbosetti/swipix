@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TrashScreen from '../screens/TrashScreen';
 import { TrashStackParamList } from './types';
+import { Colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator<TrashStackParamList>();
 
@@ -14,7 +15,7 @@ export default function TrashStackNavigator() {
         options={{
           headerShown: true,
           headerTitle: 'Trash',
-          headerStyle: { backgroundColor: '#000' },
+          headerStyle: { backgroundColor: Colors.background },
           headerTintColor: 'white',
         }}
       />

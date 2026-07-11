@@ -8,6 +8,7 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { TrashService } from '../services/TrashService';
 import { SwipeRouteParams } from '../navigation/types';
 import { Asset } from '../types';
+import { Colors } from '../theme/colors';
 
 // Loosely typed against just the 'Swipe' route shape rather than one
 // specific stack's full param list — this screen is mounted from two
@@ -132,12 +133,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: Colors.background },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: Colors.background,
     padding: 24,
     gap: 8,
   },
@@ -148,17 +149,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  statusText: { color: '#8e8e93', fontSize: 14 },
-  emptyText: { color: 'white', fontSize: 20, fontWeight: '700' },
-  subText: { color: '#8e8e93', fontSize: 14, textAlign: 'center' },
+  statusText: { color: Colors.textSecondary, fontSize: 14 },
+  emptyText: { color: Colors.textPrimary, fontSize: 20, fontWeight: '700' },
+  subText: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center' },
   hintRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 24 },
-  hint: { color: '#8e8e93', fontSize: 14 },
+  hint: { color: Colors.textSecondary, fontSize: 14 },
   doneButton: {
     marginTop: 16,
-    backgroundColor: '#0a84ff',
+    backgroundColor: Colors.accent,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 24,
   },
-  doneButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  doneButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
 });

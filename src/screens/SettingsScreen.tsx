@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '../navigation/types';
+import { Colors } from '../theme/colors';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
@@ -17,16 +18,16 @@ export default function SettingsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#000', padding: 20 },
+  screen: { flex: 1, backgroundColor: Colors.background, padding: 20 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1c1c1e',
+    backgroundColor: Colors.card,
     borderRadius: 14,
     paddingVertical: 16,
     paddingHorizontal: 18,
   },
-  rowText: { color: 'white', fontSize: 16 },
-  chevron: { color: '#8e8e93', fontSize: 20 },
+  rowText: { color: Colors.textPrimary, fontSize: 16 },
+  chevron: { color: Colors.textSecondary, fontSize: 20 },
 });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Alert, BackHandler, Modal } from 'react-native';
 import TermsContent from '../components/TermsContent';
+import { Colors } from '../theme/colors';
 
 interface OnboardingScreenProps {
   onAccept: () => void;
@@ -104,36 +105,36 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', justifyContent: 'flex-end' },
+  container: { flex: 1, backgroundColor: Colors.background, justifyContent: 'flex-end' },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
   icon: { fontSize: 64, marginBottom: 12 },
-  title: { color: 'white', fontSize: 24, fontWeight: '700', textAlign: 'center' },
-  body: { color: '#c7c7cc', fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  title: { color: Colors.textPrimary, fontSize: 24, fontWeight: '700', textAlign: 'center' },
+  body: { color: Colors.textTertiary, fontSize: 15, lineHeight: 22, textAlign: 'center' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#3a3a3c' },
-  dotActive: { backgroundColor: '#0a84ff' },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.trackInactive },
+  dotActive: { backgroundColor: Colors.accent },
   termsLinkWrap: { alignItems: 'center', marginBottom: 12 },
-  termsLink: { color: '#8e8e93', fontSize: 13, textAlign: 'center' },
-  termsLinkUnderline: { textDecorationLine: 'underline', color: '#c7c7cc' },
+  termsLink: { color: Colors.textSecondary, fontSize: 13, textAlign: 'center' },
+  termsLinkUnderline: { textDecorationLine: 'underline', color: Colors.textTertiary },
   button: {
     marginHorizontal: 20,
-    backgroundColor: '#0a84ff',
+    backgroundColor: Colors.accent,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
   declineButton: { marginTop: 12, marginBottom: 24, alignItems: 'center' },
-  declineButtonText: { color: '#8e8e93', fontSize: 14 },
-  termsModal: { flex: 1, backgroundColor: '#000' },
+  declineButtonText: { color: Colors.textSecondary, fontSize: 14 },
+  termsModal: { flex: 1, backgroundColor: Colors.background },
   termsContent: { padding: 24, paddingTop: 60, gap: 16 },
-  termsTitle: { color: 'white', fontSize: 22, fontWeight: '700', marginBottom: 8 },
+  termsTitle: { color: Colors.textPrimary, fontSize: 22, fontWeight: '700', marginBottom: 8 },
   closeTermsButton: {
     margin: 20,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: Colors.card,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  closeTermsButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  closeTermsButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
 });

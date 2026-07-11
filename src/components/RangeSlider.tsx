@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet } from 'react-native';
+import { Colors } from '../theme/colors';
 
 interface RangeSliderProps {
   minimumValue: number;
@@ -44,9 +45,9 @@ export default function RangeSlider({
   highValue,
   onValuesChange,
   onSlidingComplete,
-  minimumTrackTintColor = '#0a84ff',
-  maximumTrackTintColor = '#3a3a3c',
-  thumbTintColor = '#0a84ff',
+  minimumTrackTintColor = Colors.accent,
+  maximumTrackTintColor = Colors.trackInactive,
+  thumbTintColor = Colors.accent,
 }: RangeSliderProps) {
   const [trackWidth, setTrackWidth] = useState(0);
   const trackWidthRef = useRef(0);
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
     top: (CONTAINER_HEIGHT - THUMB_SIZE) / 2,
-    shadowColor: '#000',
+    shadowColor: Colors.background,
     shadowOpacity: 0.3,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },

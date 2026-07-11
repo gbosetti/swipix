@@ -7,6 +7,7 @@ import SwipeTabNavigator from './SwipeTabNavigator';
 import TrashStackNavigator from './TrashStackNavigator';
 import SettingsStackNavigator from './SettingsStackNavigator';
 import { RootTabParamList } from './types';
+import { Colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -25,9 +26,9 @@ export default function RootNavigator() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarActiveTintColor: '#0a84ff',
-          tabBarInactiveTintColor: '#8e8e93',
-          tabBarStyle: { backgroundColor: '#000', borderTopColor: '#1c1c1e' },
+          tabBarActiveTintColor: Colors.accent,
+          tabBarInactiveTintColor: Colors.textSecondary,
+          tabBarStyle: { backgroundColor: Colors.background, borderTopColor: Colors.card },
           tabBarIcon: ({ color, size, focused }) => {
             const icon = ICONS[route.name];
             return (

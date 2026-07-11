@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
+import { Colors } from '../theme/colors';
 
 /**
  * The terms text itself, shared between the onboarding modal and the
@@ -31,5 +32,5 @@ export default function TermsContent() {
 }
 
 const styles = StyleSheet.create({
-  paragraph: { color: '#c7c7cc', fontSize: 15, lineHeight: 22, marginBottom: 16 },
+  paragraph: { color: Colors.textTertiary, fontSize: 15, lineHeight: 22, marginBottom: 16 },
 });

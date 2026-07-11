@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SettingsScreen from '../screens/SettingsScreen';
 import TermsScreen from '../screens/TermsScreen';
 import { SettingsStackParamList } from './types';
+import { Colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -15,7 +16,7 @@ export default function SettingsStackNavigator() {
         options={{
           headerShown: true,
           headerTitle: 'Settings',
-          headerStyle: { backgroundColor: '#000' },
+          headerStyle: { backgroundColor: Colors.background },
           headerTintColor: 'white',
         }}
       />
@@ -26,7 +27,7 @@ export default function SettingsStackNavigator() {
           headerShown: true,
           headerTitle: 'Terms of Use',
           headerBackTitle: 'Back',
-          headerStyle: { backgroundColor: '#000' },
+          headerStyle: { backgroundColor: Colors.background },
           headerTintColor: 'white',
         }}
       />

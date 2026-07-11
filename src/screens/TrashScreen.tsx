@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable, StyleSheet, FlatList, Alert, Modal } from
 import { useFocusEffect } from '@react-navigation/native';
 import { TrashService } from '../services/TrashService';
 import { TrashedAsset } from '../types';
+import { Colors } from '../theme/colors';
 
 /**
  * Lets the user see exactly what's staged for deletion and restore
@@ -134,37 +135,37 @@ export default function TrashScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
-  emptyText: { color: 'white', fontSize: 18, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: Colors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
+  emptyText: { color: Colors.textPrimary, fontSize: 18, fontWeight: '700' },
   list: { padding: 16, gap: 12 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: Colors.card,
     borderRadius: 14,
     padding: 10,
   },
-  thumbnail: { width: 56, height: 56, borderRadius: 10, backgroundColor: '#333' },
+  thumbnail: { width: 56, height: 56, borderRadius: 10, backgroundColor: Colors.placeholder },
   thumbnailPlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { color: '#8e8e93', fontSize: 20, fontWeight: '700' },
-  rowText: { flex: 1, color: 'white', fontSize: 14 },
+  placeholderText: { color: Colors.textSecondary, fontSize: 20, fontWeight: '700' },
+  rowText: { flex: 1, color: Colors.textPrimary, fontSize: 14 },
   restoreButton: {
-    backgroundColor: '#0a84ff',
+    backgroundColor: Colors.accent,
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  restoreButtonText: { color: 'white', fontSize: 13, fontWeight: '600' },
+  restoreButtonText: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
   emptyButton: {
     margin: 16,
-    backgroundColor: '#ff3b30',
+    backgroundColor: Colors.danger,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  emptyButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  emptyButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
   previewOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.92)',
@@ -179,15 +180,15 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: Colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
   },
-  previewCloseButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  previewCloseButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
   previewRestoreButton: {
     marginTop: 20,
-    backgroundColor: '#0a84ff',
+    backgroundColor: Colors.accent,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 24,

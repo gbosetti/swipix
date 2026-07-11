@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import { Colors } from './src/theme/colors';
 
 const ONBOARDING_COMPLETE_KEY = '@swipix/onboardingComplete';
 
@@ -42,5 +43,5 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
 });

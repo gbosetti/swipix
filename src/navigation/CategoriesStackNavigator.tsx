@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CategoryPickerScreen from '../screens/CategoryPickerScreen';
 import SwipeScreen from '../screens/SwipeScreen';
 import { CategoriesStackParamList } from './types';
+import { Colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator<CategoriesStackParamList>();
 
@@ -15,7 +16,7 @@ export default function CategoriesStackNavigator() {
         options={{
           headerShown: true,
           headerTitle: 'Swipix',
-          headerStyle: { backgroundColor: '#000' },
+          headerStyle: { backgroundColor: Colors.background },
           headerTintColor: 'white',
           headerShadowVisible: false,
         }}

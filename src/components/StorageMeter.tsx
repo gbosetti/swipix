@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StorageService, StorageInfo } from '../services/StorageService';
+import { Colors } from '../theme/colors';
 
 const LOW_SPACE_THRESHOLD_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 
@@ -55,17 +56,17 @@ export default function StorageMeter() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: Colors.card,
     borderRadius: 18,
     padding: 16,
     gap: 8,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { color: 'white', fontSize: 14, fontWeight: '600' },
-  freeText: { color: '#8e8e93', fontSize: 13 },
-  freeTextLow: { color: '#ff3b30', fontWeight: '600' },
-  track: { height: 8, borderRadius: 4, backgroundColor: '#3a3a3c', overflow: 'hidden' },
-  fill: { height: '100%', backgroundColor: '#0a84ff', borderRadius: 4 },
-  fillLow: { backgroundColor: '#ff3b30' },
-  totalText: { color: '#8e8e93', fontSize: 12 },
+  label: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  freeText: { color: Colors.textSecondary, fontSize: 13 },
+  freeTextLow: { color: Colors.danger, fontWeight: '600' },
+  track: { height: 8, borderRadius: 4, backgroundColor: Colors.trackInactive, overflow: 'hidden' },
+  fill: { height: '100%', backgroundColor: Colors.accent, borderRadius: 4 },
+  fillLow: { backgroundColor: Colors.danger },
+  totalText: { color: Colors.textSecondary, fontSize: 12 },
 });

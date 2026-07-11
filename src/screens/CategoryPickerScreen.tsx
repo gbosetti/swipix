@@ -16,6 +16,7 @@ import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { TrashService } from '../services/TrashService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
+import { Colors } from '../theme/colors';
 
 // Ordered by real-world impact/confidence: cheap-and-trustworthy signals
 // first (metadata-based, no judgment call), stub-based analysis last.
@@ -221,15 +222,15 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#000' },
+  screen: { flex: 1, backgroundColor: Colors.background },
   container: { padding: 20, gap: 14 },
   card: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: Colors.card,
     borderRadius: 18,
     padding: 20,
   },
   sectionHeader: {
-    color: '#8e8e93',
+    color: Colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -238,11 +239,11 @@ const styles = StyleSheet.create({
     marginBottom: -4,
   },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: 'white', fontSize: 18, fontWeight: '600' },
-  chevron: { color: '#8e8e93', fontSize: 22, fontWeight: '400' },
-  sliderLabel: { color: '#8e8e93', fontSize: 13, marginTop: 12, marginBottom: 8 },
+  title: { color: Colors.textPrimary, fontSize: 18, fontWeight: '600' },
+  chevron: { color: Colors.textSecondary, fontSize: 22, fontWeight: '400' },
+  sliderLabel: { color: Colors.textSecondary, fontSize: 13, marginTop: 12, marginBottom: 8 },
   trashBanner: {
-    backgroundColor: '#2c1c1e',
+    backgroundColor: Colors.cardAlt,
     borderRadius: 18,
     padding: 16,
     flexDirection: 'row',
@@ -250,12 +251,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  trashBannerText: { color: 'white', fontSize: 14, flexShrink: 1 },
+  trashBannerText: { color: Colors.textPrimary, fontSize: 14, flexShrink: 1 },
   trashButton: {
-    backgroundColor: '#ff3b30',
+    backgroundColor: Colors.danger,
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  trashButtonText: { color: 'white', fontSize: 13, fontWeight: '600' },
+  trashButtonText: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
 });
