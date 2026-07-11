@@ -2,6 +2,7 @@
   "name": "Swipix",
   "slug": "swipix",
   "version": "1.0.0",
+  "description": "Swipe through photos and videos to clean up and reclaim storage on your phone.",
   "icon": "./assets/icon.png",
   "userInterfaceStyle": "dark",
   "backgroundColor": "#000000",
