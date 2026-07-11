@@ -7,7 +7,6 @@ export interface Asset {
   width: number;
   height: number;
   mediaSubtypes: string[];
-  location: { latitude: number; longitude: number } | null;
 }
 
 export interface TrashedAsset extends Asset {

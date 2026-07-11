@@ -10,6 +10,7 @@
     "back": "Atrás",
     "settings": "Ajustes",
     "terms": "Términos de uso",
+    "privacy": "Política de privacidad",
     "trash": "Papelera"
   },
   "onboarding": {
@@ -68,6 +69,7 @@
   },
   "settings": {
     "termsRow": "Términos de uso",
+    "privacyRow": "Política de privacidad",
     "languageRow": "Idioma"
   },
   "terms": {
@@ -77,6 +79,14 @@
     "p4": "Estos términos pueden cambiar en cualquier momento y por cualquier motivo, incluido para reflejar nuevas funciones, precios o requisitos legales. Si sigues usando la aplicación después de un cambio, se entiende que aceptas los términos actualizados.",
     "p5": "Swipix puede añadir, modificar o eliminar funciones en cualquier momento, incluida la introducción de suscripciones, compras únicas o publicidad en el futuro.",
     "p6": "Los términos completos están en TERMS.md."
+  },
+  "privacy": {
+    "p1": "Swipix no tiene servidor, ni cuentas, ni análisis o seguimiento publicitario: nada de lo que haces en la app se envía a ningún sitio.",
+    "p2": "El acceso a la galería de fotos se usa únicamente en tu dispositivo, en el momento en que usas la app, para que veas, organices y elimines las fotos y videos que elijas. Las fotos nunca se suben ni se comparten.",
+    "p3": "Algunas preferencias pequeñas —tu idioma, los ajustes de filtros y lo que hay actualmente en la papelera— se guardan localmente en tu dispositivo y se eliminan al desinstalar la app.",
+    "p4": "Swipix actualmente no tiene anuncios ni pagos. Si eso cambia en el futuro, esta política se actualizará primero y se te pedirá el consentimiento que sea necesario en ese momento.",
+    "p5": "Esta política puede actualizarse en cualquier momento. Si sigues usando la app después de un cambio, se entiende que aceptas la política actualizada.",
+    "p6": "Los detalles completos están en PRIVACY.md."
   },
   "language": {
     "title": "Idioma",

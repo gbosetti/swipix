@@ -31,6 +31,12 @@
         "backgroundColor": "#000000"
       }
     ],
-    "expo-localization"
+    "expo-localization",
+    [
+      "expo-media-library",
+      {
+        "photosPermission": "Swipix accesses your photos and videos so you can review and clean them up. Nothing is ever uploaded or shared."
+      }
+    ]
   ]
 }

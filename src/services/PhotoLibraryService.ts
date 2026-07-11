@@ -37,8 +37,11 @@ export const PhotoLibraryService = {
       sortBy: [MediaLibrary.SortBy.creationTime],
     });
 
-    // Enrich with full info (location, exif) — normalize the shape here
-    // so the rest of the app never has to know about MediaLibrary's raw format.
+    // Enrich with full info — normalize the shape here so the rest of the
+    // app never has to know about MediaLibrary's raw format. Deliberately
+    // not mapping info.location (GPS coordinates) onto Asset: nothing in
+    // the app reads it, and capturing sensitive location data nothing
+    // uses is exactly what data-minimization rules out.
     const detailed: (Asset | null)[] = await Promise.all(
       page.assets.map(async (asset): Promise<Asset | null> => {
         const info = await MediaLibrary.getAssetInfoAsync(asset);
@@ -57,7 +60,6 @@ export const PhotoLibraryService = {
           width: asset.width,
           height: asset.height,
           mediaSubtypes: info.mediaSubtypes ?? [],
-          location: info.location ?? null,
         };
       })
     );

@@ -10,6 +10,7 @@
     "back": "Indietro",
     "settings": "Impostazioni",
     "terms": "Termini di utilizzo",
+    "privacy": "Informativa sulla privacy",
     "trash": "Cestino"
   },
   "onboarding": {
@@ -68,6 +69,7 @@
   },
   "settings": {
     "termsRow": "Termini di utilizzo",
+    "privacyRow": "Informativa sulla privacy",
     "languageRow": "Lingua"
   },
   "terms": {
@@ -77,6 +79,14 @@
     "p4": "Questi termini possono cambiare in qualsiasi momento e per qualsiasi motivo, anche per riflettere nuove funzionalità, prezzi o requisiti legali. Continuare a usare l'app dopo una modifica implica l'accettazione dei termini aggiornati.",
     "p5": "Swipix può aggiungere, modificare o rimuovere funzionalità in qualsiasi momento, inclusa l'introduzione futura di abbonamenti, acquisti una tantum o pubblicità.",
     "p6": "I termini completi sono disponibili in TERMS.md."
+  },
+  "privacy": {
+    "p1": "Swipix non ha un server, né account, né analisi o tracciamento pubblicitario: nulla di ciò che fai nell'app viene mai inviato altrove.",
+    "p2": "L'accesso alla libreria foto viene usato solo sul tuo dispositivo, nel momento in cui usi l'app, per permetterti di vedere, organizzare ed eliminare le foto e i video che scegli. Le foto non vengono mai caricate né condivise.",
+    "p3": "Alcune piccole preferenze — la tua lingua, le impostazioni dei filtri e ciò che si trova attualmente nel cestino — sono salvate localmente sul tuo dispositivo e rimosse quando disinstalli l'app.",
+    "p4": "Swipix al momento non ha pubblicità né pagamenti. Se ciò cambiasse in futuro, questa informativa verrà aggiornata per prima, e ti verrà chiesto il consenso necessario in quel momento.",
+    "p5": "Questa informativa può essere aggiornata in qualsiasi momento. Continuare a usare l'app dopo una modifica implica l'accettazione dell'informativa aggiornata.",
+    "p6": "I dettagli completi sono disponibili in PRIVACY.md."
   },
   "language": {
     "title": "Lingua",

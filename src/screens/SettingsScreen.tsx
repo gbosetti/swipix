@@ -19,6 +19,10 @@ export default function SettingsScreen({ navigation }: Props) {
         <Text style={styles.rowText}>{t('settings.termsRow')}</Text>
         <Text style={styles.chevron}>›</Text>
       </Pressable>
+      <Pressable style={styles.row} onPress={() => navigation.navigate('Privacy')}>
+        <Text style={styles.rowText}>{t('settings.privacyRow')}</Text>
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
     </View>
   );
 }

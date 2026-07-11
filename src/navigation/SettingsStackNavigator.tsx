@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import SettingsScreen from '../screens/SettingsScreen';
 import TermsScreen from '../screens/TermsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 import LanguageScreen from '../screens/LanguageScreen';
 import { SettingsStackParamList } from './types';
 import { Colors } from '../theme/colors';
@@ -29,6 +30,17 @@ export default function SettingsStackNavigator() {
         options={{
           headerShown: true,
           headerTitle: t('nav.terms'),
+          headerBackTitle: t('nav.back'),
+          headerStyle: { backgroundColor: Colors.background },
+          headerTintColor: 'white',
+        }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyScreen}
+        options={{
+          headerShown: true,
+          headerTitle: t('nav.privacy'),
           headerBackTitle: t('nav.back'),
           headerStyle: { backgroundColor: Colors.background },
           headerTintColor: 'white',
