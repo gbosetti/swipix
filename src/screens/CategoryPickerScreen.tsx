@@ -6,6 +6,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import RangeSlider from '../components/RangeSlider';
+import MonthYearPicker from '../components/MonthYearPicker';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { SimilarPicturesStrategy } from '../strategies/SimilarPicturesStrategy';
 import { ExactDuplicatesStrategy } from '../strategies/ExactDuplicatesStrategy';
@@ -13,6 +14,7 @@ import { ShortVideosStrategy } from '../strategies/ShortVideosStrategy';
 import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
 import { BlurredImagesStrategy } from '../strategies/BlurredImagesStrategy';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
+import { MonthYearStrategy } from '../strategies/MonthYearStrategy';
 import { TrashService } from '../services/TrashService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
@@ -26,6 +28,7 @@ const DEFAULT_BIG_FILE_RANGE_MB: [number, number] = [20, 200]; // matches BigFil
 const BIG_FILE_RANGE_KEY = '@swipix/bigFileRangeMB';
 const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
 const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
+const MONTH_YEAR_KEY = '@swipix/monthYear';
 
 const screenshotStrategy = new ScreenshotStrategy();
 const similarPicturesStrategy = new SimilarPicturesStrategy();
@@ -58,6 +61,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const [shortVideoRange, setShortVideoRange] = useState(DEFAULT_SHORT_VIDEO_RANGE);
   const [bigFileRangeMB, setBigFileRangeMB] = useState(DEFAULT_BIG_FILE_RANGE_MB);
   const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
+  const now = new Date();
+  const [monthYear, setMonthYear] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [trashCount, setTrashCount] = useState(0);
 
   useEffect(() => {
@@ -72,6 +77,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     loadRange(SHORT_VIDEO_RANGE_KEY, setShortVideoRange);
     loadRange(BIG_FILE_RANGE_KEY, setBigFileRangeMB);
     loadRange(BRIGHTNESS_RANGE_KEY, setBrightnessRange);
+    AsyncStorage.getItem(MONTH_YEAR_KEY).then((stored) => {
+      if (stored != null) {
+        const [year, month] = stored.split(',').map(Number);
+        setMonthYear({ year, month });
+      }
+    });
   }, []);
 
   const refreshTrashCount = useCallback(() => {
@@ -96,6 +107,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistBrightnessRange = (low: number, high: number) => {
     AsyncStorage.setItem(BRIGHTNESS_RANGE_KEY, `${low},${high}`);
+  };
+
+  const handleMonthYearChange = (year: number, month: number) => {
+    setMonthYear({ year, month });
+    AsyncStorage.setItem(MONTH_YEAR_KEY, `${year},${month}`);
   };
 
   return (
@@ -215,6 +231,23 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           highValue={brightnessRange[1]}
           onValuesChange={(low, high) => setBrightnessRange([low, high])}
           onSlidingComplete={persistBrightnessRange}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new MonthYearStrategy(monthYear.year, monthYear.month),
+            })
+          }
+        >
+          <TitleRow title="By Month" />
+        </Pressable>
+        <MonthYearPicker
+          year={monthYear.year}
+          month={monthYear.month}
+          onChange={handleMonthYearChange}
         />
       </View>
     </ScrollView>
