@@ -18,6 +18,7 @@ export type TrashStackParamList = {
 export type SettingsStackParamList = {
   Settings: undefined;
   Terms: undefined;
+  Language: undefined;
 };
 
 export type RootTabParamList = {

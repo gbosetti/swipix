@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useHeaderHeight } from '@react-navigation/elements';
 import SwipeDeck from '../components/SwipeDeck';
@@ -24,6 +25,7 @@ type Props = NativeStackScreenProps<{ Swipe: SwipeRouteParams }, 'Swipe'>;
  * `strategy.match(allPhotos)`. Swap the strategy, nothing else changes.
  */
 export default function SwipeScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { strategy } = route.params;
   const headerHeight = useHeaderHeight();
   const [candidates, setCandidates] = useState<Asset[] | null>(null);
@@ -74,8 +76,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
   if (permissionDenied) {
     content = (
       <View style={[styles.center, { paddingTop: headerHeight }]}>
-        <Text style={styles.emptyText}>Photo access is off</Text>
-        <Text style={styles.subText}>Enable photo access in Settings to use Swipix.</Text>
+        <Text style={styles.emptyText}>{t('swipe.permissionDeniedTitle')}</Text>
+        <Text style={styles.subText}>{t('swipe.permissionDeniedBody')}</Text>
       </View>
     );
   } else if (candidates === null) {
@@ -87,21 +89,19 @@ export default function SwipeScreen({ route, navigation }: Props) {
   } else if (candidates.length === 0) {
     content = (
       <View style={[styles.center, { paddingTop: headerHeight }]}>
-        <Text style={styles.emptyText}>Nothing to review here 🎉</Text>
+        <Text style={styles.emptyText}>{t('swipe.emptyTitle')}</Text>
       </View>
     );
   } else if (finished) {
     content = (
       <View style={[styles.center, { paddingTop: headerHeight }]}>
-        <Text style={styles.emptyText}>All done 🎉</Text>
+        <Text style={styles.emptyText}>{t('swipe.finishedTitle')}</Text>
         <Text style={styles.subText}>
-          {freedCount > 0
-            ? `${freedCount} photo${freedCount === 1 ? '' : 's'} queued for deletion.`
-            : 'Nothing queued for deletion.'}
+          {freedCount > 0 ? t('swipe.queuedCount', { count: freedCount }) : t('swipe.queuedZero')}
         </Text>
         <Pressable style={styles.doneButton} onPress={handleDoneAction}>
           <Text style={styles.doneButtonText}>
-            {navigation.canGoBack() ? 'Back to categories' : 'Swipe again'}
+            {navigation.canGoBack() ? t('swipe.backToCategories') : t('swipe.swipeAgain')}
           </Text>
         </Pressable>
       </View>
@@ -110,7 +110,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     content = (
       <>
         <View style={[styles.statusBar, { paddingTop: headerHeight + 10 }]}>
-          <Text style={styles.statusText}>{freedCount} photos queued for deletion</Text>
+          <Text style={styles.statusText}>{t('swipe.statusQueued', { count: freedCount })}</Text>
         </View>
         <SwipeDeck
           data={candidates}
@@ -118,12 +118,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
           onSwipeLeft={handleSwipeLeft}
           onSwipeRight={handleSwipeRight}
           onEmpty={() => setFinished(true)}
-          leftLabel="DELETE"
-          rightLabel="KEEP"
+          leftLabel={t('swipe.deleteLabel')}
+          rightLabel={t('swipe.keepLabel')}
         />
         <View style={styles.hintRow}>
-          <Text style={styles.hint}>← delete</Text>
-          <Text style={styles.hint}>keep →</Text>
+          <Text style={styles.hint}>{t('swipe.deleteHint')}</Text>
+          <Text style={styles.hint}>{t('swipe.keepHint')}</Text>
         </View>
       </>
     );

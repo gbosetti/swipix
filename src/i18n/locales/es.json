@@ -1,0 +1,114 @@
+{
+  "tabs": {
+    "categories": "Categorías",
+    "swipe": "Deslizar",
+    "trash": "Papelera",
+    "settings": "Ajustes"
+  },
+  "nav": {
+    "swipix": "Swipix",
+    "back": "Atrás",
+    "settings": "Ajustes",
+    "terms": "Términos de uso",
+    "trash": "Papelera"
+  },
+  "onboarding": {
+    "step1Title": "Bienvenido a Swipix",
+    "step1Body": "Una forma rápida y sencilla de limpiar tu galería de fotos, un deslizamiento a la vez.",
+    "step2Title": "Desliza a la izquierda para eliminar, a la derecha para conservar",
+    "step2Body": "Elige una categoría y desliza por las fotos candidatas. Izquierda las envía a la papelera, derecha las conserva.",
+    "step3Title": "Nada se elimina para siempre",
+    "step3Body": "Las fotos eliminadas esperan en la papelera antes de borrarse definitivamente: revísalas o restáuralas cuando quieras.",
+    "declineTitle": "No puedes continuar sin aceptar",
+    "declineBody": "Swipix necesita que aceptes los Términos de uso para funcionar. Si prefieres no hacerlo, cierra la aplicación; todavía no se ha configurado ni accedido a nada.",
+    "termsLinkPrefix": "Al continuar, aceptas nuestros ",
+    "termsLinkUnderline": "Términos de uso",
+    "getStarted": "Comenzar",
+    "next": "Siguiente",
+    "decline": "Rechazar",
+    "termsTitle": "Términos de uso",
+    "close": "Cerrar"
+  },
+  "categoryPicker": {
+    "sectionHeader": "Categorías",
+    "review": "Revisar",
+    "trashBanner_one": "{{count}} foto pendiente de eliminación",
+    "trashBanner_other": "{{count}} fotos pendientes de eliminación",
+    "shortVideosLabel": "Marca los videos de entre {{min}}s y {{max}}s de duración",
+    "bigFilesLabel": "Marca fotos y videos de entre {{min}} y {{max}} MB",
+    "brightnessLabel": "Marca fotos con brillo entre {{min}} y {{max}}/255"
+  },
+  "swipe": {
+    "permissionDeniedTitle": "El acceso a las fotos está desactivado",
+    "permissionDeniedBody": "Activa el acceso a las fotos en Ajustes para usar Swipix.",
+    "emptyTitle": "No hay nada que revisar aquí 🎉",
+    "finishedTitle": "Todo listo 🎉",
+    "queuedZero": "No hay nada en cola para eliminar.",
+    "queuedCount_one": "{{count}} foto en cola para eliminar.",
+    "queuedCount_other": "{{count}} fotos en cola para eliminar.",
+    "statusQueued_one": "{{count}} foto en cola para eliminar",
+    "statusQueued_other": "{{count}} fotos en cola para eliminar",
+    "backToCategories": "Volver a categorías",
+    "swipeAgain": "Deslizar de nuevo",
+    "deleteHint": "← eliminar",
+    "keepHint": "conservar →",
+    "keepLabel": "CONSERVAR",
+    "deleteLabel": "ELIMINAR"
+  },
+  "trash": {
+    "emptyTitle": "La papelera está vacía 🎉",
+    "pendingDeletion": "Pendiente de eliminación",
+    "restore": "Restaurar",
+    "emptyTrashNow": "Vaciar papelera ahora",
+    "emptyAllTitle": "¿Vaciar papelera?",
+    "emptyAllBody_one": "Esto elimina permanentemente {{count}} foto. Esta acción no se puede deshacer.",
+    "emptyAllBody_other": "Esto elimina permanentemente {{count}} fotos. Esta acción no se puede deshacer.",
+    "cancel": "Cancelar",
+    "delete": "Eliminar"
+  },
+  "settings": {
+    "termsRow": "Términos de uso",
+    "languageRow": "Idioma"
+  },
+  "terms": {
+    "p1": "Swipix te ayuda a revisar y eliminar fotos en tu dispositivo. Eres responsable de las decisiones que tomes al usarla, incluidas las fotos que elimines.",
+    "p2": "Las fotos eliminadas van primero a una papelera temporal, pero una vez que confirmes la eliminación permanente (automáticamente tras el período de gracia, o manualmente), la aplicación no podrá deshacerla. Asegúrate de tener una copia de seguridad de lo importante en otro lugar.",
+    "p3": "La aplicación se ofrece \"tal cual\", sin garantía de ningún tipo, incluida la precisión de cualquier categorización automática de fotos (como borrosas, similares o de gran tamaño). En la máxima medida permitida por la ley, el desarrollador no se hace responsable de ninguna pérdida de fotos o datos, ni de pérdidas por eliminaciones equivocadas, derivadas del uso de esta aplicación.",
+    "p4": "Estos términos pueden cambiar en cualquier momento y por cualquier motivo, incluido para reflejar nuevas funciones, precios o requisitos legales. Si sigues usando la aplicación después de un cambio, se entiende que aceptas los términos actualizados.",
+    "p5": "Swipix puede añadir, modificar o eliminar funciones en cualquier momento, incluida la introducción de suscripciones, compras únicas o publicidad en el futuro.",
+    "p6": "Los términos completos están en TERMS.md."
+  },
+  "language": {
+    "title": "Idioma",
+    "system": "Predeterminado del sistema",
+    "en": "Inglés",
+    "es": "Español",
+    "it": "Italiano",
+    "fr": "Francés"
+  },
+  "months": {
+    "0": "enero",
+    "1": "febrero",
+    "2": "marzo",
+    "3": "abril",
+    "4": "mayo",
+    "5": "junio",
+    "6": "julio",
+    "7": "agosto",
+    "8": "septiembre",
+    "9": "octubre",
+    "10": "noviembre",
+    "11": "diciembre"
+  },
+  "categories": {
+    "screenshots": "Capturas de pantalla",
+    "similar-pictures": "Fotos similares",
+    "exact-duplicates": "Archivos duplicados",
+    "short-videos": "Videos cortos",
+    "big-files": "Archivos grandes",
+    "blurred-images": "Fotos borrosas",
+    "dark-photos": "Fotos oscuras",
+    "month-year": "Por mes",
+    "random": "Deslizar"
+  }
+}

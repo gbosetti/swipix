@@ -1,0 +1,114 @@
+{
+  "tabs": {
+    "categories": "Catégories",
+    "swipe": "Swiper",
+    "trash": "Corbeille",
+    "settings": "Réglages"
+  },
+  "nav": {
+    "swipix": "Swipix",
+    "back": "Retour",
+    "settings": "Réglages",
+    "terms": "Conditions d'utilisation",
+    "trash": "Corbeille"
+  },
+  "onboarding": {
+    "step1Title": "Bienvenue sur Swipix",
+    "step1Body": "Un moyen rapide et efficace de faire le tri dans votre photothèque, un balayage à la fois.",
+    "step2Title": "Balayez à gauche pour supprimer, à droite pour garder",
+    "step2Body": "Choisissez une catégorie, puis parcourez les photos proposées. À gauche, la photo part à la corbeille ; à droite, elle est conservée.",
+    "step3Title": "Rien n'est supprimé définitivement",
+    "step3Body": "Les photos supprimées restent dans une période de grâce avant d'être effacées pour de bon — vous pouvez les revoir ou les restaurer à tout moment.",
+    "declineTitle": "Impossible de continuer sans accepter",
+    "declineBody": "Swipix a besoin que vous acceptiez les Conditions d'utilisation pour fonctionner. Si vous préférez ne pas le faire, veuillez fermer l'application — rien n'a encore été configuré ni consulté.",
+    "termsLinkPrefix": "En continuant, vous acceptez nos ",
+    "termsLinkUnderline": "Conditions d'utilisation",
+    "getStarted": "Commencer",
+    "next": "Suivant",
+    "decline": "Refuser",
+    "termsTitle": "Conditions d'utilisation",
+    "close": "Fermer"
+  },
+  "categoryPicker": {
+    "sectionHeader": "Catégories",
+    "review": "Vérifier",
+    "trashBanner_one": "{{count}} photo en attente de suppression",
+    "trashBanner_other": "{{count}} photos en attente de suppression",
+    "shortVideosLabel": "Repérer les vidéos entre {{min}}s et {{max}}s de durée",
+    "bigFilesLabel": "Repérer les photos et vidéos entre {{min}} et {{max}} Mo",
+    "brightnessLabel": "Repérer les photos avec une luminosité entre {{min}} et {{max}}/255"
+  },
+  "swipe": {
+    "permissionDeniedTitle": "L'accès aux photos est désactivé",
+    "permissionDeniedBody": "Activez l'accès aux photos dans Réglages pour utiliser Swipix.",
+    "emptyTitle": "Rien à examiner ici 🎉",
+    "finishedTitle": "Tout est fait 🎉",
+    "queuedZero": "Aucune photo en attente de suppression.",
+    "queuedCount_one": "{{count}} photo en attente de suppression.",
+    "queuedCount_other": "{{count}} photos en attente de suppression.",
+    "statusQueued_one": "{{count}} photo en attente de suppression",
+    "statusQueued_other": "{{count}} photos en attente de suppression",
+    "backToCategories": "Retour aux catégories",
+    "swipeAgain": "Recommencer",
+    "deleteHint": "← supprimer",
+    "keepHint": "garder →",
+    "keepLabel": "GARDER",
+    "deleteLabel": "SUPPRIMER"
+  },
+  "trash": {
+    "emptyTitle": "La corbeille est vide 🎉",
+    "pendingDeletion": "En attente de suppression",
+    "restore": "Restaurer",
+    "emptyTrashNow": "Vider la corbeille maintenant",
+    "emptyAllTitle": "Vider la corbeille ?",
+    "emptyAllBody_one": "Cela supprime définitivement {{count}} photo. Cette action est irréversible.",
+    "emptyAllBody_other": "Cela supprime définitivement {{count}} photos. Cette action est irréversible.",
+    "cancel": "Annuler",
+    "delete": "Supprimer"
+  },
+  "settings": {
+    "termsRow": "Conditions d'utilisation",
+    "languageRow": "Langue"
+  },
+  "terms": {
+    "p1": "Swipix vous aide à examiner et supprimer les photos sur votre appareil. Vous êtes responsable des choix que vous faites en l'utilisant, y compris des photos que vous supprimez.",
+    "p2": "Les photos supprimées sont d'abord placées dans une corbeille temporaire, mais une fois la suppression définitive confirmée (automatiquement après la période de grâce, ou manuellement), l'application ne peut plus l'annuler. Assurez-vous que tout ce qui est important est sauvegardé ailleurs.",
+    "p3": "L'application est fournie \"telle quelle\", sans garantie d'aucune sorte, y compris quant à la précision de toute catégorisation automatique des photos (floues, similaires ou volumineuses, par exemple). Dans toute la mesure permise par la loi, le développeur n'est pas responsable de toute perte de photos ou de données, ni des pertes dues à des suppressions faites par erreur, résultant de l'utilisation de cette application.",
+    "p4": "Ces conditions peuvent changer à tout moment et pour quelque raison que ce soit, notamment pour refléter de nouvelles fonctionnalités, une nouvelle tarification ou des exigences légales. Continuer à utiliser l'application après une modification vaut acceptation des conditions mises à jour.",
+    "p5": "Swipix peut ajouter, modifier ou supprimer des fonctionnalités à tout moment, y compris en introduisant à l'avenir des abonnements, des achats uniques ou de la publicité.",
+    "p6": "Les conditions complètes se trouvent dans TERMS.md."
+  },
+  "language": {
+    "title": "Langue",
+    "system": "Système par défaut",
+    "en": "Anglais",
+    "es": "Espagnol",
+    "it": "Italien",
+    "fr": "Français"
+  },
+  "months": {
+    "0": "janvier",
+    "1": "février",
+    "2": "mars",
+    "3": "avril",
+    "4": "mai",
+    "5": "juin",
+    "6": "juillet",
+    "7": "août",
+    "8": "septembre",
+    "9": "octobre",
+    "10": "novembre",
+    "11": "décembre"
+  },
+  "categories": {
+    "screenshots": "Captures d'écran",
+    "similar-pictures": "Photos similaires",
+    "exact-duplicates": "Fichiers en double",
+    "short-videos": "Vidéos courtes",
+    "big-files": "Fichiers volumineux",
+    "blurred-images": "Photos floues",
+    "dark-photos": "Photos sombres",
+    "month-year": "Par mois",
+    "random": "Swiper"
+  }
+}

@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, FlatList, Alert, Modal } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { TrashService } from '../services/TrashService';
 import { TrashedAsset } from '../types';
@@ -11,6 +12,7 @@ import { Colors } from '../theme/colors';
  * with no way back, which defeats the point of a grace period.
  */
 export default function TrashScreen() {
+  const { t } = useTranslation();
   const [trash, setTrash] = useState<TrashedAsset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<TrashedAsset | null>(null);
 
@@ -29,12 +31,12 @@ export default function TrashScreen() {
   const handleEmptyAll = () => {
     if (!trash || trash.length === 0) return;
     Alert.alert(
-      'Empty Trash?',
-      `This permanently deletes ${trash.length} photo${trash.length === 1 ? '' : 's'}. This cannot be undone.`,
+      t('trash.emptyAllTitle'),
+      t('trash.emptyAllBody', { count: trash.length }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('trash.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('trash.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -57,7 +59,7 @@ export default function TrashScreen() {
   if (trash.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>Trash is empty 🎉</Text>
+        <Text style={styles.emptyText}>{t('trash.emptyTitle')}</Text>
       </View>
     );
   }
@@ -87,16 +89,16 @@ export default function TrashScreen() {
                   </View>
                 )}
               </Pressable>
-              <Text style={styles.rowText}>Pending deletion</Text>
+              <Text style={styles.rowText}>{t('trash.pendingDeletion')}</Text>
               <Pressable style={styles.restoreButton} onPress={() => handleRestore(item.id)}>
-                <Text style={styles.restoreButtonText}>Restore</Text>
+                <Text style={styles.restoreButtonText}>{t('trash.restore')}</Text>
               </Pressable>
             </View>
           );
         }}
       />
       <Pressable style={styles.emptyButton} onPress={handleEmptyAll}>
-        <Text style={styles.emptyButtonText}>Empty Trash Now</Text>
+        <Text style={styles.emptyButtonText}>{t('trash.emptyTrashNow')}</Text>
       </Pressable>
 
       <Modal
@@ -124,7 +126,7 @@ export default function TrashScreen() {
                 style={styles.previewRestoreButton}
                 onPress={() => handleRestore(previewItem.id)}
               >
-                <Text style={styles.restoreButtonText}>Restore</Text>
+                <Text style={styles.restoreButtonText}>{t('trash.restore')}</Text>
               </Pressable>
             </>
           )}

@@ -1,29 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Alert, BackHandler, Modal } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import TermsContent from '../components/TermsContent';
 import { Colors } from '../theme/colors';
 
 interface OnboardingScreenProps {
   onAccept: () => void;
 }
-
-const STEPS = [
-  {
-    icon: '👋',
-    title: 'Welcome to Swipix',
-    body: 'A fast, focused way to clean up your photo library — one swipe at a time.',
-  },
-  {
-    icon: '🫱🫲',
-    title: 'Swipe left to trash, right to keep',
-    body: 'Pick a category, then swipe through candidates. Left queues a photo for deletion, right keeps it.',
-  },
-  {
-    icon: '♻️',
-    title: "Nothing's deleted forever",
-    body: 'Trashed photos wait in a grace period before anything is permanent — review or restore them anytime.',
-  },
-];
 
 /**
  * Shown once, before any other screen. Leads with what the app actually
@@ -33,20 +16,24 @@ const STEPS = [
  * instead of a separate intimidating gate.
  */
 export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [termsVisible, setTermsVisible] = useState(false);
-  const isLastStep = step === STEPS.length - 1;
-  const current = STEPS[step];
+
+  const steps = [
+    { icon: '👋', title: t('onboarding.step1Title'), body: t('onboarding.step1Body') },
+    { icon: '🫱🫲', title: t('onboarding.step2Title'), body: t('onboarding.step2Body') },
+    { icon: '♻️', title: t('onboarding.step3Title'), body: t('onboarding.step3Body') },
+  ];
+  const isLastStep = step === steps.length - 1;
+  const current = steps[step];
 
   const handleDecline = () => {
     if (Platform.OS === 'android') {
       BackHandler.exitApp();
       return;
     }
-    Alert.alert(
-      "Can't continue without agreeing",
-      'Swipix needs you to accept the Terms of Use to work. If you\'d rather not, please close the app — nothing has been set up or accessed yet.'
-    );
+    Alert.alert(t('onboarding.declineTitle'), t('onboarding.declineBody'));
   };
 
   return (
@@ -58,7 +45,7 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
       </View>
 
       <View style={styles.dots}>
-        {STEPS.map((_, i) => (
+        {steps.map((_, i) => (
           <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
         ))}
       </View>
@@ -66,8 +53,8 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
       {isLastStep && (
         <Pressable onPress={() => setTermsVisible(true)} hitSlop={8} style={styles.termsLinkWrap}>
           <Text style={styles.termsLink}>
-            By continuing, you agree to our{' '}
-            <Text style={styles.termsLinkUnderline}>Terms of Use</Text>
+            {t('onboarding.termsLinkPrefix')}
+            <Text style={styles.termsLinkUnderline}>{t('onboarding.termsLinkUnderline')}</Text>
           </Text>
         </Pressable>
       )}
@@ -76,10 +63,10 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
         style={styles.button}
         onPress={() => (isLastStep ? onAccept() : setStep((s) => s + 1))}
       >
-        <Text style={styles.buttonText}>{isLastStep ? 'Get Started' : 'Next'}</Text>
+        <Text style={styles.buttonText}>{isLastStep ? t('onboarding.getStarted') : t('onboarding.next')}</Text>
       </Pressable>
       <Pressable style={styles.declineButton} onPress={handleDecline} hitSlop={8}>
-        <Text style={styles.declineButtonText}>Decline</Text>
+        <Text style={styles.declineButtonText}>{t('onboarding.decline')}</Text>
       </Pressable>
 
       <Modal
@@ -89,14 +76,14 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
       >
         <View style={styles.termsModal}>
           <ScrollView contentContainerStyle={styles.termsContent}>
-            <Text style={styles.termsTitle}>Terms of Use</Text>
+            <Text style={styles.termsTitle}>{t('onboarding.termsTitle')}</Text>
             <TermsContent />
           </ScrollView>
           <Pressable
             style={styles.closeTermsButton}
             onPress={() => setTermsVisible(false)}
           >
-            <Text style={styles.closeTermsButtonText}>Close</Text>
+            <Text style={styles.closeTermsButtonText}>{t('onboarding.close')}</Text>
           </Pressable>
         </View>
       </Modal>

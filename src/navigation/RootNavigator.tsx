@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import CategoriesStackNavigator from './CategoriesStackNavigator';
 import SwipeTabNavigator from './SwipeTabNavigator';
@@ -21,6 +22,7 @@ const ICONS: Record<keyof RootTabParamList, { focused: IoniconName; unfocused: I
 };
 
 export default function RootNavigator() {
+  const { t } = useTranslation();
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -44,14 +46,22 @@ export default function RootNavigator() {
         <Tab.Screen
           name="CategoriesTab"
           component={CategoriesStackNavigator}
-          options={{ title: 'Categories' }}
+          options={{ title: t('tabs.categories') }}
         />
-        <Tab.Screen name="SwipeTab" component={SwipeTabNavigator} options={{ title: 'Swipe' }} />
-        <Tab.Screen name="TrashTab" component={TrashStackNavigator} options={{ title: 'Trash' }} />
+        <Tab.Screen
+          name="SwipeTab"
+          component={SwipeTabNavigator}
+          options={{ title: t('tabs.swipe') }}
+        />
+        <Tab.Screen
+          name="TrashTab"
+          component={TrashStackNavigator}
+          options={{ title: t('tabs.trash') }}
+        />
         <Tab.Screen
           name="SettingsTab"
           component={SettingsStackNavigator}
-          options={{ title: 'Settings' }}
+          options={{ title: t('tabs.settings') }}
         />
       </Tab.Navigator>
     </NavigationContainer>

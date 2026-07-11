@@ -1,5 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 /**
  * iOS tags screenshots with a specific mediaSubtype / albumId in the
@@ -14,7 +15,7 @@ export class ScreenshotStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'screenshots',
-      title: 'Screenshots',
+      title: i18n.t('categories.screenshots'),
       icon: 'crop',
     };
   }

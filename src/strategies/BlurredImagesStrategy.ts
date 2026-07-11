@@ -1,6 +1,7 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { getBlurScore } from '../services/ImageAnalysisService';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 const BLUR_THRESHOLD = 60; // 0 (sharp) - 100 (very blurry)
 
@@ -26,7 +27,7 @@ export class BlurredImagesStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'blurred-images',
-      title: 'Blurred Photos',
+      title: i18n.t('categories.blurred-images'),
       icon: 'aperture',
     };
   }

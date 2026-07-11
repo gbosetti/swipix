@@ -1,6 +1,7 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 const DEFAULT_MIN_SECONDS = 0;
 const DEFAULT_MAX_SECONDS = 3;
@@ -34,7 +35,7 @@ export class ShortVideosStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'short-videos',
-      title: 'Short Videos',
+      title: i18n.t('categories.short-videos'),
       icon: 'timer-outline',
     };
   }

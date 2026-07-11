@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import CategoryPickerScreen from '../screens/CategoryPickerScreen';
 import SwipeScreen from '../screens/SwipeScreen';
 import { CategoriesStackParamList } from './types';
@@ -8,6 +9,7 @@ import { Colors } from '../theme/colors';
 const Stack = createNativeStackNavigator<CategoriesStackParamList>();
 
 export default function CategoriesStackNavigator() {
+  const { t } = useTranslation();
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
@@ -15,7 +17,7 @@ export default function CategoriesStackNavigator() {
         component={CategoryPickerScreen}
         options={{
           headerShown: true,
-          headerTitle: 'Swipix',
+          headerTitle: t('nav.swipix'),
           headerStyle: { backgroundColor: Colors.background },
           headerTintColor: 'white',
           headerShadowVisible: false,
@@ -27,7 +29,7 @@ export default function CategoriesStackNavigator() {
         options={{
           headerShown: true,
           headerTitle: '',
-          headerBackTitle: 'Back',
+          headerBackTitle: t('nav.back'),
           headerTransparent: true,
           headerTintColor: 'white',
         }}

@@ -2,6 +2,7 @@ import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 /**
  * Genuine duplicates — same file size AND same pixel dimensions, a much
@@ -35,7 +36,7 @@ export class ExactDuplicatesStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'exact-duplicates',
-      title: 'Duplicate Files',
+      title: i18n.t('categories.exact-duplicates'),
       icon: 'layers-outline',
     };
   }

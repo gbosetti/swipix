@@ -1,0 +1,114 @@
+{
+  "tabs": {
+    "categories": "Categories",
+    "swipe": "Swipe",
+    "trash": "Trash",
+    "settings": "Settings"
+  },
+  "nav": {
+    "swipix": "Swipix",
+    "back": "Back",
+    "settings": "Settings",
+    "terms": "Terms of Use",
+    "trash": "Trash"
+  },
+  "onboarding": {
+    "step1Title": "Welcome to Swipix",
+    "step1Body": "A fast, focused way to clean up your photo library — one swipe at a time.",
+    "step2Title": "Swipe left to trash, right to keep",
+    "step2Body": "Pick a category, then swipe through candidates. Left queues a photo for deletion, right keeps it.",
+    "step3Title": "Nothing's deleted forever",
+    "step3Body": "Trashed photos wait in a grace period before anything is permanent — review or restore them anytime.",
+    "declineTitle": "Can't continue without agreeing",
+    "declineBody": "Swipix needs you to accept the Terms of Use to work. If you'd rather not, please close the app — nothing has been set up or accessed yet.",
+    "termsLinkPrefix": "By continuing, you agree to our ",
+    "termsLinkUnderline": "Terms of Use",
+    "getStarted": "Get Started",
+    "next": "Next",
+    "decline": "Decline",
+    "termsTitle": "Terms of Use",
+    "close": "Close"
+  },
+  "categoryPicker": {
+    "sectionHeader": "Categories",
+    "review": "Review",
+    "trashBanner_one": "{{count}} photo pending deletion",
+    "trashBanner_other": "{{count}} photos pending deletion",
+    "shortVideosLabel": "Flag videos between {{min}}s and {{max}}s long",
+    "bigFilesLabel": "Flag photos and videos between {{min}} and {{max}} MB",
+    "brightnessLabel": "Flag photos between {{min}} and {{max}}/255 brightness"
+  },
+  "swipe": {
+    "permissionDeniedTitle": "Photo access is off",
+    "permissionDeniedBody": "Enable photo access in Settings to use Swipix.",
+    "emptyTitle": "Nothing to review here 🎉",
+    "finishedTitle": "All done 🎉",
+    "queuedZero": "Nothing queued for deletion.",
+    "queuedCount_one": "{{count}} photo queued for deletion.",
+    "queuedCount_other": "{{count}} photos queued for deletion.",
+    "statusQueued_one": "{{count}} photo queued for deletion",
+    "statusQueued_other": "{{count}} photos queued for deletion",
+    "backToCategories": "Back to categories",
+    "swipeAgain": "Swipe again",
+    "deleteHint": "← delete",
+    "keepHint": "keep →",
+    "keepLabel": "KEEP",
+    "deleteLabel": "DELETE"
+  },
+  "trash": {
+    "emptyTitle": "Trash is empty 🎉",
+    "pendingDeletion": "Pending deletion",
+    "restore": "Restore",
+    "emptyTrashNow": "Empty Trash Now",
+    "emptyAllTitle": "Empty Trash?",
+    "emptyAllBody_one": "This permanently deletes {{count}} photo. This cannot be undone.",
+    "emptyAllBody_other": "This permanently deletes {{count}} photos. This cannot be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "settings": {
+    "termsRow": "Terms of Use",
+    "languageRow": "Language"
+  },
+  "terms": {
+    "p1": "Swipix helps you review and delete photos on your device. You're responsible for the choices you make while using it — including which photos you delete.",
+    "p2": "Deleted photos go to a temporary trash first, but once you confirm permanent deletion (automatically after the grace period, or manually), it cannot be undone by the app. Make sure anything important is backed up elsewhere.",
+    "p3": "The app is provided \"as is,\" with no warranty of any kind, including the accuracy of any automatic photo categorization (like blurry, similar, or large files). To the fullest extent permitted by law, the developer isn't liable for any loss of photos or data, or losses from mistaken deletions, from using this app.",
+    "p4": "These terms may change at any time, for any reason, including to reflect new features, pricing, or legal requirements. Continuing to use the app after a change means you accept the updated terms.",
+    "p5": "Swipix may add, change, or remove features at any time, including introducing subscriptions, one-time purchases, or advertising in the future.",
+    "p6": "Full terms are in TERMS.md."
+  },
+  "language": {
+    "title": "Language",
+    "system": "System Default",
+    "en": "English",
+    "es": "Spanish",
+    "it": "Italian",
+    "fr": "French"
+  },
+  "months": {
+    "0": "January",
+    "1": "February",
+    "2": "March",
+    "3": "April",
+    "4": "May",
+    "5": "June",
+    "6": "July",
+    "7": "August",
+    "8": "September",
+    "9": "October",
+    "10": "November",
+    "11": "December"
+  },
+  "categories": {
+    "screenshots": "Screenshots",
+    "similar-pictures": "Similar Photos",
+    "exact-duplicates": "Duplicate Files",
+    "short-videos": "Short Videos",
+    "big-files": "Big Files",
+    "blurred-images": "Blurred Photos",
+    "dark-photos": "Dark Photos",
+    "month-year": "By Month",
+    "random": "Swipe"
+  }
+}

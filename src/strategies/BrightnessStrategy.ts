@@ -1,6 +1,7 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { getAverageBrightness } from '../services/ImageAnalysisService';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 /**
  * Flags photos within a brightness range. This is a cheap, deterministic
@@ -31,7 +32,7 @@ export class BrightnessStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'dark-photos',
-      title: 'Dark Photos',
+      title: i18n.t('categories.dark-photos'),
       icon: 'moon',
     };
   }

@@ -1,6 +1,7 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 /**
  * Lets someone target a specific month (e.g. clear out an old trip or a
@@ -28,7 +29,7 @@ export class MonthYearStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'month-year',
-      title: 'By Month',
+      title: i18n.t('categories.month-year'),
       icon: 'calendar',
     };
   }

@@ -1,5 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 /**
  * No filter at all — every photo, shuffled. This is the "just start
@@ -20,7 +21,7 @@ export class RandomPhotosStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'random',
-      title: 'Swipe',
+      title: i18n.t('categories.random'),
       icon: 'shuffle',
     };
   }

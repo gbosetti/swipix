@@ -1,32 +1,28 @@
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../theme/colors';
 
 /**
  * The terms text itself, shared between the onboarding modal and the
  * standalone Terms screen reachable from Settings — one source of truth
  * so the two never drift out of sync. Full legal text lives in TERMS.md.
+ *
+ * Translated like the rest of the UI, but note: these paragraphs are
+ * plain-language translations, not legal review — if the wording needs
+ * to hold up in a specific jurisdiction, have a native-speaking legal
+ * reviewer check the es/it/fr/de copy in src/i18n/locales before shipping.
  */
 export default function TermsContent() {
+  const { t } = useTranslation();
   return (
     <>
-      <Text style={styles.paragraph}>
-        Swipix helps you review and delete photos on your device. You're
-        responsible for the choices you make while using it — including
-        which photos you delete.
-      </Text>
-      <Text style={styles.paragraph}>
-        Deleted photos go to a temporary trash first, but once you confirm
-        permanent deletion (automatically after the grace period, or
-        manually), it cannot be undone by the app. Make sure anything
-        important is backed up elsewhere.
-      </Text>
-      <Text style={styles.paragraph}>
-        The app is provided "as is," with no warranty of any kind. To the
-        fullest extent permitted by law, the developer isn't liable for any
-        loss of photos or data from using this app.
-      </Text>
-      <Text style={styles.paragraph}>Full terms are in TERMS.md.</Text>
+      <Text style={styles.paragraph}>{t('terms.p1')}</Text>
+      <Text style={styles.paragraph}>{t('terms.p2')}</Text>
+      <Text style={styles.paragraph}>{t('terms.p3')}</Text>
+      <Text style={styles.paragraph}>{t('terms.p4')}</Text>
+      <Text style={styles.paragraph}>{t('terms.p5')}</Text>
+      <Text style={styles.paragraph}>{t('terms.p6')}</Text>
     </>
   );
 }

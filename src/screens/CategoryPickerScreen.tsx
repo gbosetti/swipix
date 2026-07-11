@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Text, Pressable, StyleSheet, ScrollView, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,10 +34,16 @@ const MONTH_YEAR_KEY = '@swipix/monthYear';
 const screenshotStrategy = new ScreenshotStrategy();
 const similarPicturesStrategy = new SimilarPicturesStrategy();
 const exactDuplicatesStrategy = new ExactDuplicatesStrategy();
-const shortVideosMeta = new ShortVideosStrategy().meta;
-const bigFilesMeta = new BigFilesStrategy().meta;
+// These four hold onto the strategy instance itself (not a pre-read
+// `.meta`) so `.meta.title` is re-evaluated fresh on every render — the
+// title comes from a live translation lookup, and freezing it once at
+// module load would leave it stuck in whatever language was active on
+// first import, surviving a runtime language change.
+const shortVideosDefaults = new ShortVideosStrategy();
+const bigFilesDefaults = new BigFilesStrategy();
 const blurredImagesStrategy = new BlurredImagesStrategy();
-const brightnessMeta = new BrightnessStrategy().meta;
+const brightnessDefaults = new BrightnessStrategy();
+const monthYearDefaults = new MonthYearStrategy(0, 0);
 
 // Composite because this screen needs to navigate both within its own
 // stack (to Swipe) and across to a sibling tab (Trash) when the user
@@ -58,6 +65,7 @@ function TitleRow({ title }: { title: string }) {
 }
 
 export default function CategoryPickerScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [shortVideoRange, setShortVideoRange] = useState(DEFAULT_SHORT_VIDEO_RANGE);
   const [bigFileRangeMB, setBigFileRangeMB] = useState(DEFAULT_BIG_FILE_RANGE_MB);
   const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
@@ -121,15 +129,15 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       {trashCount > 0 && (
         <View style={styles.trashBanner}>
           <Text style={styles.trashBannerText}>
-            🗑 {trashCount} photo{trashCount === 1 ? '' : 's'} pending deletion
+            🗑 {t('categoryPicker.trashBanner', { count: trashCount })}
           </Text>
           <Pressable onPress={() => navigation.navigate('TrashTab')} style={styles.trashButton}>
-            <Text style={styles.trashButtonText}>Review</Text>
+            <Text style={styles.trashButtonText}>{t('categoryPicker.review')}</Text>
           </Pressable>
         </View>
       )}
 
-      <Text style={styles.sectionHeader}>Categories</Text>
+      <Text style={styles.sectionHeader}>{t('categoryPicker.sectionHeader')}</Text>
 
       <Pressable
         style={styles.card}
@@ -160,10 +168,10 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title={shortVideosMeta.title} />
+          <TitleRow title={shortVideosDefaults.meta.title} />
         </Pressable>
         <Text style={styles.sliderLabel}>
-          Flag videos between {shortVideoRange[0]}s and {shortVideoRange[1]}s long
+          {t('categoryPicker.shortVideosLabel', { min: shortVideoRange[0], max: shortVideoRange[1] })}
         </Text>
         <RangeSlider
           minimumValue={0}
@@ -187,10 +195,10 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title={bigFilesMeta.title} />
+          <TitleRow title={bigFilesDefaults.meta.title} />
         </Pressable>
         <Text style={styles.sliderLabel}>
-          Flag photos and videos between {bigFileRangeMB[0]} and {bigFileRangeMB[1]} MB
+          {t('categoryPicker.bigFilesLabel', { min: bigFileRangeMB[0], max: bigFileRangeMB[1] })}
         </Text>
         <RangeSlider
           minimumValue={5}
@@ -218,10 +226,10 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title={brightnessMeta.title} />
+          <TitleRow title={brightnessDefaults.meta.title} />
         </Pressable>
         <Text style={styles.sliderLabel}>
-          Flag photos between {brightnessRange[0]} and {brightnessRange[1]}/255 brightness
+          {t('categoryPicker.brightnessLabel', { min: brightnessRange[0], max: brightnessRange[1] })}
         </Text>
         <RangeSlider
           minimumValue={0}
@@ -242,7 +250,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title="By Month" />
+          <TitleRow title={monthYearDefaults.meta.title} />
         </Pressable>
         <MonthYearPicker
           year={monthYear.year}

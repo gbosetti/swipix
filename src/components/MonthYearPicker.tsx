@@ -1,22 +1,8 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../theme/colors';
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 
 const DEFAULT_MIN_YEAR = 2000;
 
@@ -40,6 +26,7 @@ export default function MonthYearPicker({
   onChange,
   minYear = DEFAULT_MIN_YEAR,
 }: MonthYearPickerProps) {
+  const { t } = useTranslation();
   const now = new Date();
   const maxYear = now.getFullYear();
   const maxMonth = now.getMonth();
@@ -78,7 +65,7 @@ export default function MonthYearPicker({
         />
       </Pressable>
       <Text style={styles.label}>
-        {MONTH_NAMES[month]} {year}
+        {t(`months.${month}`)} {year}
       </Text>
       <Pressable onPress={() => step(1)} disabled={atMax} hitSlop={8} style={styles.arrow}>
         <Ionicons

@@ -2,6 +2,7 @@ import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 const DEFAULT_MIN_BYTES = 20 * 1024 * 1024; // 20 MB
 const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
@@ -33,7 +34,7 @@ export class BigFilesStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'big-files',
-      title: 'Big Files',
+      title: i18n.t('categories.big-files'),
       icon: 'archive',
     };
   }

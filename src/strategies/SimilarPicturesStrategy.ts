@@ -1,5 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { Asset, CategoryMeta } from '../types';
+import i18n from '../i18n';
 
 const BURST_WINDOW_MS = 3 * 1000; // photos this close together are probably a burst
 
@@ -32,7 +33,7 @@ export class SimilarPicturesStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return {
       id: 'similar-pictures',
-      title: 'Similar Photos',
+      title: i18n.t('categories.similar-pictures'),
       icon: 'copy',
     };
   }

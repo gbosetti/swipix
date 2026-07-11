@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '../navigation/types';
 import { Colors } from '../theme/colors';
@@ -7,10 +8,15 @@ import { Colors } from '../theme/colors';
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.screen}>
+      <Pressable style={styles.row} onPress={() => navigation.navigate('Language')}>
+        <Text style={styles.rowText}>{t('settings.languageRow')}</Text>
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
       <Pressable style={styles.row} onPress={() => navigation.navigate('Terms')}>
-        <Text style={styles.rowText}>Terms of Use</Text>
+        <Text style={styles.rowText}>{t('settings.termsRow')}</Text>
         <Text style={styles.chevron}>›</Text>
       </Pressable>
     </View>
@@ -18,7 +24,7 @@ export default function SettingsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background, padding: 20 },
+  screen: { flex: 1, backgroundColor: Colors.background, padding: 20, gap: 10 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

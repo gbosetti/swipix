@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { Colors } from './src/theme/colors';
+import { initI18n } from './src/i18n';
 
 const ONBOARDING_COMPLETE_KEY = '@swipix/onboardingComplete';
 
@@ -19,8 +20,10 @@ export default function App() {
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY).then((value) => {
-      setOnboardingComplete(value === 'true');
+    Promise.all([
+      initI18n(),
+      AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY).then((value) => setOnboardingComplete(value === 'true')),
+    ]).then(() => {
       SplashScreen.hideAsync().catch(() => {});
     });
   }, []);
