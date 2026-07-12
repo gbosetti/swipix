@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useHeaderHeight } from '@react-navigation/elements';
 import SwipeDeck from '../components/SwipeDeck';
@@ -10,6 +11,16 @@ import { TrashService } from '../services/TrashService';
 import { SwipeRouteParams } from '../navigation/types';
 import { Asset } from '../types';
 import { Colors } from '../theme/colors';
+
+interface SwipeHistoryEntry {
+  asset: Asset;
+  direction: 'left' | 'right';
+}
+
+// After this many undos in a row, nudge the user toward Trash instead of
+// continuing to step back one card at a time — undo is for fixing a
+// mistake, not for browsing.
+const UNDO_NUDGE_THRESHOLD = 3;
 
 // Loosely typed against just the 'Swipe' route shape rather than one
 // specific stack's full param list — this screen is mounted from two
@@ -32,6 +43,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [freedCount, setFreedCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [history, setHistory] = useState<SwipeHistoryEntry[]>([]);
+  const [undoSignal, setUndoSignal] = useState(0);
+  const [consecutiveUndos, setConsecutiveUndos] = useState(0);
   // Bumping this re-runs the fetch below — used by "Swipe again" when
   // there's no previous screen to go back to (the standalone Swipe tab).
   const [sessionKey, setSessionKey] = useState(0);
@@ -40,6 +54,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
     setCandidates(null);
     setFinished(false);
     setFreedCount(0);
+    setHistory([]);
+    setConsecutiveUndos(0);
     (async () => {
       const granted = await PhotoLibraryService.requestPermission();
       if (!granted) {
@@ -58,10 +74,35 @@ export default function SwipeScreen({ route, navigation }: Props) {
     // decision in the whole app.
     await TrashService.moveToTrash(asset);
     setFreedCount((c) => c + 1);
+    setHistory((h) => [...h, { asset, direction: 'left' }]);
+    setConsecutiveUndos(0);
   };
 
-  const handleSwipeRight = () => {
-    // Right = keep. No action needed, just move to next card.
+  const handleSwipeRight = (asset: Asset) => {
+    // Right = keep. No persisted side effect, just move to next card.
+    setHistory((h) => [...h, { asset, direction: 'right' }]);
+    setConsecutiveUndos(0);
+  };
+
+  const handleUndo = async () => {
+    const last = history[history.length - 1];
+    if (!last) return;
+
+    setHistory((h) => h.slice(0, -1));
+    if (last.direction === 'left') {
+      await TrashService.restore(last.asset.id);
+      setFreedCount((c) => c - 1);
+    }
+    setFinished(false);
+    setUndoSignal((s) => s + 1);
+
+    const nextConsecutiveUndos = consecutiveUndos + 1;
+    if (nextConsecutiveUndos >= UNDO_NUDGE_THRESHOLD) {
+      setConsecutiveUndos(0);
+      Alert.alert(t('swipe.undoLimitTitle'), t('swipe.undoLimitBody'));
+    } else {
+      setConsecutiveUndos(nextConsecutiveUndos);
+    }
   };
 
   const handleDoneAction = useCallback(() => {
@@ -92,25 +133,23 @@ export default function SwipeScreen({ route, navigation }: Props) {
         <Text style={styles.emptyText}>{t('swipe.emptyTitle')}</Text>
       </View>
     );
-  } else if (finished) {
-    content = (
-      <View style={[styles.center, { paddingTop: headerHeight }]}>
-        <Text style={styles.emptyText}>{t('swipe.finishedTitle')}</Text>
-        <Text style={styles.subText}>
-          {freedCount > 0 ? t('swipe.queuedCount', { count: freedCount }) : t('swipe.queuedZero')}
-        </Text>
-        <Pressable style={styles.doneButton} onPress={handleDoneAction}>
-          <Text style={styles.doneButtonText}>
-            {navigation.canGoBack() ? t('swipe.backToCategories') : t('swipe.swipeAgain')}
-          </Text>
-        </Pressable>
-      </View>
-    );
   } else {
+    // SwipeDeck stays mounted here regardless of `finished` — its
+    // internal card index lives in a ref that only survives while the
+    // component is mounted. If the finished state fully replaced this
+    // tree (like every other branch above), undoing from the finished
+    // screen would remount a fresh SwipeDeck at index 0 instead of
+    // stepping back from the real last card. The finished UI renders as
+    // an overlay on top instead.
     content = (
-      <>
+      <View style={styles.swipeArea}>
         <View style={[styles.statusBar, { paddingTop: headerHeight + 10 }]}>
           <Text style={styles.statusText}>{t('swipe.statusQueued', { count: freedCount })}</Text>
+          {history.length > 0 && (
+            <Pressable onPress={handleUndo} hitSlop={8}>
+              <Ionicons name="arrow-undo-circle" size={28} color={Colors.textSecondary} />
+            </Pressable>
+          )}
         </View>
         <SwipeDeck
           data={candidates}
@@ -120,12 +159,31 @@ export default function SwipeScreen({ route, navigation }: Props) {
           onEmpty={() => setFinished(true)}
           leftLabel={t('swipe.deleteLabel')}
           rightLabel={t('swipe.keepLabel')}
+          undoSignal={undoSignal}
         />
         <View style={styles.hintRow}>
           <Text style={styles.hint}>{t('swipe.deleteHint')}</Text>
           <Text style={styles.hint}>{t('swipe.keepHint')}</Text>
         </View>
-      </>
+        {finished && (
+          <View style={[styles.finishedOverlay, { paddingTop: headerHeight }]}>
+            <Text style={styles.emptyText}>{t('swipe.finishedTitle')}</Text>
+            <Text style={styles.subText}>
+              {freedCount > 0 ? t('swipe.queuedCount', { count: freedCount }) : t('swipe.queuedZero')}
+            </Text>
+            <Pressable style={styles.doneButton} onPress={handleDoneAction}>
+              <Text style={styles.doneButtonText}>
+                {navigation.canGoBack() ? t('swipe.backToCategories') : t('swipe.swipeAgain')}
+              </Text>
+            </Pressable>
+            {history.length > 0 && (
+              <Pressable style={styles.undoLastButton} onPress={handleUndo} hitSlop={8}>
+                <Text style={styles.undoLastButtonText}>{t('swipe.undoLast')}</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+      </View>
     );
   }
 
@@ -142,11 +200,21 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 8,
   },
+  swipeArea: { flex: 1 },
+  finishedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 24,
+    gap: 8,
+  },
   statusBar: {
     paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
   statusText: { color: Colors.textSecondary, fontSize: 14 },
@@ -162,4 +230,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   doneButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
+  undoLastButton: { marginTop: 16 },
+  undoLastButtonText: { color: Colors.textSecondary, fontSize: 14, textDecorationLine: 'underline' },
 });

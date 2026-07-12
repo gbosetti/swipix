@@ -55,7 +55,10 @@
     "deleteHint": "← elimina",
     "keepHint": "mantieni →",
     "keepLabel": "MANTIENI",
-    "deleteLabel": "ELIMINA"
+    "deleteLabel": "ELIMINA",
+    "undoLast": "Annulla l'ultimo swipe",
+    "undoLimitTitle": "Stai annullando molto?",
+    "undoLimitBody": "Se vuoi rivedere più foto, controlla il cestino per vedere tutto ciò che hai eliminato finora."
   },
   "trash": {
     "emptyTitle": "Il cestino è vuoto 🎉",

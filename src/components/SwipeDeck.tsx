@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
 import { Colors } from '../theme/colors';
 
@@ -17,6 +17,12 @@ interface SwipeDeckProps<T extends { id: string }> {
   rightLabel?: string;
   /** Shown as a fading stamp on the card while dragging left. */
   leftLabel?: string;
+  /** Bump this (e.g. a counter you increment) to step back to the
+   * previous card. A prop-driven trigger rather than an imperative ref —
+   * the caller already knows whether undo is valid (it owns the swipe
+   * history), so SwipeDeck just needs to be told "go back one," not
+   * asked to report its own state back up. */
+  undoSignal?: number;
 }
 
 /**
@@ -37,10 +43,21 @@ export default function SwipeDeck<T extends { id: string }>({
   onEmpty,
   rightLabel,
   leftLabel,
+  undoSignal,
 }: SwipeDeckProps<T>) {
   const position = useRef(new Animated.ValueXY()).current;
   const indexRef = useRef(0);
   const [, forceRender] = React.useReducer((x) => x + 1, 0);
+  const prevUndoSignal = useRef(undoSignal);
+
+  useEffect(() => {
+    if (undoSignal !== prevUndoSignal.current && indexRef.current > 0) {
+      indexRef.current -= 1;
+      position.setValue({ x: 0, y: 0 });
+      forceRender();
+    }
+    prevUndoSignal.current = undoSignal;
+  }, [undoSignal, position]);
 
   const panResponder = useRef(
     PanResponder.create({

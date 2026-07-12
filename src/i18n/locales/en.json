@@ -55,7 +55,10 @@
     "deleteHint": "← delete",
     "keepHint": "keep →",
     "keepLabel": "KEEP",
-    "deleteLabel": "DELETE"
+    "deleteLabel": "DELETE",
+    "undoLast": "Undo last swipe",
+    "undoLimitTitle": "Undoing a lot?",
+    "undoLimitBody": "If you're trying to review several photos, check your Trash to see everything you've deleted so far."
   },
   "trash": {
     "emptyTitle": "Trash is empty 🎉",

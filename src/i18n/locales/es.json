@@ -55,7 +55,10 @@
     "deleteHint": "← eliminar",
     "keepHint": "conservar →",
     "keepLabel": "CONSERVAR",
-    "deleteLabel": "ELIMINAR"
+    "deleteLabel": "ELIMINAR",
+    "undoLast": "Deshacer el último deslizamiento",
+    "undoLimitTitle": "¿Deshaciendo mucho?",
+    "undoLimitBody": "Si quieres revisar varias fotos, consulta la papelera para ver todo lo que has eliminado hasta ahora."
   },
   "trash": {
     "emptyTitle": "La papelera está vacía 🎉",
