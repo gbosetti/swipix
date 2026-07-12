@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, FlatList, Alert, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { TrashService } from '../services/TrashService';
 import { TrashedAsset } from '../types';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 /**
  * Lets the user see exactly what's staged for deletion and restore
@@ -13,6 +14,8 @@ import { Colors } from '../theme/colors';
  */
 export default function TrashScreen() {
   const { t } = useTranslation();
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [trash, setTrash] = useState<TrashedAsset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<TrashedAsset | null>(null);
 
@@ -136,63 +139,65 @@ export default function TrashScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-  emptyText: { color: Colors.textPrimary, fontSize: 18, fontWeight: '700' },
-  list: { padding: 16, gap: 12 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: Colors.card,
-    borderRadius: 14,
-    padding: 10,
-  },
-  thumbnail: { width: 56, height: 56, borderRadius: 10, backgroundColor: Colors.placeholder },
-  thumbnailPlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { color: Colors.textSecondary, fontSize: 20, fontWeight: '700' },
-  rowText: { flex: 1, color: Colors.textPrimary, fontSize: 14 },
-  restoreButton: {
-    backgroundColor: Colors.accent,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  restoreButtonText: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
-  emptyButton: {
-    margin: 16,
-    backgroundColor: Colors.danger,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  emptyButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
-  previewOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewImage: { width: '100%', height: '75%' },
-  previewCloseButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  previewCloseButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
-  previewRestoreButton: {
-    marginTop: 20,
-    backgroundColor: Colors.accent,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+    emptyText: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+    list: { padding: 16, gap: 12 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      padding: 10,
+    },
+    thumbnail: { width: 56, height: 56, borderRadius: 10, backgroundColor: colors.placeholder },
+    thumbnailPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+    placeholderText: { color: colors.textSecondary, fontSize: 20, fontWeight: '700' },
+    rowText: { flex: 1, color: colors.textPrimary, fontSize: 14 },
+    restoreButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+    },
+    restoreButtonText: { color: colors.onBrand, fontSize: 13, fontWeight: '600' },
+    emptyButton: {
+      margin: 16,
+      backgroundColor: colors.danger,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    emptyButtonText: { color: colors.onBrand, fontSize: 16, fontWeight: '600' },
+    previewOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.92)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    previewImage: { width: '100%', height: '75%' },
+    previewCloseButton: {
+      position: 'absolute',
+      top: 60,
+      left: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.card,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1,
+    },
+    previewCloseButtonText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600' },
+    previewRestoreButton: {
+      marginTop: 20,
+      backgroundColor: colors.accent,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+    },
+  });
+}

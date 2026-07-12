@@ -1,6 +1,7 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, PanResponder, LayoutChangeEvent, StyleSheet } from 'react-native';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 interface RangeSliderProps {
   minimumValue: number;
@@ -45,10 +46,15 @@ export default function RangeSlider({
   highValue,
   onValuesChange,
   onSlidingComplete,
-  minimumTrackTintColor = Colors.accent,
-  maximumTrackTintColor = Colors.trackInactive,
-  thumbTintColor = Colors.accent,
+  minimumTrackTintColor,
+  maximumTrackTintColor,
+  thumbTintColor,
 }: RangeSliderProps) {
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const resolvedMinTintColor = minimumTrackTintColor ?? colors.accent;
+  const resolvedMaxTintColor = maximumTrackTintColor ?? colors.trackInactive;
+  const resolvedThumbTintColor = thumbTintColor ?? colors.accent;
   const [trackWidth, setTrackWidth] = useState(0);
   const trackWidthRef = useRef(0);
 
@@ -110,7 +116,7 @@ export default function RangeSlider({
   return (
     <View style={styles.container}>
       <View
-        style={[styles.track, { backgroundColor: maximumTrackTintColor }]}
+        style={[styles.track, { backgroundColor: resolvedMaxTintColor }]}
         onLayout={handleLayout}
       >
         <View
@@ -119,7 +125,7 @@ export default function RangeSlider({
             {
               left: `${lowFraction * 100}%`,
               right: `${(1 - highFraction) * 100}%`,
-              backgroundColor: minimumTrackTintColor,
+              backgroundColor: resolvedMinTintColor,
             },
           ]}
         />
@@ -127,14 +133,14 @@ export default function RangeSlider({
       <View
         style={[
           styles.thumb,
-          { left: lowFraction * trackWidth - THUMB_SIZE / 2, backgroundColor: thumbTintColor },
+          { left: lowFraction * trackWidth - THUMB_SIZE / 2, backgroundColor: resolvedThumbTintColor },
         ]}
         {...lowResponder.panHandlers}
       />
       <View
         style={[
           styles.thumb,
-          { left: highFraction * trackWidth - THUMB_SIZE / 2, backgroundColor: thumbTintColor },
+          { left: highFraction * trackWidth - THUMB_SIZE / 2, backgroundColor: resolvedThumbTintColor },
         ]}
         {...highResponder.panHandlers}
       />
@@ -142,20 +148,22 @@ export default function RangeSlider({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { height: CONTAINER_HEIGHT, justifyContent: 'center' },
-  track: { height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2, overflow: 'hidden' },
-  fill: { position: 'absolute', height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2 },
-  thumb: {
-    position: 'absolute',
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
-    top: (CONTAINER_HEIGHT - THUMB_SIZE) / 2,
-    shadowColor: Colors.background,
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: { height: CONTAINER_HEIGHT, justifyContent: 'center' },
+    track: { height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2, overflow: 'hidden' },
+    fill: { position: 'absolute', height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2 },
+    thumb: {
+      position: 'absolute',
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
+      borderRadius: THUMB_SIZE / 2,
+      top: (CONTAINER_HEIGHT - THUMB_SIZE) / 2,
+      shadowColor: colors.background,
+      shadowOpacity: 0.3,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 3,
+    },
+  });
+}

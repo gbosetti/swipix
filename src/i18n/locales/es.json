@@ -72,9 +72,18 @@
     "delete": "Eliminar"
   },
   "settings": {
+    "preferencesSection": "Preferencias",
+    "legalSection": "Legal",
     "termsRow": "Términos de uso",
     "privacyRow": "Política de privacidad",
-    "languageRow": "Idioma"
+    "languageRow": "Idioma",
+    "appearanceRow": "Apariencia"
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "system": "Predeterminado del sistema",
+    "light": "Claro",
+    "dark": "Oscuro"
   },
   "terms": {
     "p1": "Swipix te ayuda a revisar y eliminar fotos en tu dispositivo. Eres responsable de las decisiones que tomes al usarla, incluidas las fotos que elimines.",

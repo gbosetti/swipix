@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Image, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Asset } from '../types';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 interface PhotoCardProps {
   asset: Asset;
@@ -25,10 +26,13 @@ interface PhotoCardProps {
  * own scope, not something to bolt on here.
  */
 export default function PhotoCard({ asset }: PhotoCardProps) {
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   if (asset.mediaType === 'video') {
     return (
       <View style={[styles.card, styles.videoPlaceholder]}>
-        <Ionicons name="videocam" size={48} color={Colors.textSecondary} />
+        <Ionicons name="videocam" size={48} color={colors.textSecondary} />
         <Text style={styles.videoLabel}>Video</Text>
       </View>
     );
@@ -41,19 +45,21 @@ export default function PhotoCard({ asset }: PhotoCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: Colors.cardDark,
-    shadowColor: Colors.background,
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  image: { width: '100%', height: '100%' },
-  videoPlaceholder: { justifyContent: 'center', alignItems: 'center', gap: 8 },
-  videoLabel: { color: Colors.textSecondary, fontSize: 14, fontWeight: '600' },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      borderRadius: 24,
+      overflow: 'hidden',
+      backgroundColor: colors.cardDark,
+      shadowColor: colors.background,
+      shadowOpacity: 0.25,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+    image: { width: '100%', height: '100%' },
+    videoPlaceholder: { justifyContent: 'center', alignItems: 'center', gap: 8 },
+    videoLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  });
+}

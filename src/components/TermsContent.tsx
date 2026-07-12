@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 /**
  * The terms text itself, shared between the onboarding modal and the
@@ -15,6 +16,8 @@ import { Colors } from '../theme/colors';
  */
 export default function TermsContent() {
   const { t } = useTranslation();
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <>
       <Text style={styles.paragraph}>{t('terms.p1')}</Text>
@@ -28,6 +31,8 @@ export default function TermsContent() {
   );
 }
 
-const styles = StyleSheet.create({
-  paragraph: { color: Colors.textTertiary, fontSize: 15, lineHeight: 22, marginBottom: 16 },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    paragraph: { color: colors.textTertiary, fontSize: 15, lineHeight: 22, marginBottom: 16 },
+  });
+}

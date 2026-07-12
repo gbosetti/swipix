@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
-import { Colors } from './src/theme/colors';
+import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { initI18n } from './src/i18n';
 
 const CONSENT_KEY = '@swipix/consent';
@@ -30,7 +30,23 @@ interface Consent {
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
+  const { colors, scheme } = useTheme();
   const [hasCurrentConsent, setHasCurrentConsent] = useState<boolean | null>(null);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+      }),
+    [colors]
+  );
 
   useEffect(() => {
     Promise.all([
@@ -53,14 +69,14 @@ export default function App() {
   if (hasCurrentConsent === null) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
       {hasCurrentConsent ? (
         <RootNavigator />
       ) : (
@@ -69,7 +85,3 @@ export default function App() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-});

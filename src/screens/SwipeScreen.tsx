@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,8 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { TrashService } from '../services/TrashService';
 import { SwipeRouteParams } from '../navigation/types';
 import { Asset } from '../types';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 interface SwipeHistoryEntry {
   asset: Asset;
@@ -37,6 +38,8 @@ type Props = NativeStackScreenProps<{ Swipe: SwipeRouteParams }, 'Swipe'>;
  */
 export default function SwipeScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { strategy } = route.params;
   const headerHeight = useHeaderHeight();
   const [candidates, setCandidates] = useState<Asset[] | null>(null);
@@ -147,7 +150,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
           <Text style={styles.statusText}>{t('swipe.statusQueued', { count: freedCount })}</Text>
           {history.length > 0 && (
             <Pressable onPress={handleUndo} hitSlop={8}>
-              <Ionicons name="arrow-undo-circle" size={28} color={Colors.textSecondary} />
+              <Ionicons name="arrow-undo-circle" size={28} color={colors.textSecondary} />
             </Pressable>
           )}
         </View>
@@ -190,46 +193,48 @@ export default function SwipeScreen({ route, navigation }: Props) {
   return <View style={styles.container}>{content}</View>;
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    padding: 24,
-    gap: 8,
-  },
-  swipeArea: { flex: 1 },
-  finishedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    padding: 24,
-    gap: 8,
-  },
-  statusBar: {
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statusText: { color: Colors.textSecondary, fontSize: 14 },
-  emptyText: { color: Colors.textPrimary, fontSize: 20, fontWeight: '700' },
-  subText: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center' },
-  hintRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 24 },
-  hint: { color: Colors.textSecondary, fontSize: 14 },
-  doneButton: {
-    marginTop: 16,
-    backgroundColor: Colors.accent,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  doneButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
-  undoLastButton: { marginTop: 16 },
-  undoLastButtonText: { color: Colors.textSecondary, fontSize: 14, textDecorationLine: 'underline' },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      padding: 24,
+      gap: 8,
+    },
+    swipeArea: { flex: 1 },
+    finishedOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      padding: 24,
+      gap: 8,
+    },
+    statusBar: {
+      paddingHorizontal: 20,
+      paddingBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    statusText: { color: colors.textSecondary, fontSize: 14 },
+    emptyText: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+    subText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
+    hintRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 24 },
+    hint: { color: colors.textSecondary, fontSize: 14 },
+    doneButton: {
+      marginTop: 16,
+      backgroundColor: colors.accent,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+    },
+    doneButtonText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600' },
+    undoLastButton: { marginTop: 16 },
+    undoLastButtonText: { color: colors.textSecondary, fontSize: 14, textDecorationLine: 'underline' },
+  });
+}

@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SwipeScreen from '../screens/SwipeScreen';
 import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
 import { SwipeTabStackParamList } from './types';
+import { useColors } from '../theme/ThemeContext';
 
 const Stack = createNativeStackNavigator<SwipeTabStackParamList>();
 const randomPhotosStrategy = new RandomPhotosStrategy();
@@ -14,6 +15,7 @@ const randomPhotosStrategy = new RandomPhotosStrategy();
  * automatically omits the back button when there's no previous screen.
  */
 export default function SwipeTabNavigator() {
+  const colors = useColors();
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
@@ -24,7 +26,7 @@ export default function SwipeTabNavigator() {
           headerShown: true,
           headerTitle: '',
           headerTransparent: true,
-          headerTintColor: 'white',
+          headerTintColor: colors.textPrimary,
         }}
       />
     </Stack.Navigator>

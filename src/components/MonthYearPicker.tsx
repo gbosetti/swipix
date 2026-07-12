@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 const DEFAULT_MIN_YEAR = 2000;
 
@@ -27,6 +28,8 @@ export default function MonthYearPicker({
   minYear = DEFAULT_MIN_YEAR,
 }: MonthYearPickerProps) {
   const { t } = useTranslation();
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const now = new Date();
   const maxYear = now.getFullYear();
   const maxMonth = now.getMonth();
@@ -61,7 +64,7 @@ export default function MonthYearPicker({
         <Ionicons
           name="chevron-back"
           size={20}
-          color={atMin ? Colors.trackInactive : Colors.textPrimary}
+          color={atMin ? colors.trackInactive : colors.textPrimary}
         />
       </Pressable>
       <Text style={styles.label}>
@@ -71,22 +74,24 @@ export default function MonthYearPicker({
         <Ionicons
           name="chevron-forward"
           size={20}
-          color={atMax ? Colors.trackInactive : Colors.textPrimary}
+          color={atMax ? colors.trackInactive : colors.textPrimary}
         />
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  arrow: { padding: 4 },
-  label: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600', minWidth: 150, textAlign: 'center' },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      marginTop: 12,
+      marginBottom: 4,
+    },
+    arrow: { padding: 4 },
+    label: { color: colors.textPrimary, fontSize: 16, fontWeight: '600', minWidth: 150, textAlign: 'center' },
+  });
+}

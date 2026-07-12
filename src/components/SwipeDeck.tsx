@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;
@@ -45,6 +46,8 @@ export default function SwipeDeck<T extends { id: string }>({
   leftLabel,
   undoSignal,
 }: SwipeDeckProps<T>) {
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const position = useRef(new Animated.ValueXY()).current;
   const indexRef = useRef(0);
   const [, forceRender] = React.useReducer((x) => x + 1, 0);
@@ -165,20 +168,22 @@ export default function SwipeDeck<T extends { id: string }>({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: { position: 'absolute', width: SCREEN_WIDTH * 0.9, height: '75%' },
-  stamp: {
-    position: 'absolute',
-    top: 32,
-    borderWidth: 3,
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  rightStamp: { left: 20, borderColor: Colors.success, transform: [{ rotate: '-12deg' }] },
-  leftStamp: { right: 20, borderColor: Colors.danger, transform: [{ rotate: '12deg' }] },
-  stampText: { fontSize: 26, fontWeight: '800', letterSpacing: 1 },
-  rightStampText: { color: Colors.success },
-  leftStampText: { color: Colors.danger },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    card: { position: 'absolute', width: SCREEN_WIDTH * 0.9, height: '75%' },
+    stamp: {
+      position: 'absolute',
+      top: 32,
+      borderWidth: 3,
+      borderRadius: 10,
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+    },
+    rightStamp: { left: 20, borderColor: colors.success, transform: [{ rotate: '-12deg' }] },
+    leftStamp: { right: 20, borderColor: colors.danger, transform: [{ rotate: '12deg' }] },
+    stampText: { fontSize: 26, fontWeight: '800', letterSpacing: 1 },
+    rightStampText: { color: colors.success },
+    leftStampText: { color: colors.danger },
+  });
+}

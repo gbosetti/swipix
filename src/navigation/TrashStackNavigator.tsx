@@ -3,12 +3,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import TrashScreen from '../screens/TrashScreen';
 import { TrashStackParamList } from './types';
-import { Colors } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 const Stack = createNativeStackNavigator<TrashStackParamList>();
 
 export default function TrashStackNavigator() {
   const { t } = useTranslation();
+  const colors = useColors();
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
@@ -17,8 +18,8 @@ export default function TrashStackNavigator() {
         options={{
           headerShown: true,
           headerTitle: t('nav.trash'),
-          headerStyle: { backgroundColor: Colors.background },
-          headerTintColor: 'white',
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.textPrimary,
         }}
       />
     </Stack.Navigator>

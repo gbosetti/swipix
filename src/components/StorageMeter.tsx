@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StorageService, StorageInfo } from '../services/StorageService';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 const LOW_SPACE_THRESHOLD_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 
@@ -16,6 +17,8 @@ function formatBytes(bytes: number): string {
  * actually frees real device storage) is reflected right away.
  */
 export default function StorageMeter() {
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [info, setInfo] = useState<StorageInfo | null>(null);
 
   useFocusEffect(
@@ -54,19 +57,21 @@ export default function StorageMeter() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.card,
-    borderRadius: 18,
-    padding: 16,
-    gap: 8,
-  },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  freeText: { color: Colors.textSecondary, fontSize: 13 },
-  freeTextLow: { color: Colors.danger, fontWeight: '600' },
-  track: { height: 8, borderRadius: 4, backgroundColor: Colors.trackInactive, overflow: 'hidden' },
-  fill: { height: '100%', backgroundColor: Colors.accent, borderRadius: 4 },
-  fillLow: { backgroundColor: Colors.danger },
-  totalText: { color: Colors.textSecondary, fontSize: 12 },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      padding: 16,
+      gap: 8,
+    },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    label: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
+    freeText: { color: colors.textSecondary, fontSize: 13 },
+    freeTextLow: { color: colors.danger, fontWeight: '600' },
+    track: { height: 8, borderRadius: 4, backgroundColor: colors.trackInactive, overflow: 'hidden' },
+    fill: { height: '100%', backgroundColor: colors.accent, borderRadius: 4 },
+    fillLow: { backgroundColor: colors.danger },
+    totalText: { color: colors.textSecondary, fontSize: 12 },
+  });
+}

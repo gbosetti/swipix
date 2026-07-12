@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Alert, BackHandler, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import TermsContent from '../components/TermsContent';
 import PrivacyContent from '../components/PrivacyContent';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 type LegalModal = 'terms' | 'privacy' | null;
 
@@ -20,6 +21,8 @@ interface OnboardingScreenProps {
  */
 export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
   const { t } = useTranslation();
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [step, setStep] = useState(0);
   const [legalModal, setLegalModal] = useState<LegalModal>(null);
 
@@ -110,37 +113,39 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, justifyContent: 'flex-end' },
-  content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
-  icon: { fontSize: 64, marginBottom: 12 },
-  title: { color: Colors.textPrimary, fontSize: 24, fontWeight: '700', textAlign: 'center' },
-  body: { color: Colors.textTertiary, fontSize: 15, lineHeight: 22, textAlign: 'center' },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.trackInactive },
-  dotActive: { backgroundColor: Colors.accent },
-  termsLinkWrap: { alignItems: 'center', marginBottom: 12 },
-  termsLink: { color: Colors.textSecondary, fontSize: 13, textAlign: 'center' },
-  termsLinkUnderline: { textDecorationLine: 'underline', color: Colors.textTertiary },
-  button: {
-    marginHorizontal: 20,
-    backgroundColor: Colors.accent,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  buttonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
-  declineButton: { marginTop: 12, marginBottom: 24, alignItems: 'center' },
-  declineButtonText: { color: Colors.textSecondary, fontSize: 14 },
-  termsModal: { flex: 1, backgroundColor: Colors.background },
-  termsContent: { padding: 24, paddingTop: 60, gap: 16 },
-  termsTitle: { color: Colors.textPrimary, fontSize: 22, fontWeight: '700', marginBottom: 8 },
-  closeTermsButton: {
-    margin: 20,
-    backgroundColor: Colors.card,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  closeTermsButtonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '600' },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background, justifyContent: 'flex-end' },
+    content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
+    icon: { fontSize: 64, marginBottom: 12 },
+    title: { color: colors.textPrimary, fontSize: 24, fontWeight: '700', textAlign: 'center' },
+    body: { color: colors.textTertiary, fontSize: 15, lineHeight: 22, textAlign: 'center' },
+    dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 },
+    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.trackInactive },
+    dotActive: { backgroundColor: colors.accent },
+    termsLinkWrap: { alignItems: 'center', marginBottom: 12 },
+    termsLink: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
+    termsLinkUnderline: { textDecorationLine: 'underline', color: colors.textTertiary },
+    button: {
+      marginHorizontal: 20,
+      backgroundColor: colors.accent,
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: '600' },
+    declineButton: { marginTop: 12, marginBottom: 24, alignItems: 'center' },
+    declineButtonText: { color: colors.textSecondary, fontSize: 14 },
+    termsModal: { flex: 1, backgroundColor: colors.background },
+    termsContent: { padding: 24, paddingTop: 60, gap: 16 },
+    termsTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: '700', marginBottom: 8 },
+    closeTermsButton: {
+      margin: 20,
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    closeTermsButtonText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600' },
+  });
+}

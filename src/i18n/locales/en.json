@@ -72,9 +72,18 @@
     "delete": "Delete"
   },
   "settings": {
+    "preferencesSection": "Preferences",
+    "legalSection": "Legal",
     "termsRow": "Terms of Use",
     "privacyRow": "Privacy Policy",
-    "languageRow": "Language"
+    "languageRow": "Language",
+    "appearanceRow": "Appearance"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "system": "System Default",
+    "light": "Light",
+    "dark": "Dark"
   },
   "terms": {
     "p1": "Swipix helps you review and delete photos on your device. You're responsible for the choices you make while using it — including which photos you delete.",

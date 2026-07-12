@@ -20,6 +20,7 @@ export type SettingsStackParamList = {
   Terms: undefined;
   Privacy: undefined;
   Language: undefined;
+  Appearance: undefined;
 };
 
 export type RootTabParamList = {

@@ -1,22 +1,32 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, DevSettings } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '../navigation/types';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.screen}>
+      <Text style={styles.sectionHeader}>{t('settings.preferencesSection')}</Text>
+      <Pressable style={styles.row} onPress={() => navigation.navigate('Appearance')}>
+        <Text style={styles.rowText}>{t('settings.appearanceRow')}</Text>
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
       <Pressable style={styles.row} onPress={() => navigation.navigate('Language')}>
         <Text style={styles.rowText}>{t('settings.languageRow')}</Text>
         <Text style={styles.chevron}>›</Text>
       </Pressable>
+
+      <Text style={styles.sectionHeader}>{t('settings.legalSection')}</Text>
       <Pressable style={styles.row} onPress={() => navigation.navigate('Terms')}>
         <Text style={styles.rowText}>{t('settings.termsRow')}</Text>
         <Text style={styles.chevron}>›</Text>
@@ -31,7 +41,7 @@ export default function SettingsScreen({ navigation }: Props) {
           onPress={() => AsyncStorage.clear().then(() => DevSettings.reload())}
         >
           <View style={styles.devRowLabel}>
-            <Ionicons name="bug-outline" size={18} color={Colors.textSecondary} />
+            <Ionicons name="bug-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.rowText}>Reset Onboarding</Text>
           </View>
         </Pressable>
@@ -40,18 +50,29 @@ export default function SettingsScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background, padding: 20, gap: 10 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.card,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-  },
-  rowText: { color: Colors.textPrimary, fontSize: 16 },
-  chevron: { color: Colors.textSecondary, fontSize: 20 },
-  devRowLabel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 10 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      paddingVertical: 16,
+      paddingHorizontal: 18,
+    },
+    rowText: { color: colors.textPrimary, fontSize: 16 },
+    chevron: { color: colors.textSecondary, fontSize: 20 },
+    sectionHeader: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: 8,
+      marginBottom: -4,
+    },
+    devRowLabel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  });
+}

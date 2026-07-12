@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Text, Pressable, StyleSheet, ScrollView, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +19,8 @@ import { MonthYearStrategy } from '../strategies/MonthYearStrategy';
 import { TrashService } from '../services/TrashService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
-import { Colors } from '../theme/colors';
+import { ColorPalette } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext';
 
 // Ordered by real-world impact/confidence: cheap-and-trustworthy signals
 // first (metadata-based, no judgment call), stub-based analysis last.
@@ -53,19 +54,33 @@ type Props = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList>
 >;
 
+// Layout only (no colors) — safe as a plain module-level StyleSheet,
+// unlike the screen's own theme-dependent styles below.
+const titleRowStyles = StyleSheet.create({
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontSize: 18, fontWeight: '600' },
+  chevron: { fontSize: 22, fontWeight: '400' },
+});
+
 /** Same title + chevron affordance on every card, whether or not it also
- * has a slider — one consistent signifier for "tap this to go swiping." */
+ * has a slider — one consistent signifier for "tap this to go swiping."
+ * Reads the theme itself rather than taking styles as a prop — it's a
+ * sibling function, not nested, so it can't close over the parent's
+ * per-render `styles`. */
 function TitleRow({ title }: { title: string }) {
+  const colors = useColors();
   return (
-    <View style={styles.titleRow}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.chevron}>›</Text>
+    <View style={titleRowStyles.titleRow}>
+      <Text style={[titleRowStyles.title, { color: colors.textPrimary }]}>{title}</Text>
+      <Text style={[titleRowStyles.chevron, { color: colors.textSecondary }]}>›</Text>
     </View>
   );
 }
 
 export default function CategoryPickerScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const colors = useColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [shortVideoRange, setShortVideoRange] = useState(DEFAULT_SHORT_VIDEO_RANGE);
   const [bigFileRangeMB, setBigFileRangeMB] = useState(DEFAULT_BIG_FILE_RANGE_MB);
   const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
@@ -262,42 +277,41 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  container: { padding: 20, gap: 14 },
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: 18,
-    padding: 20,
-  },
-  sectionHeader: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 8,
-    marginBottom: -4,
-  },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: Colors.textPrimary, fontSize: 18, fontWeight: '600' },
-  chevron: { color: Colors.textSecondary, fontSize: 22, fontWeight: '400' },
-  sliderLabel: { color: Colors.textSecondary, fontSize: 13, marginTop: 12, marginBottom: 8 },
-  trashBanner: {
-    backgroundColor: Colors.cardAlt,
-    borderRadius: 18,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  trashBannerText: { color: Colors.textPrimary, fontSize: 14, flexShrink: 1 },
-  trashButton: {
-    backgroundColor: Colors.danger,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  trashButtonText: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    container: { padding: 20, gap: 14 },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      padding: 20,
+    },
+    sectionHeader: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: 8,
+      marginBottom: -4,
+    },
+    sliderLabel: { color: colors.textSecondary, fontSize: 13, marginTop: 12, marginBottom: 8 },
+    trashBanner: {
+      backgroundColor: colors.cardAlt,
+      borderRadius: 18,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    trashBannerText: { color: colors.textPrimary, fontSize: 14, flexShrink: 1 },
+    trashButton: {
+      backgroundColor: colors.danger,
+      borderRadius: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+    },
+    trashButtonText: { color: colors.onBrand, fontSize: 13, fontWeight: '600' },
+  });
+}
