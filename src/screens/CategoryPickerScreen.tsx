@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, Pressable, StyleSheet, ScrollView, View } from 'react-native';
+import { Text, Pressable, StyleSheet, ScrollView, View, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,11 +17,29 @@ import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
 import { BlurredImagesStrategy } from '../strategies/BlurredImagesStrategy';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { MonthYearStrategy } from '../strategies/MonthYearStrategy';
+import { CategoryStrategy } from '../strategies/CategoryStrategy';
 import { TrashService } from '../services/TrashService';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
+import { Asset, CategoryMeta } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
+
+/** First match's photo, used as a representative thumbnail on the
+ * category card. Strategies that source their own dataset (Big Files,
+ * Short Videos, Duplicate Files, By Month) ignore whatever's passed in,
+ * so an empty array is fine for those. Swallows errors rather than
+ * throwing — a missing preview just means no thumbnail, not a broken
+ * screen. */
+async function getPreviewUri(strategy: CategoryStrategy, sourceAssets: Asset[]): Promise<string | null> {
+  try {
+    const matched = await strategy.match(sourceAssets);
+    return matched[0]?.uri ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // Ordered by real-world impact/confidence: cheap-and-trustworthy signals
 // first (metadata-based, no judgment call), stub-based analysis last.
@@ -58,20 +77,51 @@ type Props = CompositeScreenProps<
 // unlike the screen's own theme-dependent styles below.
 const titleRowStyles = StyleSheet.create({
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 18, fontWeight: '600' },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  thumbnail: { width: 44, height: 44, borderRadius: 10 },
+  thumbnailPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 18, fontWeight: '600', flexShrink: 1 },
   chevron: { fontSize: 22, fontWeight: '400' },
 });
 
 /** Same title + chevron affordance on every card, whether or not it also
  * has a slider — one consistent signifier for "tap this to go swiping."
+ * previewUri is a representative photo for the category; when there's
+ * no match yet (or none at all), falls back to the category's own
+ * `meta.icon` on a plain background rather than an empty square.
  * Reads the theme itself rather than taking styles as a prop — it's a
  * sibling function, not nested, so it can't close over the parent's
  * per-render `styles`. */
-function TitleRow({ title }: { title: string }) {
+function TitleRow({
+  title,
+  icon,
+  previewUri,
+}: {
+  title: string;
+  icon: CategoryMeta['icon'];
+  previewUri?: string | null;
+}) {
   const colors = useColors();
   return (
     <View style={titleRowStyles.titleRow}>
-      <Text style={[titleRowStyles.title, { color: colors.textPrimary }]}>{title}</Text>
+      <View style={titleRowStyles.left}>
+        {previewUri ? (
+          <Image source={{ uri: previewUri }} style={titleRowStyles.thumbnail} resizeMode="cover" />
+        ) : (
+          <View
+            style={[
+              titleRowStyles.thumbnail,
+              titleRowStyles.thumbnailPlaceholder,
+              { backgroundColor: colors.cardDark },
+            ]}
+          >
+            <Ionicons name={icon} size={22} color={colors.textSecondary} />
+          </View>
+        )}
+        <Text style={[titleRowStyles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
       <Text style={[titleRowStyles.chevron, { color: colors.textSecondary }]}>›</Text>
     </View>
   );
@@ -87,6 +137,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const now = new Date();
   const [monthYear, setMonthYear] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [trashCount, setTrashCount] = useState(0);
+  const [allPhotos, setAllPhotos] = useState<Asset[] | null>(null);
+  const [previews, setPreviews] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     const loadRange = (key: string, setter: (range: [number, number]) => void) => {
@@ -108,6 +160,42 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     });
   }, []);
 
+  useEffect(() => {
+    PhotoLibraryService.requestPermission().then((granted) => {
+      if (granted) {
+        PhotoLibraryService.getAllPhotos().then(setAllPhotos);
+      }
+    });
+  }, []);
+
+  const refreshPreview = useCallback((strategy: CategoryStrategy, sourceAssets: Asset[]) => {
+    getPreviewUri(strategy, sourceAssets).then((uri) => {
+      setPreviews((current) => ({ ...current, [strategy.meta.id]: uri }));
+    });
+  }, []);
+
+  // One-time preview for every category once the library is loaded —
+  // after this, each interactive category's preview only refreshes when
+  // its own slider/picker actually changes (below), not on every render.
+  useEffect(() => {
+    if (!allPhotos) return;
+    refreshPreview(screenshotStrategy, allPhotos);
+    refreshPreview(similarPicturesStrategy, allPhotos);
+    refreshPreview(blurredImagesStrategy, allPhotos);
+    refreshPreview(exactDuplicatesStrategy, []);
+    refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), []);
+    refreshPreview(
+      new BigFilesStrategy(bigFileRangeMB[0] * 1024 * 1024, bigFileRangeMB[1] * 1024 * 1024),
+      []
+    );
+    refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]), allPhotos);
+    refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month), []);
+    // Deliberately only depends on allPhotos — this is the one-time initial
+    // load. Re-runs for range/month changes happen at their own slider's
+    // onSlidingComplete/onChange instead, not by reacting to this state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allPhotos]);
+
   const refreshTrashCount = useCallback(() => {
     TrashService.getTrash().then((trash) => setTrashCount(trash.length));
   }, []);
@@ -122,19 +210,23 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistShortVideoRange = (low: number, high: number) => {
     AsyncStorage.setItem(SHORT_VIDEO_RANGE_KEY, `${low},${high}`);
+    refreshPreview(new ShortVideosStrategy(low, high), []);
   };
 
   const persistBigFileRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_FILE_RANGE_KEY, `${low},${high}`);
+    refreshPreview(new BigFilesStrategy(low * 1024 * 1024, high * 1024 * 1024), []);
   };
 
   const persistBrightnessRange = (low: number, high: number) => {
     AsyncStorage.setItem(BRIGHTNESS_RANGE_KEY, `${low},${high}`);
+    if (allPhotos) refreshPreview(new BrightnessStrategy(low, high), allPhotos);
   };
 
   const handleMonthYearChange = (year: number, month: number) => {
     setMonthYear({ year, month });
     AsyncStorage.setItem(MONTH_YEAR_KEY, `${year},${month}`);
+    refreshPreview(new MonthYearStrategy(year, month), []);
   };
 
   return (
@@ -158,21 +250,33 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: screenshotStrategy })}
       >
-        <TitleRow title={screenshotStrategy.meta.title} />
+        <TitleRow
+          title={screenshotStrategy.meta.title}
+          icon={screenshotStrategy.meta.icon}
+          previewUri={previews[screenshotStrategy.meta.id]}
+        />
       </Pressable>
 
       <Pressable
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: similarPicturesStrategy })}
       >
-        <TitleRow title={similarPicturesStrategy.meta.title} />
+        <TitleRow
+          title={similarPicturesStrategy.meta.title}
+          icon={similarPicturesStrategy.meta.icon}
+          previewUri={previews[similarPicturesStrategy.meta.id]}
+        />
       </Pressable>
 
       <Pressable
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: exactDuplicatesStrategy })}
       >
-        <TitleRow title={exactDuplicatesStrategy.meta.title} />
+        <TitleRow
+          title={exactDuplicatesStrategy.meta.title}
+          icon={exactDuplicatesStrategy.meta.icon}
+          previewUri={previews[exactDuplicatesStrategy.meta.id]}
+        />
       </Pressable>
 
       <View style={styles.card}>
@@ -183,7 +287,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title={shortVideosDefaults.meta.title} />
+          <TitleRow
+            title={shortVideosDefaults.meta.title}
+            icon={shortVideosDefaults.meta.icon}
+            previewUri={previews[shortVideosDefaults.meta.id]}
+          />
         </Pressable>
         <Text style={styles.sliderLabel}>
           {t('categoryPicker.shortVideosLabel', { min: shortVideoRange[0], max: shortVideoRange[1] })}
@@ -210,7 +318,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title={bigFilesDefaults.meta.title} />
+          <TitleRow
+            title={bigFilesDefaults.meta.title}
+            icon={bigFilesDefaults.meta.icon}
+            previewUri={previews[bigFilesDefaults.meta.id]}
+          />
         </Pressable>
         <Text style={styles.sliderLabel}>
           {t('categoryPicker.bigFilesLabel', { min: bigFileRangeMB[0], max: bigFileRangeMB[1] })}
@@ -230,7 +342,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         style={styles.card}
         onPress={() => navigation.navigate('Swipe', { strategy: blurredImagesStrategy })}
       >
-        <TitleRow title={blurredImagesStrategy.meta.title} />
+        <TitleRow
+          title={blurredImagesStrategy.meta.title}
+          icon={blurredImagesStrategy.meta.icon}
+          previewUri={previews[blurredImagesStrategy.meta.id]}
+        />
       </Pressable>
 
       <View style={styles.card}>
@@ -241,7 +357,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title={brightnessDefaults.meta.title} />
+          <TitleRow
+            title={brightnessDefaults.meta.title}
+            icon={brightnessDefaults.meta.icon}
+            previewUri={previews[brightnessDefaults.meta.id]}
+          />
         </Pressable>
         <Text style={styles.sliderLabel}>
           {t('categoryPicker.brightnessLabel', { min: brightnessRange[0], max: brightnessRange[1] })}
@@ -265,7 +385,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
             })
           }
         >
-          <TitleRow title={monthYearDefaults.meta.title} />
+          <TitleRow
+            title={monthYearDefaults.meta.title}
+            icon={monthYearDefaults.meta.icon}
+            previewUri={previews[monthYearDefaults.meta.id]}
+          />
         </Pressable>
         <MonthYearPicker
           year={monthYear.year}

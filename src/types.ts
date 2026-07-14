@@ -1,3 +1,6 @@
+import type { ComponentProps } from 'react';
+import type { Ionicons } from '@expo/vector-icons';
+
 export interface Asset {
   id: string;
   uri: string;
@@ -16,5 +19,5 @@ export interface TrashedAsset extends Asset {
 export interface CategoryMeta {
   id: string;
   title: string;
-  icon: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
 }
