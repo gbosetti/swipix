@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-07-12_
+_Last updated: 2026-07-18_
 
 This policy explains what Swipix ("the App") does and does not do with
 your data. The short version: everything happens on your device, and
@@ -29,17 +29,18 @@ standard on-device storage — never transmitted anywhere:
 - Your selected language
 - Filter settings for categories (e.g. brightness range, file size
   range, the month/year you last selected)
-- Which photos are currently in the App's temporary trash, so it can
-  track the grace period before permanent deletion
+- Which photos are currently in the App's trash, awaiting your
+  decision to permanently delete them (nothing is ever deleted
+  automatically)
 - Whether you've completed the onboarding flow
 
 Uninstalling the App removes all of this.
 
 ## 4. Permanent Deletion
 
-When you permanently delete a photo (after the grace period, or
-manually), the App uses your device's own photo library APIs to do so.
-The developer has no separate copy and cannot recover it once deleted.
+When you choose to permanently delete a photo, the App uses your
+device's own photo library APIs to do so. The developer has no
+separate copy and cannot recover it once deleted.
 
 ## 5. Children's Privacy
 

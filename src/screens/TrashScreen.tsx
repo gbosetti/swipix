@@ -10,7 +10,8 @@ import { useColors } from '../theme/ThemeContext';
 /**
  * Lets the user see exactly what's staged for deletion and restore
  * individual photos — without this, "pending deletion" is just a number
- * with no way back, which defeats the point of a grace period.
+ * with no way back, which defeats the point of staging deletions instead
+ * of applying them immediately.
  */
 export default function TrashScreen() {
   const { t } = useTranslation();

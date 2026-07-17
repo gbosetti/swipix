@@ -1,6 +1,6 @@
 # Terms of Use
 
-_Last updated: 2026-07-12_
+_Last updated: 2026-07-18_
 
 By using Swipix ("the App"), you agree to these terms. If you do not
 agree, do not use the App.
@@ -8,19 +8,21 @@ agree, do not use the App.
 ## 1. What the App Does
 
 Swipix helps you review photos on your device and move photos you
-choose to a temporary trash, from which they can later be permanently
-deleted from your device's photo library, either automatically after
-a grace period or manually at your request.
+choose to a trash within the App. Nothing is ever deleted
+automatically or in the background — photos stay in that trash until
+you explicitly choose to permanently delete them from your device's
+photo library.
 
 ## 2. Your Responsibility
 
 You are solely responsible for the decisions you make while using the
-App, including which photos you choose to delete. The App provides a
-temporary grace period and a review screen before any permanent
-deletion, but you are responsible for reviewing your selections and
-maintaining your own backups of anything important before using the
-App's deletion features. Deletion of photos from your device's photo
-library, once confirmed, cannot be undone by the App.
+App, including which photos you choose to delete. The App never
+deletes anything automatically — photos you swipe away are held in a
+review screen until you explicitly confirm permanent deletion — but
+you are responsible for reviewing your selections and maintaining your
+own backups of anything important before using the App's deletion
+features. Deletion of photos from your device's photo library, once
+confirmed, cannot be undone by the App.
 
 ## 3. No Warranty
 

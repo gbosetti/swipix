@@ -8,9 +8,9 @@ const KEPT_KEY = '@swipix/kept';
  * browse back through past "keep" decisions and reconsider some,
  * without needing to remember which category each one came from.
  *
- * Mirrors TrashService's storage pattern, but there's no grace period
- * or permanent deletion here: keeping a photo isn't a destructive
- * action, so nothing needs to expire on its own.
+ * Mirrors TrashService's storage pattern, but there's no permanent
+ * deletion here: keeping a photo isn't a destructive action, so nothing
+ * needs an explicit "empty" step.
  */
 export const KeptService = {
   async addKept(asset: Asset): Promise<void> {

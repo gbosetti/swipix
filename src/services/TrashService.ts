@@ -3,17 +3,17 @@ import { PhotoLibraryService } from './PhotoLibraryService';
 import { Asset, TrashedAsset } from '../types';
 
 const TRASH_KEY = '@swipix/trash';
-const GRACE_PERIOD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
  * Deletion is NEVER instant. This is the single most important UX decision
- * in the whole app (errors must be reversible). A swipe-left
- * stages a photo here with a timestamp; only after the grace period AND
- * an explicit "empty trash" confirmation does anything become permanent.
+ * in the whole app (errors must be reversible). A swipe-left stages a
+ * photo here; it stays until an explicit "Empty Trash Now" confirmation
+ * makes it permanent — there's no automatic timer and nothing is ever
+ * deleted silently in the background.
  *
  * Keeping this logic in one service (rather than scattered through screens)
- * means the swipe UI never has to know or care about timing/persistence —
- * it just calls `moveToTrash(asset)`.
+ * means the swipe UI never has to know or care about persistence — it
+ * just calls `moveToTrash(asset)`.
  */
 export const TrashService = {
   async moveToTrash(asset: Asset): Promise<void> {
@@ -30,13 +30,6 @@ export const TrashService = {
 
   async getTrash(): Promise<TrashedAsset[]> {
     return this._load();
-  },
-
-  /** Items whose grace period has expired and are eligible for real deletion */
-  async getExpired(): Promise<TrashedAsset[]> {
-    const trash = await this._load();
-    const now = Date.now();
-    return trash.filter((item) => now - item.trashedAt >= GRACE_PERIOD_MS);
   },
 
   async permanentlyDelete(assetIds: string[]): Promise<void> {

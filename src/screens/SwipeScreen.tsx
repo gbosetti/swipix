@@ -78,9 +78,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
   }, [strategy, sessionKey]);
 
   const handleSwipeLeft = async (asset: Asset) => {
-    // Left = delete. Never permanent — see TrashService for the
-    // grace period. This is the single most important safety
-    // decision in the whole app.
+    // Left = delete. Never permanent — see TrashService: it only stages
+    // the photo, permanent deletion requires an explicit later action.
+    // This is the single most important safety decision in the whole app.
     const wasKept = await KeptService.isKept(asset.id);
     await TrashService.moveToTrash(asset);
     // Covers reconsidering a kept photo (Kept tab) and the rarer case of
