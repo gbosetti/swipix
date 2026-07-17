@@ -9,6 +9,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import RangeSlider from '../components/RangeSlider';
 import MonthYearPicker from '../components/MonthYearPicker';
+import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { SimilarPicturesStrategy } from '../strategies/SimilarPicturesStrategy';
 import { ExactDuplicatesStrategy } from '../strategies/ExactDuplicatesStrategy';
@@ -51,6 +52,11 @@ const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches Brightnes
 const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 const MONTH_YEAR_KEY = '@swipix/monthYear';
 
+// Sourceless fallback for when the specific categories below don't have
+// much to show (a light library, or one already mostly cleaned up) —
+// every remaining photo, shuffled, so there's always a productive "just
+// start swiping" option at the top of the list.
+const randomPhotosStrategy = new RandomPhotosStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
 const similarPicturesStrategy = new SimilarPicturesStrategy();
 const exactDuplicatesStrategy = new ExactDuplicatesStrategy();
@@ -179,6 +185,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // its own slider/picker actually changes (below), not on every render.
   useEffect(() => {
     if (!allPhotos) return;
+    refreshPreview(randomPhotosStrategy, allPhotos);
     refreshPreview(screenshotStrategy, allPhotos);
     refreshPreview(similarPicturesStrategy, allPhotos);
     refreshPreview(blurredImagesStrategy, allPhotos);
@@ -245,6 +252,17 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       )}
 
       <Text style={styles.sectionHeader}>{t('categoryPicker.sectionHeader')}</Text>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: randomPhotosStrategy })}
+      >
+        <TitleRow
+          title={randomPhotosStrategy.meta.title}
+          icon={randomPhotosStrategy.meta.icon}
+          previewUri={previews[randomPhotosStrategy.meta.id]}
+        />
+      </Pressable>
 
       <Pressable
         style={styles.card}

@@ -3,10 +3,13 @@ import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
 /**
- * No filter at all — every photo, shuffled. This is the "just start
- * swiping" entry point for people who don't want to pick a category
- * first; Fisher-Yates keeps the shuffle unbiased and doesn't mutate
- * the input array PhotoLibraryService handed us.
+ * No filter at all — every photo, shuffled. The "just start swiping"
+ * entry point for people who don't want to pick a category first, and
+ * the reliable fallback when the more specific categories don't turn up
+ * much (a light library, or one already mostly cleaned up). Surfaced
+ * both as the standalone Swipe tab and as the first card in Categories.
+ * Fisher-Yates keeps the shuffle unbiased and doesn't mutate the input
+ * array PhotoLibraryService handed us.
  */
 export class RandomPhotosStrategy extends CategoryStrategy {
   async matchCandidates(assets: Asset[]): Promise<Asset[]> {
