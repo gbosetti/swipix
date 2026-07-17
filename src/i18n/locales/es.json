@@ -92,24 +92,6 @@
     "light": "Claro",
     "dark": "Oscuro"
   },
-  "terms": {
-    "p1": "Swipix te ayuda a revisar y eliminar fotos en tu dispositivo. Eres responsable de las decisiones que tomes al usarla, incluidas las fotos que elimines.",
-    "p2": "Las fotos eliminadas van primero a la papelera, no de forma permanente: nunca se elimina nada automáticamente. Una vez que tú mismo confirmes la eliminación permanente, la aplicación no podrá deshacerla. Asegúrate de tener una copia de seguridad de lo importante en otro lugar.",
-    "p3": "La aplicación se ofrece \"tal cual\", sin garantía de ningún tipo, incluida la precisión de cualquier categorización automática de fotos (como borrosas, similares o de gran tamaño). En la máxima medida permitida por la ley, el desarrollador no se hace responsable de ninguna pérdida de fotos o datos, ni de pérdidas por eliminaciones equivocadas, derivadas del uso de esta aplicación.",
-    "p4": "Estos términos pueden cambiar en cualquier momento y por cualquier motivo, incluido para reflejar nuevas funciones, precios o requisitos legales. Si sigues usando la aplicación después de un cambio, se entiende que aceptas los términos actualizados.",
-    "p5": "Swipix puede añadir, modificar o eliminar funciones en cualquier momento, incluida la introducción de suscripciones, compras únicas o publicidad en el futuro.",
-    "p6": "Los términos completos están en TERMS.md.",
-    "p7": "¿Preguntas? Escribe a swipix@bosetti.dev"
-  },
-  "privacy": {
-    "p1": "Swipix no tiene servidor, ni cuentas, ni análisis o seguimiento publicitario: nada de lo que haces en la app se envía a ningún sitio.",
-    "p2": "El acceso a la galería de fotos se usa únicamente en tu dispositivo, en el momento en que usas la app, para que veas, organices y elimines las fotos y videos que elijas. Las fotos nunca se suben ni se comparten.",
-    "p3": "Algunas preferencias pequeñas —tu idioma, los ajustes de filtros y lo que hay actualmente en la papelera— se guardan localmente en tu dispositivo y se eliminan al desinstalar la app.",
-    "p4": "Swipix actualmente no tiene anuncios ni pagos. Si eso cambia en el futuro, esta política se actualizará primero y se te pedirá el consentimiento que sea necesario en ese momento.",
-    "p5": "Esta política puede actualizarse en cualquier momento. Si sigues usando la app después de un cambio, se entiende que aceptas la política actualizada.",
-    "p6": "Los detalles completos están en PRIVACY.md.",
-    "p7": "¿Preguntas? Escribe a swipix@bosetti.dev"
-  },
   "language": {
     "title": "Idioma",
     "system": "Predeterminado del sistema",

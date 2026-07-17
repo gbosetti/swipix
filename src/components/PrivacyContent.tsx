@@ -10,10 +10,12 @@ import { useColors } from '../theme/ThemeContext';
  * anywhere else — one source of truth so copies never drift. Full text
  * lives in PRIVACY.md.
  *
- * Translated like the rest of the UI, but note: these paragraphs are
- * plain-language translations, not legal review — if the wording needs
- * to hold up in a specific jurisdiction, have a native-speaking legal
- * reviewer check the es/it/fr copy in src/i18n/locales before shipping.
+ * Deliberately English-only: the `privacy.*` keys exist only in en.json,
+ * so i18next's fallbackLng renders this in English regardless of the
+ * active app language. Legal text is high-stakes to get precisely right
+ * and hard to verify in a language the team can't proofread, so it isn't
+ * translated — unlike the surrounding UI chrome (nav labels, buttons),
+ * which is.
  */
 export default function PrivacyContent() {
   const { t } = useTranslation();
