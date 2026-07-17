@@ -176,7 +176,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
         </View>
         <SwipeDeck
           data={candidates}
-          renderCard={(asset) => <PhotoCard asset={asset} />}
+          renderCard={(asset, isTop) => <PhotoCard asset={asset} isTop={isTop} />}
           onSwipeLeft={handleSwipeLeft}
           onSwipeRight={handleSwipeRight}
           onEmpty={() => setFinished(true)}

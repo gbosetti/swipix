@@ -37,6 +37,7 @@
       {
         "photosPermission": "Swipix accesses your photos and videos so you can review and clean them up. Nothing is ever uploaded or shared."
       }
-    ]
+    ],
+    "expo-video"
   ]
 }

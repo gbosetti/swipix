@@ -10,7 +10,10 @@ type SwipeDirection = 'left' | 'right';
 
 interface SwipeDeckProps<T extends { id: string }> {
   data: T[];
-  renderCard: (item: T) => React.ReactNode;
+  /** `isTop` is true only for the frontmost, interactive card — lets
+   * renderCard skip expensive work (like playing a video) for the cards
+   * stacked behind it. */
+  renderCard: (item: T, isTop: boolean) => React.ReactNode;
   onSwipeLeft?: (item: T) => void;
   onSwipeRight?: (item: T) => void;
   onEmpty?: () => void;
@@ -142,7 +145,7 @@ export default function SwipeDeck<T extends { id: string }>({
               style={[styles.card, getCardStyle()]}
               {...panResponder.panHandlers}
             >
-              {renderCard(item)}
+              {renderCard(item, true)}
               {rightLabel && (
                 <Animated.View
                   style={[styles.stamp, styles.rightStamp, { opacity: rightStampOpacity }]}
@@ -160,7 +163,7 @@ export default function SwipeDeck<T extends { id: string }>({
             </Animated.View>
           ) : (
             <Animated.View key={item.id} style={[styles.card, { top: 6 * i, opacity: 0.7 }]}>
-              {renderCard(item)}
+              {renderCard(item, false)}
             </Animated.View>
           );
         })}
