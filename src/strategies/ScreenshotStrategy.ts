@@ -8,7 +8,7 @@ import i18n from '../i18n';
  * the fastest and most trustworthy category available.
  */
 export class ScreenshotStrategy extends CategoryStrategy {
-  async match(assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     return assets.filter((asset) => asset.mediaSubtypes?.includes('screenshot'));
   }
 

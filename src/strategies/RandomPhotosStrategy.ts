@@ -9,7 +9,7 @@ import i18n from '../i18n';
  * the input array PhotoLibraryService handed us.
  */
 export class RandomPhotosStrategy extends CategoryStrategy {
-  async match(assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     const shuffled = [...assets];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));

@@ -13,7 +13,7 @@ const BURST_WINDOW_MS = 3 * 1000; // photos this close together are probably a b
  * to compare actual image content.
  */
 export class SimilarPicturesStrategy extends CategoryStrategy {
-  async match(assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     const sorted = [...assets].sort((a, b) => a.creationTime - b.creationTime);
     const clusters: Asset[][] = [];
 

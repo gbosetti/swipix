@@ -3,6 +3,7 @@
     "categories": "Categories",
     "swipe": "Swipe",
     "trash": "Trash",
+    "kept": "Kept",
     "settings": "Settings"
   },
   "nav": {
@@ -11,7 +12,8 @@
     "settings": "Settings",
     "terms": "Terms of Use",
     "privacy": "Privacy Policy",
-    "trash": "Trash"
+    "trash": "Trash",
+    "kept": "Kept"
   },
   "onboarding": {
     "step1Title": "Welcome to Swipix",
@@ -70,6 +72,11 @@
     "emptyAllBody_other": "This permanently deletes {{count}} photos. This cannot be undone.",
     "cancel": "Cancel",
     "delete": "Delete"
+  },
+  "kept": {
+    "emptyTitle": "Nothing kept yet",
+    "emptyBody": "Swipe right on any photo to save it here — you can always come back and reconsider.",
+    "swipeAgain": "Swipe Again"
   },
   "settings": {
     "preferencesSection": "Preferences",

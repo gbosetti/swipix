@@ -19,7 +19,7 @@ export class MonthYearStrategy extends CategoryStrategy {
     this.month = month;
   }
 
-  async match(_assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
     const start = new Date(this.year, this.month, 1).getTime();
     const end = new Date(this.year, this.month + 1, 1).getTime();
     const media = await PhotoLibraryService.getAllMedia();

@@ -22,7 +22,7 @@ export class ShortVideosStrategy extends CategoryStrategy {
     this.maxSeconds = maxSeconds;
   }
 
-  async match(_assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
     const media = await PhotoLibraryService.getAllMedia();
     return media.filter(
       (asset) =>

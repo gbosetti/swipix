@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CategoriesStackNavigator from './CategoriesStackNavigator';
 import SwipeTabNavigator from './SwipeTabNavigator';
 import TrashStackNavigator from './TrashStackNavigator';
+import KeptStackNavigator from './KeptStackNavigator';
 import SettingsStackNavigator from './SettingsStackNavigator';
 import { RootTabParamList } from './types';
 import { useTheme } from '../theme/ThemeContext';
@@ -18,6 +19,7 @@ const ICONS: Record<keyof RootTabParamList, { focused: IoniconName; unfocused: I
   CategoriesTab: { focused: 'pencil', unfocused: 'pencil-outline' },
   SwipeTab: { focused: 'swap-horizontal', unfocused: 'swap-horizontal-outline' },
   TrashTab: { focused: 'trash', unfocused: 'trash-outline' },
+  KeptTab: { focused: 'checkmark-circle', unfocused: 'checkmark-circle-outline' },
   SettingsTab: { focused: 'settings', unfocused: 'settings-outline' },
 };
 
@@ -69,6 +71,11 @@ export default function RootNavigator() {
           name="TrashTab"
           component={TrashStackNavigator}
           options={{ title: t('tabs.trash') }}
+        />
+        <Tab.Screen
+          name="KeptTab"
+          component={KeptStackNavigator}
+          options={{ title: t('tabs.kept') }}
         />
         <Tab.Screen
           name="SettingsTab"

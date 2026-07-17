@@ -13,7 +13,7 @@ import i18n from '../i18n';
  * Sources its own photos+videos dataset like Big Files and Short Videos.
  */
 export class ExactDuplicatesStrategy extends CategoryStrategy {
-  async match(_assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
     const media = await PhotoLibraryService.getAllMedia();
     const groups = new Map<string, Asset[]>();
 

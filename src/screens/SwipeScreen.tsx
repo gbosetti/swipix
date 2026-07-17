@@ -8,6 +8,7 @@ import SwipeDeck from '../components/SwipeDeck';
 import PhotoCard from '../components/PhotoCard';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { TrashService } from '../services/TrashService';
+import { KeptService } from '../services/KeptService';
 import { SwipeRouteParams } from '../navigation/types';
 import { Asset } from '../types';
 import { ColorPalette } from '../theme/colors';
@@ -16,6 +17,11 @@ import { useColors } from '../theme/ThemeContext';
 interface SwipeHistoryEntry {
   asset: Asset;
   direction: 'left' | 'right';
+  /** Only meaningful for 'left' entries: was this photo already in Kept
+   * immediately before this swipe (e.g. reconsidering it in the Kept
+   * tab)? If so, undoing this swipe needs to restore that status, not
+   * just pull it back out of Trash. */
+  wasKept?: boolean;
 }
 
 // After this many undos in a row, nudge the user toward Trash instead of
@@ -75,14 +81,23 @@ export default function SwipeScreen({ route, navigation }: Props) {
     // Left = delete. Never permanent — see TrashService for the
     // grace period. This is the single most important safety
     // decision in the whole app.
+    const wasKept = await KeptService.isKept(asset.id);
     await TrashService.moveToTrash(asset);
+    // Covers reconsidering a kept photo (Kept tab) and the rarer case of
+    // re-encountering an already-kept photo in a normal category swipe —
+    // a delete decision always overrides a previous keep, so a photo is
+    // never left sitting in both Trash and Kept at once. A harmless
+    // no-op otherwise (removing an id that was never kept).
+    await KeptService.removeKept(asset.id);
     setFreedCount((c) => c + 1);
-    setHistory((h) => [...h, { asset, direction: 'left' }]);
+    setHistory((h) => [...h, { asset, direction: 'left', wasKept }]);
     setConsecutiveUndos(0);
   };
 
-  const handleSwipeRight = (asset: Asset) => {
-    // Right = keep. No persisted side effect, just move to next card.
+  const handleSwipeRight = async (asset: Asset) => {
+    // Right = keep. Recorded in KeptService (not just this session) so
+    // it shows up in the Kept tab for reconsidering later.
+    await KeptService.addKept(asset);
     setHistory((h) => [...h, { asset, direction: 'right' }]);
     setConsecutiveUndos(0);
   };
@@ -94,7 +109,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
     setHistory((h) => h.slice(0, -1));
     if (last.direction === 'left') {
       await TrashService.restore(last.asset.id);
+      if (last.wasKept) {
+        await KeptService.addKept(last.asset);
+      }
       setFreedCount((c) => c - 1);
+    } else {
+      await KeptService.removeKept(last.asset.id);
     }
     setFinished(false);
     setUndoSignal((s) => s + 1);

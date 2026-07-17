@@ -3,6 +3,7 @@
     "categories": "Categorie",
     "swipe": "Scorri",
     "trash": "Cestino",
+    "kept": "Mantenute",
     "settings": "Impostazioni"
   },
   "nav": {
@@ -11,7 +12,8 @@
     "settings": "Impostazioni",
     "terms": "Termini di utilizzo",
     "privacy": "Informativa sulla privacy",
-    "trash": "Cestino"
+    "trash": "Cestino",
+    "kept": "Mantenute"
   },
   "onboarding": {
     "step1Title": "Benvenuto in Swipix",
@@ -70,6 +72,11 @@
     "emptyAllBody_other": "Questo elimina definitivamente {{count}} foto. Non può essere annullato.",
     "cancel": "Annulla",
     "delete": "Elimina"
+  },
+  "kept": {
+    "emptyTitle": "Non hai ancora mantenuto nulla",
+    "emptyBody": "Scorri a destra su qualsiasi foto per salvarla qui: potrai sempre tornare e riconsiderarla.",
+    "swipeAgain": "Scorri di nuovo"
   },
   "settings": {
     "preferencesSection": "Preferenze",

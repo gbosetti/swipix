@@ -23,7 +23,7 @@ export class BigFilesStrategy extends CategoryStrategy {
     this.maxBytes = maxBytes;
   }
 
-  async match(_assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
     const media = await PhotoLibraryService.getAllMedia();
     return media.filter((asset) => {
       const size = new File(asset.uri).size;

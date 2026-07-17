@@ -13,7 +13,7 @@ const BLUR_THRESHOLD = 60; // 0 (sharp) - 100 (very blurry)
  * edge-detection is wired in.
  */
 export class BlurredImagesStrategy extends CategoryStrategy {
-  async match(assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     const results: Asset[] = [];
     for (const asset of assets) {
       const blurScore = await getBlurScore(asset.uri);

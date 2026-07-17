@@ -18,7 +18,7 @@ export class BrightnessStrategy extends CategoryStrategy {
     this.maxBrightness = maxBrightness;
   }
 
-  async match(assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     const results: Asset[] = [];
     for (const asset of assets) {
       const brightness = await getAverageBrightness(asset.uri);

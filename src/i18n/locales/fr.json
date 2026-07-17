@@ -3,6 +3,7 @@
     "categories": "Catégories",
     "swipe": "Swiper",
     "trash": "Corbeille",
+    "kept": "Conservées",
     "settings": "Réglages"
   },
   "nav": {
@@ -11,7 +12,8 @@
     "settings": "Réglages",
     "terms": "Conditions d'utilisation",
     "privacy": "Politique de confidentialité",
-    "trash": "Corbeille"
+    "trash": "Corbeille",
+    "kept": "Conservées"
   },
   "onboarding": {
     "step1Title": "Bienvenue sur Swipix",
@@ -70,6 +72,11 @@
     "emptyAllBody_other": "Cela supprime définitivement {{count}} photos. Cette action est irréversible.",
     "cancel": "Annuler",
     "delete": "Supprimer"
+  },
+  "kept": {
+    "emptyTitle": "Rien de conservé pour l'instant",
+    "emptyBody": "Balayez vers la droite sur n'importe quelle photo pour l'enregistrer ici — vous pourrez toujours revenir et reconsidérer votre choix.",
+    "swipeAgain": "Swiper à nouveau"
   },
   "settings": {
     "preferencesSection": "Préférences",

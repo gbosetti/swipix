@@ -3,6 +3,7 @@
     "categories": "Categorías",
     "swipe": "Deslizar",
     "trash": "Papelera",
+    "kept": "Conservadas",
     "settings": "Ajustes"
   },
   "nav": {
@@ -11,7 +12,8 @@
     "settings": "Ajustes",
     "terms": "Términos de uso",
     "privacy": "Política de privacidad",
-    "trash": "Papelera"
+    "trash": "Papelera",
+    "kept": "Conservadas"
   },
   "onboarding": {
     "step1Title": "Bienvenido a Swipix",
@@ -70,6 +72,11 @@
     "emptyAllBody_other": "Esto elimina permanentemente {{count}} fotos. Esta acción no se puede deshacer.",
     "cancel": "Cancelar",
     "delete": "Eliminar"
+  },
+  "kept": {
+    "emptyTitle": "Aún no has conservado nada",
+    "emptyBody": "Desliza a la derecha en cualquier foto para guardarla aquí; siempre puedes volver y reconsiderarla.",
+    "swipeAgain": "Deslizar de nuevo"
   },
   "settings": {
     "preferencesSection": "Preferencias",

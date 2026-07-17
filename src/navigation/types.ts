@@ -15,6 +15,10 @@ export type TrashStackParamList = {
   Trash: undefined;
 };
 
+export type KeptStackParamList = {
+  Kept: undefined;
+};
+
 export type SettingsStackParamList = {
   Settings: undefined;
   Terms: undefined;
@@ -27,5 +31,6 @@ export type RootTabParamList = {
   CategoriesTab: undefined;
   SwipeTab: undefined;
   TrashTab: undefined;
+  KeptTab: undefined;
   SettingsTab: undefined;
 };
