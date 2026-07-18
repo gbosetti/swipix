@@ -6,8 +6,9 @@ import i18n from '../i18n';
 /**
  * Lets someone target a specific month (e.g. clear out an old trip or a
  * one-off backlog) by date rather than by what the photo looks like.
- * Needs videos alongside photos, so it sources its own dataset via
- * getAllMedia() like BigFiles/ShortVideos do.
+ * Photos only — MonthYearVideosStrategy is the Videos-section
+ * counterpart, so each section's "by month" card only ever surfaces its
+ * own media type, consistent with the rest of the Pictures/Videos split.
  */
 export class MonthYearStrategy extends CategoryStrategy {
   year: number;
@@ -23,7 +24,9 @@ export class MonthYearStrategy extends CategoryStrategy {
     const start = new Date(this.year, this.month, 1).getTime();
     const end = new Date(this.year, this.month + 1, 1).getTime();
     const media = await PhotoLibraryService.getAllMedia();
-    return media.filter((asset) => asset.creationTime >= start && asset.creationTime < end);
+    return media.filter(
+      (asset) => asset.mediaType === 'photo' && asset.creationTime >= start && asset.creationTime < end
+    );
   }
 
   get meta(): CategoryMeta {

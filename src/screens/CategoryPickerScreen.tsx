@@ -21,6 +21,7 @@ import { BigVideosStrategy } from '../strategies/BigVideosStrategy';
 import { BlurredImagesStrategy } from '../strategies/BlurredImagesStrategy';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { MonthYearStrategy } from '../strategies/MonthYearStrategy';
+import { MonthYearVideosStrategy } from '../strategies/MonthYearVideosStrategy';
 import { CategoryStrategy } from '../strategies/CategoryStrategy';
 import { TrashService } from '../services/TrashService';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
@@ -81,6 +82,7 @@ function toBigVideoMaxBytes(highMB: number): number {
 const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
 const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 const MONTH_YEAR_KEY = '@swipix/monthYear';
+const MONTH_YEAR_VIDEO_KEY = '@swipix/monthYearVideo';
 
 // Sourceless fallback for when the specific categories below don't have
 // much to show (a light library, or one already mostly cleaned up) —
@@ -101,6 +103,7 @@ const bigVideosDefaults = new BigVideosStrategy();
 const blurredImagesStrategy = new BlurredImagesStrategy();
 const brightnessDefaults = new BrightnessStrategy();
 const monthYearDefaults = new MonthYearStrategy(0, 0);
+const monthYearVideosDefaults = new MonthYearVideosStrategy(0, 0);
 
 // Composite because this screen needs to navigate both within its own
 // stack (to Swipe) and across to a sibling tab (Trash) when the user
@@ -178,6 +181,10 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
   const now = new Date();
   const [monthYear, setMonthYear] = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const [monthYearVideo, setMonthYearVideo] = useState({
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  });
   const [trashCount, setTrashCount] = useState(0);
   const [allPhotos, setAllPhotos] = useState<Asset[] | null>(null);
   const [previews, setPreviews] = useState<Record<string, string | VideoThumbnail | null>>({});
@@ -199,6 +206,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       if (stored != null) {
         const [year, month] = stored.split(',').map(Number);
         setMonthYear({ year, month });
+      }
+    });
+    AsyncStorage.getItem(MONTH_YEAR_VIDEO_KEY).then((stored) => {
+      if (stored != null) {
+        const [year, month] = stored.split(',').map(Number);
+        setMonthYearVideo({ year, month });
       }
     });
   }, []);
@@ -241,6 +254,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     );
     refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]), allPhotos);
     refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month), []);
+    refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month), []);
     // Deliberately only depends on allPhotos — this is the one-time initial
     // load. Re-runs for range/month changes happen at their own slider's
     // onSlidingComplete/onChange instead, not by reacting to this state.
@@ -285,6 +299,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     refreshPreview(new MonthYearStrategy(year, month), []);
   };
 
+  const handleMonthYearVideoChange = (year: number, month: number) => {
+    setMonthYearVideo({ year, month });
+    AsyncStorage.setItem(MONTH_YEAR_VIDEO_KEY, `${year},${month}`);
+    refreshPreview(new MonthYearVideosStrategy(year, month), []);
+  };
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <StorageMeter />
@@ -312,6 +332,27 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           previewUri={previews[randomPhotosStrategy.meta.id]}
         />
       </Pressable>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new MonthYearStrategy(monthYear.year, monthYear.month),
+            })
+          }
+        >
+          <TitleRow
+            title={monthYearDefaults.meta.title}
+            icon={monthYearDefaults.meta.icon}
+            previewUri={previews[monthYearDefaults.meta.id]}
+          />
+        </Pressable>
+        <MonthYearPicker
+          year={monthYear.year}
+          month={monthYear.month}
+          onChange={handleMonthYearChange}
+        />
+      </View>
 
       <Pressable
         style={styles.card}
@@ -410,27 +451,6 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         />
       </View>
 
-      <View style={styles.card}>
-        <Pressable
-          onPress={() =>
-            navigation.navigate('Swipe', {
-              strategy: new MonthYearStrategy(monthYear.year, monthYear.month),
-            })
-          }
-        >
-          <TitleRow
-            title={monthYearDefaults.meta.title}
-            icon={monthYearDefaults.meta.icon}
-            previewUri={previews[monthYearDefaults.meta.id]}
-          />
-        </Pressable>
-        <MonthYearPicker
-          year={monthYear.year}
-          month={monthYear.month}
-          onChange={handleMonthYearChange}
-        />
-      </View>
-
       <Text style={styles.sectionHeader}>{t('categoryPicker.videosSectionHeader')}</Text>
 
       <Pressable
@@ -443,6 +463,27 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           previewUri={previews[allVideosStrategy.meta.id]}
         />
       </Pressable>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month),
+            })
+          }
+        >
+          <TitleRow
+            title={monthYearVideosDefaults.meta.title}
+            icon={monthYearVideosDefaults.meta.icon}
+            previewUri={previews[monthYearVideosDefaults.meta.id]}
+          />
+        </Pressable>
+        <MonthYearPicker
+          year={monthYearVideo.year}
+          month={monthYearVideo.month}
+          onChange={handleMonthYearVideoChange}
+        />
+      </View>
 
       <View style={styles.card}>
         <Pressable
