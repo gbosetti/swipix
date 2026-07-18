@@ -68,6 +68,7 @@
     "pendingDeletion": "In attesa di eliminazione",
     "restore": "Ripristina",
     "emptyTrashNow": "Svuota il cestino ora",
+    "adSupportNote": "Questo mostrerà un breve annuncio per sostenere Swipix.",
     "emptyAllTitle": "Svuotare il cestino?",
     "emptyAllBody_one": "Questo elimina definitivamente {{count}} foto. Non può essere annullato.",
     "emptyAllBody_other": "Questo elimina definitivamente {{count}} foto. Non può essere annullato.",
@@ -77,7 +78,11 @@
   "kept": {
     "emptyTitle": "Non hai ancora mantenuto nulla",
     "emptyBody": "Scorri a destra su qualsiasi foto per salvarla qui: potrai sempre tornare e riconsiderarla.",
-    "swipeAgain": "Scorri di nuovo"
+    "swipeAgain": "Scorri di nuovo",
+    "swipeAgainAll": "Scorri tutte di nuovo",
+    "swipeAgainAllTitle": "Scorrere tutte di nuovo?",
+    "swipeAgainAllBody_one": "Questo rimette {{count}} foto nella tua coda di scorrimento. Nulla viene eliminato.",
+    "swipeAgainAllBody_other": "Questo rimette {{count}} foto nella tua coda di scorrimento. Nulla viene eliminato."
   },
   "settings": {
     "preferencesSection": "Preferenze",

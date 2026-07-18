@@ -68,6 +68,7 @@
     "pendingDeletion": "Pendiente de eliminación",
     "restore": "Restaurar",
     "emptyTrashNow": "Vaciar papelera ahora",
+    "adSupportNote": "Esto mostrará un breve anuncio para apoyar a Swipix.",
     "emptyAllTitle": "¿Vaciar papelera?",
     "emptyAllBody_one": "Esto elimina permanentemente {{count}} foto. Esta acción no se puede deshacer.",
     "emptyAllBody_other": "Esto elimina permanentemente {{count}} fotos. Esta acción no se puede deshacer.",
@@ -77,7 +78,11 @@
   "kept": {
     "emptyTitle": "Aún no has conservado nada",
     "emptyBody": "Desliza a la derecha en cualquier foto para guardarla aquí; siempre puedes volver y reconsiderarla.",
-    "swipeAgain": "Deslizar de nuevo"
+    "swipeAgain": "Deslizar de nuevo",
+    "swipeAgainAll": "Deslizar todas de nuevo",
+    "swipeAgainAllTitle": "¿Deslizar todas de nuevo?",
+    "swipeAgainAllBody_one": "Esto devuelve {{count}} foto a tu cola de deslizamiento. No se elimina nada.",
+    "swipeAgainAllBody_other": "Esto devuelve {{count}} fotos a tu cola de deslizamiento. No se elimina nada."
   },
   "settings": {
     "preferencesSection": "Preferencias",

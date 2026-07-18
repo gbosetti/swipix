@@ -68,6 +68,7 @@
     "pendingDeletion": "Pending deletion",
     "restore": "Restore",
     "emptyTrashNow": "Empty Trash Now",
+    "adSupportNote": "This will show a short ad to help support Swipix.",
     "emptyAllTitle": "Empty Trash?",
     "emptyAllBody_one": "This permanently deletes {{count}} photo. This cannot be undone.",
     "emptyAllBody_other": "This permanently deletes {{count}} photos. This cannot be undone.",
@@ -77,7 +78,11 @@
   "kept": {
     "emptyTitle": "Nothing kept yet",
     "emptyBody": "Swipe right on any photo to save it here — you can always come back and reconsider.",
-    "swipeAgain": "Swipe Again"
+    "swipeAgain": "Swipe Again",
+    "swipeAgainAll": "Swipe All Again",
+    "swipeAgainAllTitle": "Swipe all again?",
+    "swipeAgainAllBody_one": "This puts {{count}} photo back into your swipe queue. Nothing is deleted.",
+    "swipeAgainAllBody_other": "This puts {{count}} photos back into your swipe queue. Nothing is deleted."
   },
   "settings": {
     "preferencesSection": "Preferences",

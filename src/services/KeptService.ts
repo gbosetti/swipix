@@ -28,6 +28,14 @@ export const KeptService = {
     await this._save(updated);
   },
 
+  /** Un-marks every kept photo at once — same effect as tapping "Swipe
+   * Again" on each one individually, just without doing it one by one.
+   * Still not destructive: every photo just goes back into the normal,
+   * undecided pool to be swiped on again later. */
+  async clearAll(): Promise<void> {
+    await this._save([]);
+  },
+
   async isKept(assetId: string): Promise<boolean> {
     const kept = await this._load();
     return kept.some((item) => item.id === assetId);

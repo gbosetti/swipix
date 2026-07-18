@@ -68,6 +68,7 @@
     "pendingDeletion": "En attente de suppression",
     "restore": "Restaurer",
     "emptyTrashNow": "Vider la corbeille maintenant",
+    "adSupportNote": "Cela affichera une courte publicité pour soutenir Swipix.",
     "emptyAllTitle": "Vider la corbeille ?",
     "emptyAllBody_one": "Cela supprime définitivement {{count}} photo. Cette action est irréversible.",
     "emptyAllBody_other": "Cela supprime définitivement {{count}} photos. Cette action est irréversible.",
@@ -77,7 +78,11 @@
   "kept": {
     "emptyTitle": "Rien de conservé pour l'instant",
     "emptyBody": "Balayez vers la droite sur n'importe quelle photo pour l'enregistrer ici — vous pourrez toujours revenir et reconsidérer votre choix.",
-    "swipeAgain": "Swiper à nouveau"
+    "swipeAgain": "Swiper à nouveau",
+    "swipeAgainAll": "Swiper toutes à nouveau",
+    "swipeAgainAllTitle": "Swiper toutes à nouveau ?",
+    "swipeAgainAllBody_one": "Cela remet {{count}} photo dans votre file de balayage. Rien n'est supprimé.",
+    "swipeAgainAllBody_other": "Cela remet {{count}} photos dans votre file de balayage. Rien n'est supprimé."
   },
   "settings": {
     "preferencesSection": "Préférences",

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, FlatList, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, FlatList, Modal, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import type { VideoThumbnail } from 'expo-video';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { KeptService } from '../services/KeptService';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
+import { showInterstitialAd } from '../services/AdService';
 import { Asset } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
@@ -19,9 +20,13 @@ import VideoCard from '../components/VideoCard';
  * photo itself; kept status only exists so category strategies stop
  * offering it as a candidate. Un-marking it just drops it back into the
  * normal, undecided pool, where it'll reappear next time a matching
- * category is swiped. No bulk "clear all" here, unlike Trash — there's
- * no safety/storage reason to ever force-empty a list of things you
- * chose to keep.
+ * category is swiped.
+ *
+ * Unlike Trash's "Empty Trash Now," the bulk action here ("Swipe Again
+ * on All") isn't destructive — nothing is deleted, photos just go back
+ * into the swipe queue — so it doesn't need the same scary/red
+ * confirmation styling, just a plain heads-up that it affects everything
+ * in the list at once.
  */
 export default function KeptScreen() {
   const { t } = useTranslation();
@@ -57,6 +62,26 @@ export default function KeptScreen() {
     await KeptService.removeKept(assetId);
     setPreviewItem((current) => (current?.id === assetId ? null : current));
     refresh();
+  };
+
+  const handleSwipeAgainAll = () => {
+    if (!kept || kept.length === 0) return;
+    Alert.alert(t('kept.swipeAgainAllTitle'), t('kept.swipeAgainAllBody', { count: kept.length }), [
+      { text: t('trash.cancel'), style: 'cancel' },
+      {
+        text: t('kept.swipeAgainAll'),
+        onPress: async () => {
+          // Same non-blocking pattern as Trash's "Empty Trash Now": the ad
+          // shows first when available, but always resolves within its own
+          // timeout, so a missing ad delays this by at most a few seconds,
+          // never blocks it.
+          await showInterstitialAd();
+          await KeptService.clearAll();
+          setPreviewItem(null);
+          refresh();
+        },
+      },
+    ]);
   };
 
   if (kept === null) {
@@ -116,6 +141,10 @@ export default function KeptScreen() {
           );
         }}
       />
+      <Text style={styles.adSupportNote}>{t('trash.adSupportNote')}</Text>
+      <Pressable style={styles.swipeAgainAllButton} onPress={handleSwipeAgainAll}>
+        <Text style={styles.swipeAgainAllButtonText}>{t('kept.swipeAgainAll')}</Text>
+      </Pressable>
 
       <Modal
         visible={previewItem !== null}
@@ -191,6 +220,23 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: 14,
     },
     swipeAgainButtonText: { color: colors.onBrand, fontSize: 13, fontWeight: '600' },
+    adSupportNote: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      textAlign: 'center',
+      marginTop: 16,
+      marginHorizontal: 24,
+    },
+    swipeAgainAllButton: {
+      marginTop: 8,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      backgroundColor: colors.accent,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    swipeAgainAllButtonText: { color: colors.onBrand, fontSize: 16, fontWeight: '600' },
     previewOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.92)',

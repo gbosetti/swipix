@@ -148,6 +148,7 @@ export default function TrashScreen() {
           );
         }}
       />
+      <Text style={styles.adSupportNote}>{t('trash.adSupportNote')}</Text>
       <Pressable style={styles.emptyButton} onPress={handleEmptyAll}>
         <Text style={styles.emptyButtonText}>{t('trash.emptyTrashNow')}</Text>
       </Pressable>
@@ -218,8 +219,17 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: 14,
     },
     restoreButtonText: { color: colors.onBrand, fontSize: 13, fontWeight: '600' },
+    adSupportNote: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      textAlign: 'center',
+      marginTop: 16,
+      marginHorizontal: 24,
+    },
     emptyButton: {
-      margin: 16,
+      marginTop: 8,
+      marginHorizontal: 16,
+      marginBottom: 16,
       backgroundColor: colors.danger,
       borderRadius: 14,
       paddingVertical: 14,
