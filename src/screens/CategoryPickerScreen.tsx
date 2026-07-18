@@ -16,7 +16,8 @@ import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { DuplicatesAndSimilarStrategy } from '../strategies/DuplicatesAndSimilarStrategy';
 import { AllVideosStrategy } from '../strategies/AllVideosStrategy';
 import { ShortVideosStrategy } from '../strategies/ShortVideosStrategy';
-import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
+import { BigPicturesStrategy } from '../strategies/BigPicturesStrategy';
+import { BigVideosStrategy } from '../strategies/BigVideosStrategy';
 import { BlurredImagesStrategy } from '../strategies/BlurredImagesStrategy';
 import { BrightnessStrategy } from '../strategies/BrightnessStrategy';
 import { MonthYearStrategy } from '../strategies/MonthYearStrategy';
@@ -57,8 +58,26 @@ async function getPreviewUri(
 // first (metadata-based, no judgment call), stub-based analysis last.
 const DEFAULT_SHORT_VIDEO_RANGE: [number, number] = [0, 3]; // matches ShortVideosStrategy's own defaults
 const SHORT_VIDEO_RANGE_KEY = '@swipix/shortVideoRange';
-const DEFAULT_BIG_FILE_RANGE_MB: [number, number] = [20, 200]; // matches BigFilesStrategy's own defaults
-const BIG_FILE_RANGE_KEY = '@swipix/bigFileRangeMB';
+const DEFAULT_BIG_PICTURE_RANGE_MB: [number, number] = [20, 200]; // matches BigPicturesStrategy's own defaults
+const BIG_PICTURE_RANGE_KEY = '@swipix/bigPictureRangeMB';
+// Same "ceiling means and above, not capped" logic as Big Videos below —
+// a giant scanned TIFF or uncompressed export could still clear this,
+// however unlikely that is compared to video.
+const BIG_PICTURE_SLIDER_MAX_MB = 200;
+function toBigPictureMaxBytes(highMB: number): number {
+  return highMB >= BIG_PICTURE_SLIDER_MAX_MB ? Infinity : highMB * 1024 * 1024;
+}
+const DEFAULT_BIG_VIDEO_RANGE_MB: [number, number] = [100, 2000]; // matches BigVideosStrategy's own defaults
+const BIG_VIDEO_RANGE_KEY = '@swipix/bigVideoRangeMB';
+// However high this goes, someone's video is bigger — 8K footage, drone
+// clips, screen recordings can all clear 5GB. So the slider's ceiling
+// doesn't mean "cap at exactly 5GB," it means "and anything above,"
+// via toBigVideoMaxBytes below — a hard cap here would silently exclude
+// the very files a "big videos" filter exists to catch.
+const BIG_VIDEO_SLIDER_MAX_MB = 5000;
+function toBigVideoMaxBytes(highMB: number): number {
+  return highMB >= BIG_VIDEO_SLIDER_MAX_MB ? Infinity : highMB * 1024 * 1024;
+}
 const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
 const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 const MONTH_YEAR_KEY = '@swipix/monthYear';
@@ -77,7 +96,8 @@ const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
 // first import, surviving a runtime language change.
 const allVideosStrategy = new AllVideosStrategy();
 const shortVideosDefaults = new ShortVideosStrategy();
-const bigFilesDefaults = new BigFilesStrategy();
+const bigPicturesDefaults = new BigPicturesStrategy();
+const bigVideosDefaults = new BigVideosStrategy();
 const blurredImagesStrategy = new BlurredImagesStrategy();
 const brightnessDefaults = new BrightnessStrategy();
 const monthYearDefaults = new MonthYearStrategy(0, 0);
@@ -153,7 +173,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [shortVideoRange, setShortVideoRange] = useState(DEFAULT_SHORT_VIDEO_RANGE);
-  const [bigFileRangeMB, setBigFileRangeMB] = useState(DEFAULT_BIG_FILE_RANGE_MB);
+  const [bigPictureRangeMB, setBigPictureRangeMB] = useState(DEFAULT_BIG_PICTURE_RANGE_MB);
+  const [bigVideoRangeMB, setBigVideoRangeMB] = useState(DEFAULT_BIG_VIDEO_RANGE_MB);
   const [brightnessRange, setBrightnessRange] = useState(DEFAULT_BRIGHTNESS_RANGE);
   const now = new Date();
   const [monthYear, setMonthYear] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -171,7 +192,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       });
     };
     loadRange(SHORT_VIDEO_RANGE_KEY, setShortVideoRange);
-    loadRange(BIG_FILE_RANGE_KEY, setBigFileRangeMB);
+    loadRange(BIG_PICTURE_RANGE_KEY, setBigPictureRangeMB);
+    loadRange(BIG_VIDEO_RANGE_KEY, setBigVideoRangeMB);
     loadRange(BRIGHTNESS_RANGE_KEY, setBrightnessRange);
     AsyncStorage.getItem(MONTH_YEAR_KEY).then((stored) => {
       if (stored != null) {
@@ -207,7 +229,14 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     refreshPreview(allVideosStrategy, []);
     refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), []);
     refreshPreview(
-      new BigFilesStrategy(bigFileRangeMB[0] * 1024 * 1024, bigFileRangeMB[1] * 1024 * 1024),
+      new BigPicturesStrategy(
+        bigPictureRangeMB[0] * 1024 * 1024,
+        toBigPictureMaxBytes(bigPictureRangeMB[1])
+      ),
+      []
+    );
+    refreshPreview(
+      new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1])),
       []
     );
     refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]), allPhotos);
@@ -235,9 +264,14 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     refreshPreview(new ShortVideosStrategy(low, high), []);
   };
 
-  const persistBigFileRange = (low: number, high: number) => {
-    AsyncStorage.setItem(BIG_FILE_RANGE_KEY, `${low},${high}`);
-    refreshPreview(new BigFilesStrategy(low * 1024 * 1024, high * 1024 * 1024), []);
+  const persistBigPictureRange = (low: number, high: number) => {
+    AsyncStorage.setItem(BIG_PICTURE_RANGE_KEY, `${low},${high}`);
+    refreshPreview(new BigPicturesStrategy(low * 1024 * 1024, toBigPictureMaxBytes(high)), []);
+  };
+
+  const persistBigVideoRange = (low: number, high: number) => {
+    AsyncStorage.setItem(BIG_VIDEO_RANGE_KEY, `${low},${high}`);
+    refreshPreview(new BigVideosStrategy(low * 1024 * 1024, toBigVideoMaxBytes(high)), []);
   };
 
   const persistBrightnessRange = (low: number, high: number) => {
@@ -305,30 +339,35 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new BigFilesStrategy(
-                bigFileRangeMB[0] * 1024 * 1024,
-                bigFileRangeMB[1] * 1024 * 1024
+              strategy: new BigPicturesStrategy(
+                bigPictureRangeMB[0] * 1024 * 1024,
+                toBigPictureMaxBytes(bigPictureRangeMB[1])
               ),
             })
           }
         >
           <TitleRow
-            title={bigFilesDefaults.meta.title}
-            icon={bigFilesDefaults.meta.icon}
-            previewUri={previews[bigFilesDefaults.meta.id]}
+            title={bigPicturesDefaults.meta.title}
+            icon={bigPicturesDefaults.meta.icon}
+            previewUri={previews[bigPicturesDefaults.meta.id]}
           />
         </Pressable>
         <Text style={styles.sliderLabel}>
-          {t('categoryPicker.bigFilesLabel', { min: bigFileRangeMB[0], max: bigFileRangeMB[1] })}
+          {bigPictureRangeMB[1] >= BIG_PICTURE_SLIDER_MAX_MB
+            ? t('categoryPicker.bigPicturesLabelUnbounded', { min: bigPictureRangeMB[0] })
+            : t('categoryPicker.bigPicturesLabel', {
+                min: bigPictureRangeMB[0],
+                max: bigPictureRangeMB[1],
+              })}
         </Text>
         <RangeSlider
           minimumValue={5}
-          maximumValue={200}
+          maximumValue={BIG_PICTURE_SLIDER_MAX_MB}
           step={5}
-          lowValue={bigFileRangeMB[0]}
-          highValue={bigFileRangeMB[1]}
-          onValuesChange={(low, high) => setBigFileRangeMB([low, high])}
-          onSlidingComplete={persistBigFileRange}
+          lowValue={bigPictureRangeMB[0]}
+          highValue={bigPictureRangeMB[1]}
+          onValuesChange={(low, high) => setBigPictureRangeMB([low, high])}
+          onSlidingComplete={persistBigPictureRange}
         />
       </View>
 
@@ -430,6 +469,39 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           highValue={shortVideoRange[1]}
           onValuesChange={(low, high) => setShortVideoRange([low, high])}
           onSlidingComplete={persistShortVideoRange}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new BigVideosStrategy(
+                bigVideoRangeMB[0] * 1024 * 1024,
+                toBigVideoMaxBytes(bigVideoRangeMB[1])
+              ),
+            })
+          }
+        >
+          <TitleRow
+            title={bigVideosDefaults.meta.title}
+            icon={bigVideosDefaults.meta.icon}
+            previewUri={previews[bigVideosDefaults.meta.id]}
+          />
+        </Pressable>
+        <Text style={styles.sliderLabel}>
+          {bigVideoRangeMB[1] >= BIG_VIDEO_SLIDER_MAX_MB
+            ? t('categoryPicker.bigVideosLabelUnbounded', { min: bigVideoRangeMB[0] })
+            : t('categoryPicker.bigVideosLabel', { min: bigVideoRangeMB[0], max: bigVideoRangeMB[1] })}
+        </Text>
+        <RangeSlider
+          minimumValue={20}
+          maximumValue={BIG_VIDEO_SLIDER_MAX_MB}
+          step={20}
+          lowValue={bigVideoRangeMB[0]}
+          highValue={bigVideoRangeMB[1]}
+          onValuesChange={(low, high) => setBigVideoRangeMB([low, high])}
+          onSlidingComplete={persistBigVideoRange}
         />
       </View>
     </ScrollView>

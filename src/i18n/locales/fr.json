@@ -40,7 +40,10 @@
     "trashBanner_one": "{{count}} photo en attente de suppression",
     "trashBanner_other": "{{count}} photos en attente de suppression",
     "shortVideosLabel": "Repérer les vidéos entre {{min}}s et {{max}}s de durée",
-    "bigFilesLabel": "Repérer les photos et vidéos entre {{min}} et {{max}} Mo",
+    "bigPicturesLabel": "Repérer les photos entre {{min}} et {{max}} Mo",
+    "bigPicturesLabelUnbounded": "Repérer les photos à partir de {{min}} Mo",
+    "bigVideosLabel": "Repérer les vidéos entre {{min}} et {{max}} Mo",
+    "bigVideosLabelUnbounded": "Repérer les vidéos à partir de {{min}} Mo",
     "brightnessLabel": "Repérer les photos avec une luminosité entre {{min}} et {{max}}/255"
   },
   "swipe": {
@@ -125,7 +128,8 @@
     "duplicates-similar": "Doublons et similaires",
     "short-videos": "Vidéos courtes",
     "all-videos": "Toutes les vidéos",
-    "big-files": "Fichiers volumineux",
+    "big-pictures": "Photos volumineuses",
+    "big-videos": "Vidéos volumineuses",
     "blurred-images": "Photos floues",
     "dark-photos": "Photos sombres",
     "month-year": "Par mois",

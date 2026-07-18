@@ -8,12 +8,12 @@ const DEFAULT_MIN_BYTES = 20 * 1024 * 1024; // 20 MB
 const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
 
 /**
- * Large files are usually videos, not photos — this is the one category
- * that needs the broader photos+videos fetch, so unlike every other
- * strategy here it sources its own dataset via getAllMedia() rather than
- * filtering whatever SwipeScreen already fetched (which is photo-only).
+ * Large photos specifically — split out from the old combined "Big
+ * Files" category so photos and videos get their own size range and
+ * their own place in the list (Pictures vs Videos section) instead of
+ * one generic bucket that could silently be either.
  */
-export class BigFilesStrategy extends CategoryStrategy {
+export class BigPicturesStrategy extends CategoryStrategy {
   minBytes: number;
   maxBytes: number;
 
@@ -26,6 +26,7 @@ export class BigFilesStrategy extends CategoryStrategy {
   async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
     const media = await PhotoLibraryService.getAllMedia();
     return media.filter((asset) => {
+      if (asset.mediaType !== 'photo') return false;
       const size = new File(asset.uri).size;
       return size >= this.minBytes && size <= this.maxBytes;
     });
@@ -33,8 +34,8 @@ export class BigFilesStrategy extends CategoryStrategy {
 
   get meta(): CategoryMeta {
     return {
-      id: 'big-files',
-      title: i18n.t('categories.big-files'),
+      id: 'big-pictures',
+      title: i18n.t('categories.big-pictures'),
       icon: 'archive',
     };
   }

@@ -40,7 +40,10 @@
     "trashBanner_one": "{{count}} foto pendiente de eliminación",
     "trashBanner_other": "{{count}} fotos pendientes de eliminación",
     "shortVideosLabel": "Marca los videos de entre {{min}}s y {{max}}s de duración",
-    "bigFilesLabel": "Marca fotos y videos de entre {{min}} y {{max}} MB",
+    "bigPicturesLabel": "Marca fotos de entre {{min}} y {{max}} MB",
+    "bigPicturesLabelUnbounded": "Marca fotos de {{min}} MB en adelante",
+    "bigVideosLabel": "Marca videos de entre {{min}} y {{max}} MB",
+    "bigVideosLabelUnbounded": "Marca videos de {{min}} MB en adelante",
     "brightnessLabel": "Marca fotos con brillo entre {{min}} y {{max}}/255"
   },
   "swipe": {
@@ -125,7 +128,8 @@
     "duplicates-similar": "Duplicados y similares",
     "short-videos": "Videos cortos",
     "all-videos": "Todos los videos",
-    "big-files": "Archivos grandes",
+    "big-pictures": "Fotos grandes",
+    "big-videos": "Videos grandes",
     "blurred-images": "Fotos borrosas",
     "dark-photos": "Fotos oscuras",
     "month-year": "Por mes",
