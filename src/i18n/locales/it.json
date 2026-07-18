@@ -122,8 +122,7 @@
   },
   "categories": {
     "screenshots": "Screenshot",
-    "similar-pictures": "Foto simili",
-    "exact-duplicates": "File duplicati",
+    "duplicates-similar": "Duplicati e simili",
     "short-videos": "Video brevi",
     "all-videos": "Tutti i video",
     "big-files": "File di grandi dimensioni",

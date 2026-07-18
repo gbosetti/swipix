@@ -13,8 +13,7 @@ import RangeSlider from '../components/RangeSlider';
 import MonthYearPicker from '../components/MonthYearPicker';
 import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
-import { SimilarPicturesStrategy } from '../strategies/SimilarPicturesStrategy';
-import { ExactDuplicatesStrategy } from '../strategies/ExactDuplicatesStrategy';
+import { DuplicatesAndSimilarStrategy } from '../strategies/DuplicatesAndSimilarStrategy';
 import { AllVideosStrategy } from '../strategies/AllVideosStrategy';
 import { ShortVideosStrategy } from '../strategies/ShortVideosStrategy';
 import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
@@ -70,8 +69,7 @@ const MONTH_YEAR_KEY = '@swipix/monthYear';
 // start swiping" option at the top of the list.
 const randomPhotosStrategy = new RandomPhotosStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
-const similarPicturesStrategy = new SimilarPicturesStrategy();
-const exactDuplicatesStrategy = new ExactDuplicatesStrategy();
+const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
 // These four hold onto the strategy instance itself (not a pre-read
 // `.meta`) so `.meta.title` is re-evaluated fresh on every render — the
 // title comes from a live translation lookup, and freezing it once at
@@ -204,9 +202,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     if (!allPhotos) return;
     refreshPreview(randomPhotosStrategy, allPhotos);
     refreshPreview(screenshotStrategy, allPhotos);
-    refreshPreview(similarPicturesStrategy, allPhotos);
+    refreshPreview(duplicatesAndSimilarStrategy, []);
     refreshPreview(blurredImagesStrategy, allPhotos);
-    refreshPreview(exactDuplicatesStrategy, []);
     refreshPreview(allVideosStrategy, []);
     refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), []);
     refreshPreview(
@@ -295,23 +292,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: similarPicturesStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategy: duplicatesAndSimilarStrategy })}
       >
         <TitleRow
-          title={similarPicturesStrategy.meta.title}
-          icon={similarPicturesStrategy.meta.icon}
-          previewUri={previews[similarPicturesStrategy.meta.id]}
-        />
-      </Pressable>
-
-      <Pressable
-        style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: exactDuplicatesStrategy })}
-      >
-        <TitleRow
-          title={exactDuplicatesStrategy.meta.title}
-          icon={exactDuplicatesStrategy.meta.icon}
-          previewUri={previews[exactDuplicatesStrategy.meta.id]}
+          title={duplicatesAndSimilarStrategy.meta.title}
+          icon={duplicatesAndSimilarStrategy.meta.icon}
+          previewUri={previews[duplicatesAndSimilarStrategy.meta.id]}
         />
       </Pressable>
 

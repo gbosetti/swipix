@@ -122,8 +122,7 @@
   },
   "categories": {
     "screenshots": "Capturas de pantalla",
-    "similar-pictures": "Fotos similares",
-    "exact-duplicates": "Archivos duplicados",
+    "duplicates-similar": "Duplicados y similares",
     "short-videos": "Videos cortos",
     "all-videos": "Todos los videos",
     "big-files": "Archivos grandes",

@@ -140,8 +140,7 @@
   },
   "categories": {
     "screenshots": "Screenshots",
-    "similar-pictures": "Similar Photos",
-    "exact-duplicates": "Duplicate Files",
+    "duplicates-similar": "Duplicates & Similar",
     "short-videos": "Short Videos",
     "all-videos": "All Videos",
     "big-files": "Big Files",
