@@ -1,6 +1,6 @@
 # Terms of Use
 
-_Last updated: 2026-07-18_
+_Last updated: 2026-07-18 (rev. 2)_
 
 By using Swipix ("the App"), you agree to these terms. If you do not
 agree, do not use the App.
@@ -59,11 +59,14 @@ occasionally to stay informed.
 ## 6. Changes to the App and Future Features
 
 Swipix may add, change, or discontinue features at any time. This
-includes introducing monetization such as subscriptions, one-time
-purchases, or advertising, now or in the future. Where a new feature
-would require additional permissions or collect additional data, we
-will seek your consent for that specific feature at the time it's
-introduced, consistent with our approach to privacy.
+currently includes a single advertisement, served by Google AdMob,
+shown when you choose to permanently empty your trash — emptying your
+trash never depends on that ad loading. Swipix may also introduce
+further monetization, such as subscriptions or one-time purchases, in
+the future. Where a new feature would require additional permissions or
+collect additional data, we will seek your consent for that specific
+feature at the time it's introduced, consistent with our approach to
+privacy.
 
 ## 7. Governing Law
 

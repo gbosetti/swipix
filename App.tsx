@@ -16,7 +16,7 @@ const CONSENT_KEY = '@swipix/consent';
 // again — consent is tied to a specific, provable version and
 // timestamp, not just "the user tapped Accept at some point." Keep in
 // sync with both docs' "Last updated" dates.
-const CONSENT_VERSION = '2026-07-18';
+const CONSENT_VERSION = '2026-07-18-2';
 
 interface Consent {
   version: string;

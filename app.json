@@ -38,6 +38,13 @@
         "photosPermission": "Swipix accesses your photos and videos so you can review and clean them up. Nothing is ever uploaded or shared."
       }
     ],
-    "expo-video"
+    "expo-video",
+    [
+      "react-native-google-mobile-ads",
+      {
+        "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+        "iosAppId": "ca-app-pub-4602631443411685~3043029488"
+      }
+    ]
   ]
 }

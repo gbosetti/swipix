@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-07-18_
+_Last updated: 2026-07-18 (rev. 2)_
 
 This policy explains what Swipix ("the App") does and does not do with
 your data. The short version: everything happens on your device, and
@@ -9,9 +9,11 @@ nothing is collected, transmitted, or stored anywhere else.
 ## 1. No Data Collection
 
 Swipix does not have a backend, does not require an account, and does
-not use analytics, tracking, or advertising SDKs. Nothing you do in the
-App — which photos you view, keep, delete, or restore — is sent
-anywhere. There is no server for it to go to.
+not use analytics or activity tracking. The one exception is Google
+AdMob, used to show a single, non-personalized ad when you choose to
+permanently empty your trash — see Section 6 for what that involves.
+Outside of that one moment, nothing you do in the App — which photos
+you view, keep, delete, or restore — is sent anywhere.
 
 ## 2. Photo Library Access
 
@@ -48,15 +50,22 @@ The App is not directed at children and does not knowingly collect any
 data from anyone, regardless of age — consistent with Section 1, there
 is nothing to collect in the first place.
 
-## 6. Future Changes: Ads, Purchases, and Third-Party Services
+## 6. Advertising and Future Changes
 
-Swipix currently launches with no ads and no payments. If that
-changes — for example, by introducing advertising, subscriptions, or
-one-time purchases — those features may involve third-party services
-(such as an ad network or a payment processor) that process data under
-their own privacy practices. Before any such feature ships, this
-policy will be updated to describe what's involved, and the App will
-ask for any consent required at that time.
+Swipix shows one ad, served by Google AdMob, when you choose to
+permanently empty your trash. Ads are requested as non-personalized:
+AdMob does not use your activity in the App, or an advertising
+identifier, to build a profile or target ads to you. Showing an ad
+still requires sending Google some standard technical data (such as
+your IP address and general device information) needed to serve and
+measure it — the same baseline data any ad SDK requires. Emptying your
+trash never depends on an ad actually loading; if none is available,
+deletion proceeds regardless.
+
+Swipix has no payments currently. If that changes — for example, by
+introducing subscriptions or one-time purchases — this policy will be
+updated to describe what's involved, and the App will ask for any
+consent required at that time.
 
 ## 7. Changes to This Policy
 

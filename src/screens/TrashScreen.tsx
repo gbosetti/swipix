@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { TrashService } from '../services/TrashService';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
+import { showInterstitialAd } from '../services/AdService';
 import { TrashedAsset } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
@@ -71,6 +72,12 @@ export default function TrashScreen() {
           text: t('trash.delete'),
           style: 'destructive',
           onPress: async () => {
+            // Gates this specific bulk action, not per-item restore —
+            // awaited so it shows before the delete, but showInterstitialAd
+            // always resolves within its own timeout even with no fill/
+            // slow network/offline, so a missing ad can delay this by at
+            // most a few seconds, never block it outright.
+            await showInterstitialAd();
             try {
               await TrashService.permanentlyDelete(trash.map((item) => item.id));
             } catch {
