@@ -34,7 +34,8 @@
     "close": "Close"
   },
   "categoryPicker": {
-    "sectionHeader": "Categories",
+    "picturesSectionHeader": "Pictures",
+    "videosSectionHeader": "Videos",
     "review": "Review",
     "trashBanner_one": "{{count}} photo pending deletion",
     "trashBanner_other": "{{count}} photos pending deletion",
@@ -137,6 +138,7 @@
     "similar-pictures": "Similar Photos",
     "exact-duplicates": "Duplicate Files",
     "short-videos": "Short Videos",
+    "all-videos": "All Videos",
     "big-files": "Big Files",
     "blurred-images": "Blurred Photos",
     "dark-photos": "Dark Photos",

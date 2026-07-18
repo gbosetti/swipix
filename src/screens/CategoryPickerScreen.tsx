@@ -15,6 +15,7 @@ import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { SimilarPicturesStrategy } from '../strategies/SimilarPicturesStrategy';
 import { ExactDuplicatesStrategy } from '../strategies/ExactDuplicatesStrategy';
+import { AllVideosStrategy } from '../strategies/AllVideosStrategy';
 import { ShortVideosStrategy } from '../strategies/ShortVideosStrategy';
 import { BigFilesStrategy } from '../strategies/BigFilesStrategy';
 import { BlurredImagesStrategy } from '../strategies/BlurredImagesStrategy';
@@ -76,6 +77,7 @@ const exactDuplicatesStrategy = new ExactDuplicatesStrategy();
 // title comes from a live translation lookup, and freezing it once at
 // module load would leave it stuck in whatever language was active on
 // first import, surviving a runtime language change.
+const allVideosStrategy = new AllVideosStrategy();
 const shortVideosDefaults = new ShortVideosStrategy();
 const bigFilesDefaults = new BigFilesStrategy();
 const blurredImagesStrategy = new BlurredImagesStrategy();
@@ -205,6 +207,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     refreshPreview(similarPicturesStrategy, allPhotos);
     refreshPreview(blurredImagesStrategy, allPhotos);
     refreshPreview(exactDuplicatesStrategy, []);
+    refreshPreview(allVideosStrategy, []);
     refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), []);
     refreshPreview(
       new BigFilesStrategy(bigFileRangeMB[0] * 1024 * 1024, bigFileRangeMB[1] * 1024 * 1024),
@@ -266,7 +269,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         </View>
       )}
 
-      <Text style={styles.sectionHeader}>{t('categoryPicker.sectionHeader')}</Text>
+      <Text style={styles.sectionHeader}>{t('categoryPicker.picturesSectionHeader')}</Text>
 
       <Pressable
         style={styles.card}
@@ -311,34 +314,6 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           previewUri={previews[exactDuplicatesStrategy.meta.id]}
         />
       </Pressable>
-
-      <View style={styles.card}>
-        <Pressable
-          onPress={() =>
-            navigation.navigate('Swipe', {
-              strategy: new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]),
-            })
-          }
-        >
-          <TitleRow
-            title={shortVideosDefaults.meta.title}
-            icon={shortVideosDefaults.meta.icon}
-            previewUri={previews[shortVideosDefaults.meta.id]}
-          />
-        </Pressable>
-        <Text style={styles.sliderLabel}>
-          {t('categoryPicker.shortVideosLabel', { min: shortVideoRange[0], max: shortVideoRange[1] })}
-        </Text>
-        <RangeSlider
-          minimumValue={0}
-          maximumValue={10}
-          step={1}
-          lowValue={shortVideoRange[0]}
-          highValue={shortVideoRange[1]}
-          onValuesChange={(low, high) => setShortVideoRange([low, high])}
-          onSlidingComplete={persistShortVideoRange}
-        />
-      </View>
 
       <View style={styles.card}>
         <Pressable
@@ -428,6 +403,47 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           year={monthYear.year}
           month={monthYear.month}
           onChange={handleMonthYearChange}
+        />
+      </View>
+
+      <Text style={styles.sectionHeader}>{t('categoryPicker.videosSectionHeader')}</Text>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: allVideosStrategy })}
+      >
+        <TitleRow
+          title={allVideosStrategy.meta.title}
+          icon={allVideosStrategy.meta.icon}
+          previewUri={previews[allVideosStrategy.meta.id]}
+        />
+      </Pressable>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Swipe', {
+              strategy: new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]),
+            })
+          }
+        >
+          <TitleRow
+            title={shortVideosDefaults.meta.title}
+            icon={shortVideosDefaults.meta.icon}
+            previewUri={previews[shortVideosDefaults.meta.id]}
+          />
+        </Pressable>
+        <Text style={styles.sliderLabel}>
+          {t('categoryPicker.shortVideosLabel', { min: shortVideoRange[0], max: shortVideoRange[1] })}
+        </Text>
+        <RangeSlider
+          minimumValue={0}
+          maximumValue={10}
+          step={1}
+          lowValue={shortVideoRange[0]}
+          highValue={shortVideoRange[1]}
+          onValuesChange={(low, high) => setShortVideoRange([low, high])}
+          onSlidingComplete={persistShortVideoRange}
         />
       </View>
     </ScrollView>

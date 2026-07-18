@@ -34,7 +34,8 @@
     "close": "Cerrar"
   },
   "categoryPicker": {
-    "sectionHeader": "Categorías",
+    "picturesSectionHeader": "Fotos",
+    "videosSectionHeader": "Videos",
     "review": "Revisar",
     "trashBanner_one": "{{count}} foto pendiente de eliminación",
     "trashBanner_other": "{{count}} fotos pendientes de eliminación",
@@ -119,6 +120,7 @@
     "similar-pictures": "Fotos similares",
     "exact-duplicates": "Archivos duplicados",
     "short-videos": "Videos cortos",
+    "all-videos": "Todos los videos",
     "big-files": "Archivos grandes",
     "blurred-images": "Fotos borrosas",
     "dark-photos": "Fotos oscuras",
