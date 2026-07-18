@@ -1,11 +1,16 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, FlatList, Modal } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, FlatList, Modal } from 'react-native';
+import { Image } from 'expo-image';
+import type { VideoThumbnail } from 'expo-video';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { KeptService } from '../services/KeptService';
+import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import { Asset } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
+import VideoCard from '../components/VideoCard';
 
 /**
  * Browsable list of every photo you've swiped right on, across every
@@ -24,12 +29,29 @@ export default function KeptScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [kept, setKept] = useState<Asset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<Asset | null>(null);
+  const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
 
   const refresh = useCallback(() => {
     KeptService.getKept().then(setKept);
   }, []);
 
   useFocusEffect(refresh);
+
+  // Same caching approach as TrashScreen: extract one frame per video
+  // item, once, rather than on every refresh.
+  useEffect(() => {
+    if (!kept) return;
+    const pending = kept.filter(
+      (item) => item.mediaType === 'video' && !(item.id in videoThumbnails)
+    );
+    if (pending.length === 0) return;
+    pending.forEach((item) => {
+      getVideoThumbnail(item.uri).then((thumbnail) => {
+        setVideoThumbnails((current) => ({ ...current, [item.id]: thumbnail }));
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kept]);
 
   const handleSwipeAgain = async (assetId: string) => {
     await KeptService.removeKept(assetId);
@@ -60,18 +82,30 @@ export default function KeptScreen() {
           // Same guard TrashScreen uses — ph:// isn't renderable by
           // <Image>, only info.localUri is.
           const hasRenderableUri = !item.uri.startsWith('ph://');
+          const isVideo = item.mediaType === 'video';
+          const videoThumbnail = videoThumbnails[item.id];
           return (
             <View style={styles.row}>
               <Pressable
                 onPress={() => hasRenderableUri && setPreviewItem(item)}
                 disabled={!hasRenderableUri}
               >
-                {hasRenderableUri ? (
-                  <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
-                ) : (
+                {!hasRenderableUri ? (
                   <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
                     <Text style={styles.placeholderText}>?</Text>
                   </View>
+                ) : isVideo ? (
+                  videoThumbnail ? (
+                    <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
+                  ) : (
+                    // Still extracting the frame (or extraction failed) —
+                    // <Image> can't decode the raw video file URI itself.
+                    <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+                      <Ionicons name="videocam" size={22} color={colors.textSecondary} />
+                    </View>
+                  )
+                ) : (
+                  <Image source={{ uri: item.uri }} style={styles.thumbnail} contentFit="cover" />
                 )}
               </Pressable>
               <View style={styles.spacer} />
@@ -99,11 +133,17 @@ export default function KeptScreen() {
           </Pressable>
           {previewItem && (
             <>
-              <Image
-                source={{ uri: previewItem.uri }}
-                style={styles.previewImage}
-                resizeMode="contain"
-              />
+              {previewItem.mediaType === 'video' ? (
+                <View style={styles.previewImage}>
+                  <VideoCard asset={previewItem} isTop />
+                </View>
+              ) : (
+                <Image
+                  source={{ uri: previewItem.uri }}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              )}
               <Pressable
                 style={styles.previewSwipeAgainButton}
                 onPress={() => handleSwipeAgain(previewItem.id)}

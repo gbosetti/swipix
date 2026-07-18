@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, Pressable, StyleSheet, ScrollView, View, Image } from 'react-native';
+import { Text, Pressable, StyleSheet, ScrollView, View } from 'react-native';
+import { Image } from 'expo-image';
+import type { VideoThumbnail } from 'expo-video';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,22 +23,31 @@ import { MonthYearStrategy } from '../strategies/MonthYearStrategy';
 import { CategoryStrategy } from '../strategies/CategoryStrategy';
 import { TrashService } from '../services/TrashService';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
+import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
 import { Asset, CategoryMeta } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
-/** First match's photo, used as a representative thumbnail on the
- * category card. Strategies that source their own dataset (Big Files,
- * Short Videos, Duplicate Files, By Month) ignore whatever's passed in,
- * so an empty array is fine for those. Swallows errors rather than
- * throwing — a missing preview just means no thumbnail, not a broken
- * screen. */
-async function getPreviewUri(strategy: CategoryStrategy, sourceAssets: Asset[]): Promise<string | null> {
+/** A representative preview for the category card: the first match's
+ * photo URI, or an extracted video frame if the first match is a video
+ * (a raw video file URI can't be handed to <Image> — it decodes photos
+ * only). Strategies that source their own dataset (Big Files, Short
+ * Videos, Duplicate Files, By Month) ignore whatever's passed in, so an
+ * empty array is fine for those. Swallows errors rather than throwing —
+ * a missing preview just means no thumbnail (falls back to the
+ * category's icon), not a broken screen. */
+async function getPreviewUri(
+  strategy: CategoryStrategy,
+  sourceAssets: Asset[]
+): Promise<string | VideoThumbnail | null> {
   try {
     const matched = await strategy.match(sourceAssets);
-    return matched[0]?.uri ?? null;
+    const first = matched[0];
+    if (!first) return null;
+    if (first.mediaType === 'video') return getVideoThumbnail(first.uri);
+    return first.uri;
   } catch {
     return null;
   }
@@ -92,9 +103,13 @@ const titleRowStyles = StyleSheet.create({
 
 /** Same title + chevron affordance on every card, whether or not it also
  * has a slider — one consistent signifier for "tap this to go swiping."
- * previewUri is a representative photo for the category; when there's
- * no match yet (or none at all), falls back to the category's own
- * `meta.icon` on a plain background rather than an empty square.
+ * previewUri is a representative photo (or, for video-first categories,
+ * an extracted video frame) for the category; when there's no match yet
+ * (or none at all), falls back to the category's own `meta.icon` on a
+ * plain background rather than an empty square. Uses expo-image's
+ * <Image> rather than React Native's core one — only expo-image can
+ * render a video-frame reference (a native image object, not a URI)
+ * alongside a plain string URI through the same `source` prop.
  * Reads the theme itself rather than taking styles as a prop — it's a
  * sibling function, not nested, so it can't close over the parent's
  * per-render `styles`. */
@@ -105,14 +120,14 @@ function TitleRow({
 }: {
   title: string;
   icon: CategoryMeta['icon'];
-  previewUri?: string | null;
+  previewUri?: string | VideoThumbnail | null;
 }) {
   const colors = useColors();
   return (
     <View style={titleRowStyles.titleRow}>
       <View style={titleRowStyles.left}>
         {previewUri ? (
-          <Image source={{ uri: previewUri }} style={titleRowStyles.thumbnail} resizeMode="cover" />
+          <Image source={previewUri} style={titleRowStyles.thumbnail} contentFit="cover" />
         ) : (
           <View
             style={[
@@ -144,7 +159,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const [monthYear, setMonthYear] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [trashCount, setTrashCount] = useState(0);
   const [allPhotos, setAllPhotos] = useState<Asset[] | null>(null);
-  const [previews, setPreviews] = useState<Record<string, string | null>>({});
+  const [previews, setPreviews] = useState<Record<string, string | VideoThumbnail | null>>({});
 
   useEffect(() => {
     const loadRange = (key: string, setter: (range: [number, number]) => void) => {

@@ -1,11 +1,16 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, FlatList, Alert, Modal } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, FlatList, Alert, Modal } from 'react-native';
+import { Image } from 'expo-image';
+import type { VideoThumbnail } from 'expo-video';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { TrashService } from '../services/TrashService';
+import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import { TrashedAsset } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
+import VideoCard from '../components/VideoCard';
 
 /**
  * Lets the user see exactly what's staged for deletion and restore
@@ -19,12 +24,35 @@ export default function TrashScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [trash, setTrash] = useState<TrashedAsset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<TrashedAsset | null>(null);
+  const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
 
   const refresh = useCallback(() => {
     TrashService.getTrash().then(setTrash);
   }, []);
 
   useFocusEffect(refresh);
+
+  // Row thumbnails can't just reuse an asset's own URI for videos (see
+  // getVideoThumbnail's doc comment), so extract one frame per video item
+  // once and cache it here — only for items not already generated,
+  // rather than re-extracting on every refresh.
+  useEffect(() => {
+    if (!trash) return;
+    const pending = trash.filter(
+      (item) => item.mediaType === 'video' && !(item.id in videoThumbnails)
+    );
+    if (pending.length === 0) return;
+    pending.forEach((item) => {
+      getVideoThumbnail(item.uri).then((thumbnail) => {
+        setVideoThumbnails((current) => ({ ...current, [item.id]: thumbnail }));
+      });
+    });
+    // Deliberately excludes videoThumbnails — reading it above (via
+    // `pending`) is for filtering only; including it would re-run this
+    // effect every time it updates and immediately regenerate what was
+    // just added.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trash]);
 
   const handleRestore = async (assetId: string) => {
     await TrashService.restore(assetId);
@@ -79,18 +107,30 @@ export default function TrashScreen() {
           // added — ph:// isn't renderable by <Image> and would otherwise
           // crash the native image loader.
           const hasRenderableUri = !item.uri.startsWith('ph://');
+          const isVideo = item.mediaType === 'video';
+          const videoThumbnail = videoThumbnails[item.id];
           return (
             <View style={styles.row}>
               <Pressable
                 onPress={() => hasRenderableUri && setPreviewItem(item)}
                 disabled={!hasRenderableUri}
               >
-                {hasRenderableUri ? (
-                  <Image source={{ uri: item.uri }} style={styles.thumbnail} resizeMode="cover" />
-                ) : (
+                {!hasRenderableUri ? (
                   <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
                     <Text style={styles.placeholderText}>?</Text>
                   </View>
+                ) : isVideo ? (
+                  videoThumbnail ? (
+                    <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
+                  ) : (
+                    // Still extracting the frame (or extraction failed) —
+                    // <Image> can't decode the raw video file URI itself.
+                    <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+                      <Ionicons name="videocam" size={22} color={colors.textSecondary} />
+                    </View>
+                  )
+                ) : (
+                  <Image source={{ uri: item.uri }} style={styles.thumbnail} contentFit="cover" />
                 )}
               </Pressable>
               <Text style={styles.rowText}>{t('trash.pendingDeletion')}</Text>
@@ -121,11 +161,17 @@ export default function TrashScreen() {
           </Pressable>
           {previewItem && (
             <>
-              <Image
-                source={{ uri: previewItem.uri }}
-                style={styles.previewImage}
-                resizeMode="contain"
-              />
+              {previewItem.mediaType === 'video' ? (
+                <View style={styles.previewImage}>
+                  <VideoCard asset={previewItem} isTop />
+                </View>
+              ) : (
+                <Image
+                  source={{ uri: previewItem.uri }}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              )}
               <Pressable
                 style={styles.previewRestoreButton}
                 onPress={() => handleRestore(previewItem.id)}
