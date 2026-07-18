@@ -15,7 +15,15 @@
     "adaptiveIcon": {
       "foregroundImage": "./assets/adaptive-icon.png",
       "backgroundColor": "#000000"
-    }
+    },
+    "permissions": [
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_MEDIA_VIDEO",
+      "android.permission.READ_MEDIA_AUDIO"
+    ]
   },
   "web": {
     "favicon": "./assets/favicon.png"
@@ -46,5 +54,8 @@
         "iosAppId": "ca-app-pub-4602631443411685~3043029488"
       }
     ]
-  ]
+  ],
+  "ios": {
+    "bundleIdentifier": "dev.bosetti.swipix"
+  }
 }

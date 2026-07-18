@@ -6,6 +6,12 @@ node_modules/
 dist/
 web-build/
 
+# Native projects (regenerated on demand via `expo prebuild` /
+# `expo run:ios` / `expo run:android` — not source of truth, and ios/Pods
+# alone is thousands of files that don't belong in version control)
+/ios/
+/android/
+
 # Native
 *.orig.*
 *.jks
