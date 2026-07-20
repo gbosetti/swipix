@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, FlatList, Alert, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, FlatList, Alert, Modal, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import type { VideoThumbnail } from 'expo-video';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,11 @@ export default function TrashScreen() {
   const [trash, setTrash] = useState<TrashedAsset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<TrashedAsset | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
+  // True from the moment "Delete" is confirmed until the whole ad+delete
+  // flow settles — showInterstitialAd can take up to ~8s to resolve on
+  // its own timeout, and silent, unresponsive-looking wait that long
+  // reads as a bug, not "still working."
+  const [emptying, setEmptying] = useState(false);
 
   const refresh = useCallback(() => {
     TrashService.getTrash().then(setTrash);
@@ -76,15 +81,22 @@ export default function TrashScreen() {
             // awaited so it shows before the delete, but showInterstitialAd
             // always resolves within its own timeout even with no fill/
             // slow network/offline, so a missing ad can delay this by at
-            // most a few seconds, never block it outright.
-            await showInterstitialAd();
+            // most a few seconds, never block it outright. setEmptying
+            // keeps the button showing a spinner for that whole window —
+            // otherwise a silent multi-second wait reads as broken.
+            setEmptying(true);
             try {
-              await TrashService.permanentlyDelete(trash.map((item) => item.id));
-            } catch {
-              // User cancelled the native confirmation, or deletion failed —
-              // trash bookkeeping is left untouched, nothing to do here.
+              await showInterstitialAd();
+              try {
+                await TrashService.permanentlyDelete(trash.map((item) => item.id));
+              } catch {
+                // User cancelled the native confirmation, or deletion failed —
+                // trash bookkeeping is left untouched, nothing to do here.
+              }
+              refresh();
+            } finally {
+              setEmptying(false);
             }
-            refresh();
           },
         },
       ]
@@ -149,8 +161,16 @@ export default function TrashScreen() {
         }}
       />
       <Text style={styles.adSupportNote}>{t('trash.adSupportNote')}</Text>
-      <Pressable style={styles.emptyButton} onPress={handleEmptyAll}>
-        <Text style={styles.emptyButtonText}>{t('trash.emptyTrashNow')}</Text>
+      <Pressable
+        style={[styles.emptyButton, emptying && styles.emptyButtonDisabled]}
+        onPress={handleEmptyAll}
+        disabled={emptying}
+      >
+        {emptying ? (
+          <ActivityIndicator color={colors.onBrand} />
+        ) : (
+          <Text style={styles.emptyButtonText}>{t('trash.emptyTrashNow')}</Text>
+        )}
       </Pressable>
 
       <Modal
@@ -235,6 +255,7 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: 14,
       alignItems: 'center',
     },
+    emptyButtonDisabled: { opacity: 0.6 },
     emptyButtonText: { color: colors.onBrand, fontSize: 16, fontWeight: '600' },
     previewOverlay: {
       flex: 1,

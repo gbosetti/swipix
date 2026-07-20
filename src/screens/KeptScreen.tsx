@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, FlatList, Modal, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, FlatList, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import type { VideoThumbnail } from 'expo-video';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,9 @@ export default function KeptScreen() {
   const [kept, setKept] = useState<Asset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<Asset | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
+  // Same reasoning as TrashScreen's `emptying` — showInterstitialAd can
+  // take up to ~8s to settle, and a silent wait that long reads as a bug.
+  const [swipingAgainAll, setSwipingAgainAll] = useState(false);
 
   const refresh = useCallback(() => {
     KeptService.getKept().then(setKept);
@@ -74,11 +77,17 @@ export default function KeptScreen() {
           // Same non-blocking pattern as Trash's "Empty Trash Now": the ad
           // shows first when available, but always resolves within its own
           // timeout, so a missing ad delays this by at most a few seconds,
-          // never blocks it.
-          await showInterstitialAd();
-          await KeptService.clearAll();
-          setPreviewItem(null);
-          refresh();
+          // never blocks it. setSwipingAgainAll keeps the button showing a
+          // spinner for that whole window.
+          setSwipingAgainAll(true);
+          try {
+            await showInterstitialAd();
+            await KeptService.clearAll();
+            setPreviewItem(null);
+            refresh();
+          } finally {
+            setSwipingAgainAll(false);
+          }
         },
       },
     ]);
@@ -142,8 +151,16 @@ export default function KeptScreen() {
         }}
       />
       <Text style={styles.adSupportNote}>{t('trash.adSupportNote')}</Text>
-      <Pressable style={styles.swipeAgainAllButton} onPress={handleSwipeAgainAll}>
-        <Text style={styles.swipeAgainAllButtonText}>{t('kept.swipeAgainAll')}</Text>
+      <Pressable
+        style={[styles.swipeAgainAllButton, swipingAgainAll && styles.swipeAgainAllButtonDisabled]}
+        onPress={handleSwipeAgainAll}
+        disabled={swipingAgainAll}
+      >
+        {swipingAgainAll ? (
+          <ActivityIndicator color={colors.onBrand} />
+        ) : (
+          <Text style={styles.swipeAgainAllButtonText}>{t('kept.swipeAgainAll')}</Text>
+        )}
       </Pressable>
 
       <Modal
@@ -236,6 +253,7 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: 14,
       alignItems: 'center',
     },
+    swipeAgainAllButtonDisabled: { opacity: 0.6 },
     swipeAgainAllButtonText: { color: colors.onBrand, fontSize: 16, fontWeight: '600' },
     previewOverlay: {
       flex: 1,
