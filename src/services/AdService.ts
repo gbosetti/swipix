@@ -1,11 +1,21 @@
+import { Platform } from 'react-native';
 import mobileAds, { AdEventType, InterstitialAd, TestIds } from 'react-native-google-mobile-ads';
 
-// Real ad unit ("Swipix - Empty Trash" in AdMob) is only used in
-// production builds. Interacting with your own real ads during
-// development risks AdMob flagging the account for invalid traffic, so
-// __DEV__ builds always get Google's public test unit instead — it
-// serves fake ads that behave identically but never affect the account.
-const INTERSTITIAL_AD_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-4602631443411685/5561381612';
+// Real ad units — "Swipix - Empty Trash" on iOS, "Swipix - Bulk
+// Actions" on Android in the AdMob dashboard — are only used in
+// production builds, and each platform has its own — an iOS ad unit ID
+// doesn't work on Android or vice versa. Interacting with your own real
+// ads during development risks AdMob flagging the account for invalid
+// traffic, so __DEV__ builds always get Google's public test unit
+// instead (already platform-aware on its own) — it serves fake ads that
+// behave identically but never affect the account.
+const ANDROID_INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-4602631443411685/9512837552';
+const IOS_INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-4602631443411685/5561381612';
+const INTERSTITIAL_AD_UNIT_ID = __DEV__
+  ? TestIds.INTERSTITIAL
+  : Platform.OS === 'android'
+    ? ANDROID_INTERSTITIAL_AD_UNIT_ID
+    : IOS_INTERSTITIAL_AD_UNIT_ID;
 
 // An ad that never loads (no fill, offline, slow network) should never
 // leave the caller hanging — 8s is generous for a load that's genuinely
