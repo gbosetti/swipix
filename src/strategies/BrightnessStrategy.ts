@@ -1,5 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
-import { getAverageBrightness } from '../services/ImageAnalysisService';
+import { analyzeImages } from '../services/ImageAnalysisService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
@@ -19,14 +19,19 @@ export class BrightnessStrategy extends CategoryStrategy {
   }
 
   async matchCandidates(assets: Asset[]): Promise<Asset[]> {
-    const results: Asset[] = [];
-    for (const asset of assets) {
-      const brightness = await getAverageBrightness(asset.uri);
-      if (brightness >= this.minBrightness && brightness <= this.maxBrightness) {
-        results.push(asset);
-      }
-    }
-    return results;
+    // One bulk call, not one await per photo — analyzeImages shares a
+    // single decode across brightness/blur/duplicate-hash and caches by
+    // asset id, so this doesn't re-analyze photos already seen this
+    // session (e.g. from the Categories preview pass).
+    const analysis = await analyzeImages(assets);
+    return assets.filter((asset) => {
+      const brightness = analysis.get(asset.id)?.brightness;
+      return (
+        brightness !== undefined &&
+        brightness >= this.minBrightness &&
+        brightness <= this.maxBrightness
+      );
+    });
   }
 
   get meta(): CategoryMeta {
