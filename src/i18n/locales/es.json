@@ -95,6 +95,7 @@
     "privacyRow": "Política de privacidad",
     "languageRow": "Idioma",
     "appearanceRow": "Apariencia",
+    "rateRow": "Ayúdanos a crecer",
     "reportRow": "Reportar un error / Hacer una sugerencia",
     "reportEmailSubject": "Comentarios de Swipix (v{{version}})",
     "reportEmailBody": "Versión de la app: {{version}}\nDispositivo: {{device}}\nSistema operativo: {{os}}\n\n¿Qué ocurrió, o qué te gustaría ver?\n",

@@ -95,6 +95,7 @@
     "privacyRow": "Politique de confidentialité",
     "languageRow": "Langue",
     "appearanceRow": "Apparence",
+    "rateRow": "Aidez-nous à grandir",
     "reportRow": "Signaler un bug / Faire une suggestion",
     "reportEmailSubject": "Retour Swipix (v{{version}})",
     "reportEmailBody": "Version de l'application : {{version}}\nAppareil : {{device}}\nSystème : {{os}}\n\nQue s'est-il passé, ou que souhaiteriez-vous voir ?\n",

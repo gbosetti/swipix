@@ -15,6 +15,7 @@ import {
   openFeedbackEmail,
   copySupportEmailToClipboard,
 } from '../services/SupportService';
+import { requestAppReview } from '../services/RatingService';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
@@ -57,6 +58,10 @@ export default function SettingsScreen({ navigation }: Props) {
       </Pressable>
 
       <Text style={styles.sectionHeader}>{t('settings.supportSection')}</Text>
+      <Pressable style={styles.row} onPress={() => requestAppReview()}>
+        <Text style={styles.rowText}>{t('settings.rateRow')}</Text>
+        <Ionicons name="star-outline" size={18} color={colors.textSecondary} />
+      </Pressable>
       <Pressable style={styles.row} onPress={handleReportPress}>
         <Text style={styles.rowText}>{t('settings.reportRow')}</Text>
         <Ionicons name="mail-outline" size={18} color={colors.textSecondary} />

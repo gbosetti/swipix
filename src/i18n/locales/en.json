@@ -95,6 +95,7 @@
     "privacyRow": "Privacy Policy",
     "languageRow": "Language",
     "appearanceRow": "Appearance",
+    "rateRow": "Help Us Grow",
     "reportRow": "Report a Bug / Make a Suggestion",
     "reportEmailSubject": "Swipix feedback (v{{version}})",
     "reportEmailBody": "App version: {{version}}\nDevice: {{device}}\nOS: {{os}}\n\nWhat happened, or what would you like to see?\n",
