@@ -89,11 +89,19 @@
   },
   "settings": {
     "preferencesSection": "Préférences",
+    "supportSection": "Assistance",
     "legalSection": "Mentions légales",
     "termsRow": "Conditions d'utilisation",
     "privacyRow": "Politique de confidentialité",
     "languageRow": "Langue",
-    "appearanceRow": "Apparence"
+    "appearanceRow": "Apparence",
+    "reportRow": "Signaler un bug / Faire une suggestion",
+    "reportEmailSubject": "Retour Swipix (v{{version}})",
+    "reportEmailBody": "Version de l'application : {{version}}\nAppareil : {{device}}\nSystème : {{os}}\n\nQue s'est-il passé, ou que souhaiteriez-vous voir ?\n",
+    "reportFailedTitle": "Impossible d'ouvrir Mail",
+    "reportFailedBody": "Nous n'avons pas pu ouvrir d'application mail sur cet appareil. Vous pouvez nous écrire directement à {{email}}.",
+    "copyEmailAction": "Copier l'adresse email",
+    "dismissAction": "OK"
   },
   "appearance": {
     "title": "Apparence",

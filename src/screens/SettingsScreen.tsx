@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet, DevSettings } from 'react-native';
+import { View, Text, Pressable, StyleSheet, DevSettings, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '../navigation/types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
+import {
+  SUPPORT_EMAIL,
+  getAppVersion,
+  getDeviceDescription,
+  getOsDescription,
+  openFeedbackEmail,
+  copySupportEmailToClipboard,
+} from '../services/SupportService';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
@@ -14,6 +22,28 @@ export default function SettingsScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const handleReportPress = async () => {
+    const version = getAppVersion();
+    const subject = t('settings.reportEmailSubject', { version });
+    const body = t('settings.reportEmailBody', {
+      version,
+      device: getDeviceDescription(),
+      os: getOsDescription(),
+    });
+    const opened = await openFeedbackEmail(subject, body);
+    if (!opened) {
+      Alert.alert(
+        t('settings.reportFailedTitle'),
+        t('settings.reportFailedBody', { email: SUPPORT_EMAIL }),
+        [
+          { text: t('settings.copyEmailAction'), onPress: () => copySupportEmailToClipboard() },
+          { text: t('settings.dismissAction'), style: 'cancel' },
+        ]
+      );
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <Text style={styles.sectionHeader}>{t('settings.preferencesSection')}</Text>
@@ -24,6 +54,12 @@ export default function SettingsScreen({ navigation }: Props) {
       <Pressable style={styles.row} onPress={() => navigation.navigate('Language')}>
         <Text style={styles.rowText}>{t('settings.languageRow')}</Text>
         <Text style={styles.chevron}>›</Text>
+      </Pressable>
+
+      <Text style={styles.sectionHeader}>{t('settings.supportSection')}</Text>
+      <Pressable style={styles.row} onPress={handleReportPress}>
+        <Text style={styles.rowText}>{t('settings.reportRow')}</Text>
+        <Ionicons name="mail-outline" size={18} color={colors.textSecondary} />
       </Pressable>
 
       <Text style={styles.sectionHeader}>{t('settings.legalSection')}</Text>

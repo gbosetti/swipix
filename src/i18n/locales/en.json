@@ -89,11 +89,19 @@
   },
   "settings": {
     "preferencesSection": "Preferences",
+    "supportSection": "Support",
     "legalSection": "Legal",
     "termsRow": "Terms of Use",
     "privacyRow": "Privacy Policy",
     "languageRow": "Language",
-    "appearanceRow": "Appearance"
+    "appearanceRow": "Appearance",
+    "reportRow": "Report a Bug / Make a Suggestion",
+    "reportEmailSubject": "Swipix feedback (v{{version}})",
+    "reportEmailBody": "App version: {{version}}\nDevice: {{device}}\nOS: {{os}}\n\nWhat happened, or what would you like to see?\n",
+    "reportFailedTitle": "Couldn't Open Mail",
+    "reportFailedBody": "We couldn't open a mail app on this device. You can reach us directly at {{email}}.",
+    "copyEmailAction": "Copy Email Address",
+    "dismissAction": "OK"
   },
   "appearance": {
     "title": "Appearance",

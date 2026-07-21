@@ -23,7 +23,8 @@
       "android.permission.READ_MEDIA_IMAGES",
       "android.permission.READ_MEDIA_VIDEO",
       "android.permission.READ_MEDIA_AUDIO"
-    ]
+    ],
+    "package": "dev.bosetti.swipix"
   },
   "web": {
     "favicon": "./assets/favicon.png"
