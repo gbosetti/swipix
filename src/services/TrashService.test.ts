@@ -74,4 +74,45 @@ describe('TrashService', () => {
     const trash = await TrashService.getTrash();
     expect(trash.map((item) => item.id)).toEqual(['a']);
   });
+
+  it('splits a large bulk delete into batches of 50 instead of one native call (regression: issue #11 — a single huge call risks hanging/crashing on 100+ items)', async () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `id-${i}`);
+    for (const id of ids) await TrashService.moveToTrash(makeAsset(id));
+    mockedPhotoLibraryService.deleteAssets.mockResolvedValue(undefined);
+
+    await TrashService.permanentlyDelete(ids);
+
+    expect(mockedPhotoLibraryService.deleteAssets).toHaveBeenCalledTimes(3);
+    expect(mockedPhotoLibraryService.deleteAssets).toHaveBeenNthCalledWith(1, ids.slice(0, 50));
+    expect(mockedPhotoLibraryService.deleteAssets).toHaveBeenNthCalledWith(2, ids.slice(50, 100));
+    expect(mockedPhotoLibraryService.deleteAssets).toHaveBeenNthCalledWith(3, ids.slice(100, 120));
+    await expect(TrashService.getTrash()).resolves.toEqual([]);
+  });
+
+  it('reports progress after each batch completes', async () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `id-${i}`);
+    for (const id of ids) await TrashService.moveToTrash(makeAsset(id));
+    mockedPhotoLibraryService.deleteAssets.mockResolvedValue(undefined);
+    const onProgress = jest.fn();
+
+    await TrashService.permanentlyDelete(ids, onProgress);
+
+    expect(onProgress).toHaveBeenNthCalledWith(1, 50, 120);
+    expect(onProgress).toHaveBeenNthCalledWith(2, 100, 120);
+    expect(onProgress).toHaveBeenNthCalledWith(3, 120, 120);
+  });
+
+  it('keeps already-deleted batches out of trash bookkeeping even when a later batch fails (regression: a mid-way cancellation must not resurrect or strand already-deleted photos)', async () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `id-${i}`);
+    for (const id of ids) await TrashService.moveToTrash(makeAsset(id));
+    mockedPhotoLibraryService.deleteAssets
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('cancelled'));
+
+    await expect(TrashService.permanentlyDelete(ids)).rejects.toThrow('cancelled');
+
+    expect(mockedPhotoLibraryService.deleteAssets).toHaveBeenCalledTimes(2);
+    const trash = await TrashService.getTrash();
+    expect(trash.map((item) => item.id)).toEqual(ids.slice(50));
+  });
 });

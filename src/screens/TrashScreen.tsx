@@ -31,6 +31,10 @@ export default function TrashScreen() {
   // its own timeout, and silent, unresponsive-looking wait that long
   // reads as a bug, not "still working."
   const [emptying, setEmptying] = useState(false);
+  // Large trash counts delete in batches (see TrashService), each with
+  // its own native confirmation — worth surfacing progress rather than
+  // one opaque spinner for what can be a multi-step, several-second wait.
+  const [deleteProgress, setDeleteProgress] = useState<{ done: number; total: number } | null>(null);
 
   const refresh = useCallback(() => {
     TrashService.getTrash().then(setTrash);
@@ -88,7 +92,10 @@ export default function TrashScreen() {
             try {
               await showInterstitialAd();
               try {
-                await TrashService.permanentlyDelete(trash.map((item) => item.id));
+                await TrashService.permanentlyDelete(
+                  trash.map((item) => item.id),
+                  (done, total) => setDeleteProgress({ done, total })
+                );
               } catch {
                 // User cancelled the native confirmation, or deletion failed —
                 // trash bookkeeping is left untouched, nothing to do here.
@@ -96,6 +103,7 @@ export default function TrashScreen() {
               refresh();
             } finally {
               setEmptying(false);
+              setDeleteProgress(null);
             }
           },
         },
@@ -167,7 +175,14 @@ export default function TrashScreen() {
         disabled={emptying}
       >
         {emptying ? (
-          <ActivityIndicator color={colors.onBrand} />
+          <View style={styles.emptyingProgress}>
+            <ActivityIndicator color={colors.onBrand} />
+            {deleteProgress && (
+              <Text style={styles.emptyButtonText}>
+                {t('trash.deletingProgress', deleteProgress)}
+              </Text>
+            )}
+          </View>
         ) : (
           <Text style={styles.emptyButtonText}>{t('trash.emptyTrashNow')}</Text>
         )}
@@ -257,6 +272,7 @@ function createStyles(colors: ColorPalette) {
     },
     emptyButtonDisabled: { opacity: 0.6 },
     emptyButtonText: { color: colors.onBrand, fontSize: 16, fontWeight: '600' },
+    emptyingProgress: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     previewOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.92)',

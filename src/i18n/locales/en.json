@@ -76,7 +76,8 @@
     "emptyAllBody_one": "This permanently deletes {{count}} photo. This cannot be undone.",
     "emptyAllBody_other": "This permanently deletes {{count}} photos. This cannot be undone.",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "deletingProgress": "Deleting {{done}} of {{total}}…"
   },
   "kept": {
     "emptyTitle": "Nothing kept yet",
