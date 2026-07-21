@@ -7,14 +7,27 @@ Built with Expo (React Native) + TypeScript, React Navigation.
 ```bash
 cd swipix
 npm install
-npx expo start
+npx expo run:ios   # first run: builds the native project + installs the dev client
 ```
 
-Scan the QR code with the Expo Go app on your iPhone. Note: `expo-media-library`
-requires a physical device (or a custom dev client) — the iOS Simulator doesn't
-have a real photo library to read.
+This app can't run in Expo Go — it depends on several native modules (AdMob,
+image manipulation, device info, store review, clipboard) that Expo Go doesn't
+include. `npx expo run:ios` builds a custom dev client and installs it on a
+simulator or connected device; after that first build, day-to-day development
+just needs:
 
-Run `npm run typecheck` and `npm run lint` before committing.
+```bash
+npx expo start --dev-client
+```
+
+Note: `expo-media-library` needs a real photo library to read, so most photo
+features won't do much on a freshly-created Simulator with no seeded photos —
+a physical device (or a Simulator you've added test photos to) is more useful
+for exercising them.
+
+Run `npm run typecheck`, `npm run lint`, and `npm test` before committing —
+all three also run automatically on every push/PR via GitHub Actions
+(`.github/workflows/ci.yml`).
 
 ## Where core React Native concepts live in this project
 
