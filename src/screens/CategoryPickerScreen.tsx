@@ -12,6 +12,8 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import RangeSlider from '../components/RangeSlider';
 import MonthYearPicker from '../components/MonthYearPicker';
 import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
+import { OnThisDayStrategy } from '../strategies/OnThisDayStrategy';
+import { OnThisDayVideosStrategy } from '../strategies/OnThisDayVideosStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { DuplicatesAndSimilarStrategy } from '../strategies/DuplicatesAndSimilarStrategy';
 import { AllVideosStrategy } from '../strategies/AllVideosStrategy';
@@ -89,6 +91,8 @@ const MONTH_YEAR_VIDEO_KEY = '@swipix/monthYearVideo';
 // every remaining photo, shuffled, so there's always a productive "just
 // start swiping" option at the top of the list.
 const randomPhotosStrategy = new RandomPhotosStrategy();
+const onThisDayStrategy = new OnThisDayStrategy();
+const onThisDayVideosStrategy = new OnThisDayVideosStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
 const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
 // These four hold onto the strategy instance itself (not a pre-read
@@ -235,6 +239,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // its own slider/picker actually changes (below), not on every render.
   useEffect(() => {
     if (!allPhotos) return;
+    refreshPreview(onThisDayStrategy, []);
+    refreshPreview(onThisDayVideosStrategy, []);
     refreshPreview(randomPhotosStrategy, allPhotos);
     refreshPreview(screenshotStrategy, allPhotos);
     refreshPreview(duplicatesAndSimilarStrategy, []);
@@ -319,6 +325,17 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           </Pressable>
         </View>
       )}
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: onThisDayStrategy })}
+      >
+        <TitleRow
+          title={onThisDayStrategy.meta.title}
+          icon={onThisDayStrategy.meta.icon}
+          previewUri={previews[onThisDayStrategy.meta.id]}
+        />
+      </Pressable>
 
       <Text style={styles.sectionHeader}>{t('categoryPicker.picturesSectionHeader')}</Text>
 
@@ -452,6 +469,17 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       </View>
 
       <Text style={styles.sectionHeader}>{t('categoryPicker.videosSectionHeader')}</Text>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategy: onThisDayVideosStrategy })}
+      >
+        <TitleRow
+          title={onThisDayVideosStrategy.meta.title}
+          icon={onThisDayVideosStrategy.meta.icon}
+          previewUri={previews[onThisDayVideosStrategy.meta.id]}
+        />
+      </Pressable>
 
       <Pressable
         style={styles.card}

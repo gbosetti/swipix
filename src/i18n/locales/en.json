@@ -162,6 +162,8 @@
     "dark-photos": "Dark Photos",
     "month-year": "By Month",
     "month-year-videos": "Videos by Month",
-    "random": "All Photos"
+    "random": "All Photos",
+    "on-this-day": "On This Day",
+    "on-this-day-videos": "Videos On This Day"
   }
 }
