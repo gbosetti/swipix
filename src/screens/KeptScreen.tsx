@@ -38,6 +38,10 @@ export default function KeptScreen() {
   // Same reasoning as TrashScreen's `emptying` — showInterstitialAd can
   // take up to ~8s to settle, and a silent wait that long reads as a bug.
   const [swipingAgainAll, setSwipingAgainAll] = useState(false);
+  // Same reasoning as TrashScreen's `restoringId` — removeKept is a fast
+  // local write, but with no visual feedback a tap that lands mid-render
+  // reads as "nothing happened" and invites a second tap.
+  const [swipingAgainId, setSwipingAgainId] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     KeptService.getKept().then(setKept);
@@ -62,9 +66,15 @@ export default function KeptScreen() {
   }, [kept]);
 
   const handleSwipeAgain = async (assetId: string) => {
-    await KeptService.removeKept(assetId);
-    setPreviewItem((current) => (current?.id === assetId ? null : current));
-    refresh();
+    if (swipingAgainId) return;
+    setSwipingAgainId(assetId);
+    try {
+      await KeptService.removeKept(assetId);
+      setPreviewItem((current) => (current?.id === assetId ? null : current));
+      refresh();
+    } finally {
+      setSwipingAgainId(null);
+    }
   };
 
   const handleSwipeAgainAll = () => {
@@ -143,8 +153,19 @@ export default function KeptScreen() {
                 )}
               </Pressable>
               <View style={styles.spacer} />
-              <Pressable style={styles.swipeAgainButton} onPress={() => handleSwipeAgain(item.id)}>
-                <Text style={styles.swipeAgainButtonText}>{t('kept.swipeAgain')}</Text>
+              <Pressable
+                style={[
+                  styles.swipeAgainButton,
+                  swipingAgainId === item.id && styles.swipeAgainButtonDisabled,
+                ]}
+                onPress={() => handleSwipeAgain(item.id)}
+                disabled={swipingAgainId !== null}
+              >
+                {swipingAgainId === item.id ? (
+                  <ActivityIndicator color={colors.onBrand} size="small" />
+                ) : (
+                  <Text style={styles.swipeAgainButtonText}>{t('kept.swipeAgain')}</Text>
+                )}
               </Pressable>
             </View>
           );
@@ -191,10 +212,18 @@ export default function KeptScreen() {
                 />
               )}
               <Pressable
-                style={styles.previewSwipeAgainButton}
+                style={[
+                  styles.previewSwipeAgainButton,
+                  swipingAgainId === previewItem.id && styles.swipeAgainButtonDisabled,
+                ]}
                 onPress={() => handleSwipeAgain(previewItem.id)}
+                disabled={swipingAgainId !== null}
               >
-                <Text style={styles.swipeAgainButtonText}>{t('kept.swipeAgain')}</Text>
+                {swipingAgainId === previewItem.id ? (
+                  <ActivityIndicator color={colors.onBrand} size="small" />
+                ) : (
+                  <Text style={styles.swipeAgainButtonText}>{t('kept.swipeAgain')}</Text>
+                )}
               </Pressable>
             </>
           )}
@@ -237,6 +266,7 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: 14,
     },
     swipeAgainButtonText: { color: colors.onBrand, fontSize: 13, fontWeight: '600' },
+    swipeAgainButtonDisabled: { opacity: 0.6 },
     adSupportNote: {
       color: colors.textSecondary,
       fontSize: 12,

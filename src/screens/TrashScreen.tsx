@@ -35,6 +35,11 @@ export default function TrashScreen() {
   // its own native confirmation — worth surfacing progress rather than
   // one opaque spinner for what can be a multi-step, several-second wait.
   const [deleteProgress, setDeleteProgress] = useState<{ done: number; total: number } | null>(null);
+  // Restore is a fast local write, but with zero visual feedback a tap
+  // that lands mid-render reads as "nothing happened" and invites a
+  // second tap — track which item is in flight so its own button can
+  // show a spinner and ignore repeat presses.
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     TrashService.getTrash().then(setTrash);
@@ -65,9 +70,15 @@ export default function TrashScreen() {
   }, [trash]);
 
   const handleRestore = async (assetId: string) => {
-    await TrashService.restore(assetId);
-    setPreviewItem((current) => (current?.id === assetId ? null : current));
-    refresh();
+    if (restoringId) return;
+    setRestoringId(assetId);
+    try {
+      await TrashService.restore(assetId);
+      setPreviewItem((current) => (current?.id === assetId ? null : current));
+      refresh();
+    } finally {
+      setRestoringId(null);
+    }
   };
 
   const handleEmptyAll = () => {
@@ -161,8 +172,16 @@ export default function TrashScreen() {
                 )}
               </Pressable>
               <Text style={styles.rowText}>{t('trash.pendingDeletion')}</Text>
-              <Pressable style={styles.restoreButton} onPress={() => handleRestore(item.id)}>
-                <Text style={styles.restoreButtonText}>{t('trash.restore')}</Text>
+              <Pressable
+                style={[styles.restoreButton, restoringId === item.id && styles.restoreButtonDisabled]}
+                onPress={() => handleRestore(item.id)}
+                disabled={restoringId !== null}
+              >
+                {restoringId === item.id ? (
+                  <ActivityIndicator color={colors.onBrand} size="small" />
+                ) : (
+                  <Text style={styles.restoreButtonText}>{t('trash.restore')}</Text>
+                )}
               </Pressable>
             </View>
           );
@@ -216,10 +235,18 @@ export default function TrashScreen() {
                 />
               )}
               <Pressable
-                style={styles.previewRestoreButton}
+                style={[
+                  styles.previewRestoreButton,
+                  restoringId === previewItem.id && styles.restoreButtonDisabled,
+                ]}
                 onPress={() => handleRestore(previewItem.id)}
+                disabled={restoringId !== null}
               >
-                <Text style={styles.restoreButtonText}>{t('trash.restore')}</Text>
+                {restoringId === previewItem.id ? (
+                  <ActivityIndicator color={colors.onBrand} size="small" />
+                ) : (
+                  <Text style={styles.restoreButtonText}>{t('trash.restore')}</Text>
+                )}
               </Pressable>
             </>
           )}
@@ -254,6 +281,7 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: 14,
     },
     restoreButtonText: { color: colors.onBrand, fontSize: 13, fontWeight: '600' },
+    restoreButtonDisabled: { opacity: 0.6 },
     adSupportNote: {
       color: colors.textSecondary,
       fontSize: 12,
