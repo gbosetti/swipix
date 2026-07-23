@@ -1,6 +1,18 @@
 import * as MediaLibrary from 'expo-media-library';
 import { Asset } from '../types';
 
+type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
+
+// Single-flight de-dupe: CategoryPickerScreen mounts and immediately fires
+// several strategies' preview computation in a row, and multiple
+// "self-fetching" strategies (MonthYear, Duplicates, Big Files, etc.) each
+// independently call getAllMedia() with byte-for-byte identical params —
+// without this, that's up to 9 fully redundant concurrent fetches of the
+// same 500 assets. Keyed by exact fetch params; an entry is removed the
+// instant its promise settles, so this only coalesces genuinely-concurrent
+// identical requests and never serves stale data to a later, separate call.
+const inFlight = new Map<string, Promise<AssetPage>>();
+
 /**
  * Single source of truth for reading the device photo library.
  *
@@ -32,13 +44,7 @@ export const PhotoLibraryService = {
    * hundreds of assets' detail up front (see SwipeScreen, which uses this
    * to avoid a multi-second stall on large libraries). `after` is the
    * previous page's `endCursor`; omit it for the first page. */
-  async getPhotosPage({
-    first,
-    after,
-  }: {
-    first: number;
-    after?: string;
-  }): Promise<{ assets: Asset[]; endCursor: string; hasNextPage: boolean }> {
+  async getPhotosPage({ first, after }: { first: number; after?: string }): Promise<AssetPage> {
     return this._fetchAssets('photo', first, after);
   },
 
@@ -46,7 +52,22 @@ export const PhotoLibraryService = {
     mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
     first: number,
     after?: string
-  ): Promise<{ assets: Asset[]; endCursor: string; hasNextPage: boolean }> {
+  ): Promise<AssetPage> {
+    const key = JSON.stringify({ mediaType, first, after: after ?? null });
+    const existing = inFlight.get(key);
+    if (existing) return existing;
+    const promise = this._fetchAssetsUncached(mediaType, first, after).finally(() => {
+      inFlight.delete(key);
+    });
+    inFlight.set(key, promise);
+    return promise;
+  },
+
+  async _fetchAssetsUncached(
+    mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
+    first: number,
+    after?: string
+  ): Promise<AssetPage> {
     const page = await MediaLibrary.getAssetsAsync({
       mediaType,
       first,

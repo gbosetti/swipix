@@ -223,7 +223,15 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   useEffect(() => {
     PhotoLibraryService.requestPermission().then((granted) => {
       if (granted) {
-        PhotoLibraryService.getAllPhotos().then(setAllPhotos);
+        // Only feeds preview thumbnails for the pass-through strategies
+        // below (Random/Screenshot/Blurred/Brightness), which just need
+        // matched[0] — a small page is enough, and far cheaper than the
+        // default 500-asset fetch. A sparse category may occasionally show
+        // its fallback icon instead of a real thumbnail even though real
+        // matches exist deeper in the library — getPreviewUri already
+        // treats a missing preview as normal, not broken, and the actual
+        // swipe session (SwipeScreen) always searches properly regardless.
+        PhotoLibraryService.getPhotosPage({ first: 150 }).then((page) => setAllPhotos(page.assets));
       }
     });
   }, []);

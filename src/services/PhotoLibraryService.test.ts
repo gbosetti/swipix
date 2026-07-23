@@ -61,3 +61,58 @@ describe('PhotoLibraryService.getPhotosPage', () => {
     expect(page.hasNextPage).toBe(false);
   });
 });
+
+describe('PhotoLibraryService request coalescing', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('coalesces concurrent identical requests into a single getAssetsAsync call', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
+
+    // Multiple "self-fetching" strategies calling getAllMedia() nearly
+    // simultaneously — the scenario this de-dupe exists for.
+    const [a, b, c] = await Promise.all([
+      PhotoLibraryService.getAllMedia(),
+      PhotoLibraryService.getAllMedia(),
+      PhotoLibraryService.getAllMedia(),
+    ]);
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(1);
+    expect(a).toEqual(b);
+    expect(b).toEqual(c);
+  });
+
+  it('does not coalesce requests with different params', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
+
+    await Promise.all([PhotoLibraryService.getAllPhotos(), PhotoLibraryService.getAllMedia()]);
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetches fresh data again on a later, separate call once the first has settled', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
+
+    await PhotoLibraryService.getAllMedia();
+    await PhotoLibraryService.getAllMedia();
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
+  });
+});
