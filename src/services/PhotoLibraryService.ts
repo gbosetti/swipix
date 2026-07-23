@@ -17,23 +17,40 @@ export const PhotoLibraryService = {
   },
 
   async getAllPhotos({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
-    return this._fetchAssets('photo', first);
+    return (await this._fetchAssets('photo', first)).assets;
   },
 
   /** Photos and videos together — only categories that genuinely need
    * videos (e.g. Big Files) should use this; everything else stays on
    * getAllPhotos so existing categories are unaffected. */
   async getAllMedia({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
-    return this._fetchAssets(['photo', 'video'], first);
+    return (await this._fetchAssets(['photo', 'video'], first)).assets;
+  },
+
+  /** Cursor-paginated photo fetch — lets a caller load a small first page
+   * fast, then fetch further pages on demand, instead of resolving
+   * hundreds of assets' detail up front (see SwipeScreen, which uses this
+   * to avoid a multi-second stall on large libraries). `after` is the
+   * previous page's `endCursor`; omit it for the first page. */
+  async getPhotosPage({
+    first,
+    after,
+  }: {
+    first: number;
+    after?: string;
+  }): Promise<{ assets: Asset[]; endCursor: string; hasNextPage: boolean }> {
+    return this._fetchAssets('photo', first, after);
   },
 
   async _fetchAssets(
     mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
-    first: number
-  ): Promise<Asset[]> {
+    first: number,
+    after?: string
+  ): Promise<{ assets: Asset[]; endCursor: string; hasNextPage: boolean }> {
     const page = await MediaLibrary.getAssetsAsync({
       mediaType,
       first,
+      after,
       sortBy: [MediaLibrary.SortBy.creationTime],
     });
 
@@ -64,7 +81,11 @@ export const PhotoLibraryService = {
       })
     );
 
-    return detailed.filter((asset): asset is Asset => asset !== null);
+    return {
+      assets: detailed.filter((asset): asset is Asset => asset !== null),
+      endCursor: page.endCursor,
+      hasNextPage: page.hasNextPage,
+    };
   },
 
   /** Permanently deletes assets from the device photo library. iOS/Android

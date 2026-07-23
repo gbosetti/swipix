@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +28,19 @@ interface SwipeHistoryEntry {
 // continuing to step back one card at a time — undo is for fixing a
 // mistake, not for browsing.
 const UNDO_NUDGE_THRESHOLD = 3;
+
+// Small enough to load fast (the whole reason this file paginates instead
+// of fetching everything up front — see PhotoLibraryService.getPhotosPage),
+// big enough to feel like a full deck.
+const PAGE_SIZE = 60;
+// Both "top up now" trigger and the minimum number of NEW matches a fetch
+// cycle tries to accumulate before stopping.
+const MIN_BUFFER = 15;
+// Safety cap per fetch cycle (10 * PAGE_SIZE = 600 raw assets scanned,
+// comparable to or better than the old flat 500) so a genuinely sparse or
+// empty category (e.g. Screenshots with none in the library) still
+// resolves to "empty" instead of paging through the whole library.
+const MAX_PAGE_ATTEMPTS_PER_CYCLE = 10;
 
 // Loosely typed against just the 'Swipe' route shape rather than one
 // specific stack's full param list — this screen is mounted from two
@@ -59,7 +72,95 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // there's no previous screen to go back to (the standalone Swipe tab).
   const [sessionKey, setSessionKey] = useState(0);
 
+  // Pagination state — refs, not React state, since they're read/written
+  // from inside async loops and swipe handlers without needing a re-render
+  // of their own (only `candidates` changing triggers a re-render).
+  const cursorRef = useRef<string | undefined>(undefined);
+  const hasNextPageRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
+  // Mirrors how many cards the user has swiped through this session —
+  // SwipeDeck tracks its own index internally, but doesn't expose it, so
+  // this is incremented/decremented in lockstep by the same handlers that
+  // already fire once per swipe/undo.
+  const swipedCountRef = useRef(0);
+  // Mirrors `candidates?.length` so the "did a top-up fetch just find the
+  // true end of the library?" check below doesn't need to read the
+  // (possibly stale-by-then) `candidates` closure from whichever render
+  // scheduled the fetch.
+  const candidatesLengthRef = useRef(0);
+  // Bumped every time a fresh session starts (strategy or sessionKey
+  // change) — every async continuation below checks this before touching
+  // state, so a background fetch from a stale session can't leak into a
+  // new one (e.g. the user backed out and picked a different category
+  // while a page fetch was still in flight).
+  const sessionTokenRef = useRef(0);
+
+  // Fetches pages (via PhotoLibraryService.getPhotosPage) and runs them
+  // through the strategy, accumulating matches until there are enough to
+  // be worth showing, the library is exhausted, or the safety cap is hit.
+  // Used both for the very first load and for background top-ups — the
+  // only difference is what the caller does with the result.
+  const fetchMoreMatches = useCallback(
+    async (token: number): Promise<Asset[]> => {
+      const collected: Asset[] = [];
+      let attempts = 0;
+      while (
+        collected.length < MIN_BUFFER &&
+        hasNextPageRef.current &&
+        attempts < MAX_PAGE_ATTEMPTS_PER_CYCLE
+      ) {
+        const page = await PhotoLibraryService.getPhotosPage({
+          first: PAGE_SIZE,
+          after: cursorRef.current,
+        });
+        if (token !== sessionTokenRef.current) return collected;
+        cursorRef.current = page.endCursor;
+        hasNextPageRef.current = page.hasNextPage;
+        collected.push(...(await strategy.match(page.assets)));
+        if (token !== sessionTokenRef.current) return collected;
+        attempts += 1;
+      }
+      return collected;
+    },
+    [strategy]
+  );
+
+  // Kicks off a background fetch for more candidates once the user is
+  // getting close to the end of what's currently loaded. A no-op while a
+  // fetch is already in flight, or once the library's been fully paged
+  // through (hasNextPageRef is false).
+  const maybeTopUp = useCallback(
+    (remaining: number) => {
+      if (remaining > MIN_BUFFER) return;
+      if (fetchingMoreRef.current || !hasNextPageRef.current) return;
+      const token = sessionTokenRef.current;
+      fetchingMoreRef.current = true;
+      fetchMoreMatches(token).then((more) => {
+        if (token !== sessionTokenRef.current) return;
+        fetchingMoreRef.current = false;
+        if (more.length > 0) {
+          candidatesLengthRef.current += more.length;
+          setCandidates((prev) => (prev ? [...prev, ...more] : more));
+        } else if (!hasNextPageRef.current && swipedCountRef.current >= candidatesLengthRef.current) {
+          // Truly exhausted: no more pages, this fetch found nothing new,
+          // and the user already swiped through everything loaded so far.
+          // SwipeDeck's own onEmpty won't fire again on its own here since
+          // no further swipe happens — this is the only place left to
+          // surface "finished" for this case.
+          setFinished(true);
+        }
+      });
+    },
+    [fetchMoreMatches]
+  );
+
   useEffect(() => {
+    const token = ++sessionTokenRef.current;
+    cursorRef.current = undefined;
+    hasNextPageRef.current = true;
+    fetchingMoreRef.current = false;
+    swipedCountRef.current = 0;
+    candidatesLengthRef.current = 0;
     setCandidates(null);
     setFinished(false);
     setFreedCount(0);
@@ -71,11 +172,14 @@ export default function SwipeScreen({ route, navigation }: Props) {
         setPermissionDenied(true);
         return;
       }
-      const all = await PhotoLibraryService.getAllPhotos();
-      const matched = await strategy.match(all);
-      setCandidates(matched);
+      const matches = await fetchMoreMatches(token);
+      if (token !== sessionTokenRef.current) return;
+      candidatesLengthRef.current = matches.length;
+      // Set even when empty — that's what lets the screen fall through to
+      // the "empty" branch below instead of spinning forever.
+      setCandidates(matches);
     })();
-  }, [strategy, sessionKey]);
+  }, [strategy, sessionKey, fetchMoreMatches]);
 
   const handleSwipeLeft = async (asset: Asset) => {
     // Left = delete. Never permanent — see TrashService: it only stages
@@ -92,6 +196,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
     setFreedCount((c) => c + 1);
     setHistory((h) => [...h, { asset, direction: 'left', wasKept }]);
     setConsecutiveUndos(0);
+    swipedCountRef.current += 1;
+    maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
   };
 
   const handleSwipeRight = async (asset: Asset) => {
@@ -100,6 +206,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
     await KeptService.addKept(asset);
     setHistory((h) => [...h, { asset, direction: 'right' }]);
     setConsecutiveUndos(0);
+    swipedCountRef.current += 1;
+    maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
   };
 
   const handleUndo = async () => {
@@ -116,6 +224,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     } else {
       await KeptService.removeKept(last.asset.id);
     }
+    if (swipedCountRef.current > 0) swipedCountRef.current -= 1;
     setFinished(false);
     setUndoSignal((s) => s + 1);
 
@@ -179,7 +288,15 @@ export default function SwipeScreen({ route, navigation }: Props) {
           renderCard={(asset, isTop) => <PhotoCard asset={asset} isTop={isTop} />}
           onSwipeLeft={handleSwipeLeft}
           onSwipeRight={handleSwipeRight}
-          onEmpty={() => setFinished(true)}
+          onEmpty={() => {
+            // The deck can run dry mid-fetch (more pages are still on the
+            // way, or a fetch just hasn't been kicked off yet this tick) —
+            // only treat it as truly "finished" once there's nothing left
+            // to page in. SwipeDeck resumes on its own as soon as
+            // `candidates` grows past the current index.
+            if (hasNextPageRef.current || fetchingMoreRef.current) return;
+            setFinished(true);
+          }}
           leftLabel={t('swipe.deleteLabel')}
           rightLabel={t('swipe.keepLabel')}
           undoSignal={undoSignal}

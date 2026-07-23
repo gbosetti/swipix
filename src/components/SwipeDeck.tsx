@@ -56,6 +56,16 @@ export default function SwipeDeck<T extends { id: string }>({
   const [, forceRender] = React.useReducer((x) => x + 1, 0);
   const prevUndoSignal = useRef(undoSignal);
 
+  // The PanResponder below is built once via `useRef` and never rebuilt, so
+  // its handlers close over whichever `data`/callback props existed at
+  // mount — normally invisible since `data` never changed identity after
+  // the first render. Now that SwipeScreen can append pages to `data`
+  // while this stays mounted, `onSwipeComplete` must read the CURRENT
+  // props, not the frozen ones — this ref is kept in sync on every render
+  // for exactly that.
+  const latest = useRef({ data, onSwipeLeft, onSwipeRight, onEmpty });
+  latest.current = { data, onSwipeLeft, onSwipeRight, onEmpty };
+
   useEffect(() => {
     if (undoSignal !== prevUndoSignal.current && indexRef.current > 0) {
       indexRef.current -= 1;
@@ -93,16 +103,17 @@ export default function SwipeDeck<T extends { id: string }>({
   };
 
   const onSwipeComplete = (direction: SwipeDirection) => {
-    const item = data[indexRef.current];
+    const current = latest.current;
+    const item = current.data[indexRef.current];
     if (direction === 'right') {
-      onSwipeRight?.(item);
+      current.onSwipeRight?.(item);
     } else {
-      onSwipeLeft?.(item);
+      current.onSwipeLeft?.(item);
     }
     position.setValue({ x: 0, y: 0 });
     indexRef.current += 1;
-    if (indexRef.current >= data.length) {
-      onEmpty?.();
+    if (indexRef.current >= current.data.length) {
+      current.onEmpty?.();
     }
     forceRender();
   };

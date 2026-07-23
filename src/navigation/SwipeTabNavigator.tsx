@@ -6,6 +6,11 @@ import { SwipeTabStackParamList } from './types';
 import { useColors } from '../theme/ThemeContext';
 
 const Stack = createNativeStackNavigator<SwipeTabStackParamList>();
+// Note: SwipeScreen now loads photos page by page rather than all at once
+// (see its PAGE_SIZE/fetchMoreMatches), so RandomPhotosStrategy's shuffle
+// happens within each fetched page rather than across the whole library —
+// accepted tradeoff for a Swipe screen that opens instantly even with
+// thousands of photos, instead of shuffling everything up front.
 const randomPhotosStrategy = new RandomPhotosStrategy();
 
 /**
