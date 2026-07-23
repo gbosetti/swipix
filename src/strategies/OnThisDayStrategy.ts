@@ -1,5 +1,4 @@
 import { CategoryStrategy } from './CategoryStrategy';
-import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
@@ -7,7 +6,10 @@ import i18n from '../i18n';
  * Nostalgia surface: photos taken on today's day-of-month and month in any
  * earlier year (2024-07-22 -> matches every past July 22nd, not July of
  * this year). Excludes the current year — a photo taken earlier today
- * isn't a memory yet, it's just today's photo.
+ * isn't a memory yet, it's just today's photo. Filters whatever photos
+ * it's handed rather than self-fetching — matches can be years apart, so
+ * SwipeScreen's pagination searching progressively further back is more
+ * thorough than a one-shot fetch of only the most recent photos.
  */
 export class OnThisDayStrategy extends CategoryStrategy {
   today: Date;
@@ -17,12 +19,11 @@ export class OnThisDayStrategy extends CategoryStrategy {
     this.today = today;
   }
 
-  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     const month = this.today.getMonth();
     const day = this.today.getDate();
     const year = this.today.getFullYear();
-    const media = await PhotoLibraryService.getAllMedia();
-    return media.filter((asset) => {
+    return assets.filter((asset) => {
       if (asset.mediaType !== 'photo') return false;
       const takenOn = new Date(asset.creationTime);
       return takenOn.getFullYear() < year && takenOn.getMonth() === month && takenOn.getDate() === day;

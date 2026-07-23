@@ -247,7 +247,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // its own slider/picker actually changes (below), not on every render.
   useEffect(() => {
     if (!allPhotos) return;
-    refreshPreview(onThisDayStrategy, []);
+    refreshPreview(onThisDayStrategy, allPhotos);
     refreshPreview(onThisDayVideosStrategy, []);
     refreshPreview(randomPhotosStrategy, allPhotos);
     refreshPreview(screenshotStrategy, allPhotos);
@@ -260,14 +260,14 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         bigPictureRangeMB[0] * 1024 * 1024,
         toBigPictureMaxBytes(bigPictureRangeMB[1])
       ),
-      []
+      allPhotos
     );
     refreshPreview(
       new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1])),
       []
     );
     refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]), allPhotos);
-    refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month), []);
+    refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month), allPhotos);
     refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month), []);
     // Deliberately only depends on allPhotos — this is the one-time initial
     // load. Re-runs for range/month changes happen at their own slider's
@@ -294,7 +294,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistBigPictureRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_PICTURE_RANGE_KEY, `${low},${high}`);
-    refreshPreview(new BigPicturesStrategy(low * 1024 * 1024, toBigPictureMaxBytes(high)), []);
+    if (allPhotos) {
+      refreshPreview(new BigPicturesStrategy(low * 1024 * 1024, toBigPictureMaxBytes(high)), allPhotos);
+    }
   };
 
   const persistBigVideoRange = (low: number, high: number) => {
@@ -310,7 +312,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const handleMonthYearChange = (year: number, month: number) => {
     setMonthYear({ year, month });
     AsyncStorage.setItem(MONTH_YEAR_KEY, `${year},${month}`);
-    refreshPreview(new MonthYearStrategy(year, month), []);
+    if (allPhotos) refreshPreview(new MonthYearStrategy(year, month), allPhotos);
   };
 
   const handleMonthYearVideoChange = (year: number, month: number) => {

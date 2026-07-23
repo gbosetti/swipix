@@ -1,6 +1,5 @@
 import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
-import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
@@ -11,7 +10,10 @@ const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
  * Large photos specifically — split out from the old combined "Big
  * Files" category so photos and videos get their own size range and
  * their own place in the list (Pictures vs Videos section) instead of
- * one generic bucket that could silently be either.
+ * one generic bucket that could silently be either. Filters whatever
+ * photos it's handed (SwipeScreen/CategoryPickerScreen already paginate)
+ * rather than self-fetching — a plain per-item size check needs no
+ * whole-library view.
  */
 export class BigPicturesStrategy extends CategoryStrategy {
   minBytes: number;
@@ -23,9 +25,8 @@ export class BigPicturesStrategy extends CategoryStrategy {
     this.maxBytes = maxBytes;
   }
 
-  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
-    const media = await PhotoLibraryService.getAllMedia();
-    return media.filter((asset) => {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
+    return assets.filter((asset) => {
       if (asset.mediaType !== 'photo') return false;
       const size = new File(asset.uri).size;
       return size >= this.minBytes && size <= this.maxBytes;
