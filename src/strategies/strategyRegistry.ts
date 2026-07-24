@@ -1,7 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { RandomPhotosStrategy } from './RandomPhotosStrategy';
-import { OnThisDayStrategy } from './OnThisDayStrategy';
-import { OnThisDayVideosStrategy } from './OnThisDayVideosStrategy';
 import { ScreenshotStrategy } from './ScreenshotStrategy';
 import { DuplicatesAndSimilarStrategy } from './DuplicatesAndSimilarStrategy';
 import { AllVideosStrategy } from './AllVideosStrategy';
@@ -19,7 +17,6 @@ import { MonthYearVideosStrategy } from './MonthYearVideosStrategy';
  * through navigation params instead of a live class instance — see
  * navigation/types.ts's SwipeRouteParams and createStrategy below. */
 export type StrategyId =
-  | 'on-this-day'
   | 'random'
   | 'month-year'
   | 'screenshots'
@@ -27,7 +24,6 @@ export type StrategyId =
   | 'big-pictures'
   | 'blurred-images'
   | 'dark-photos'
-  | 'on-this-day-videos'
   | 'all-videos'
   | 'month-year-videos'
   | 'short-videos'
@@ -45,8 +41,6 @@ export type StrategyId =
  */
 export function createStrategy(strategyId: StrategyId, params: Record<string, number> = {}): CategoryStrategy {
   switch (strategyId) {
-    case 'on-this-day':
-      return new OnThisDayStrategy();
     case 'random':
       return new RandomPhotosStrategy();
     case 'month-year':
@@ -61,8 +55,6 @@ export function createStrategy(strategyId: StrategyId, params: Record<string, nu
       return new BlurredImagesStrategy();
     case 'dark-photos':
       return new BrightnessStrategy(params.minBrightness, params.maxBrightness);
-    case 'on-this-day-videos':
-      return new OnThisDayVideosStrategy();
     case 'all-videos':
       return new AllVideosStrategy();
     case 'month-year-videos':

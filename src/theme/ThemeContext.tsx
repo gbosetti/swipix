@@ -47,7 +47,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = (next: ThemeMode) => {
     setModeState(next);
-    AsyncStorage.setItem(THEME_MODE_KEY, next);
+    // Applied to the UI regardless of whether this write succeeds — a
+    // failed write just means the choice doesn't survive a restart, not
+    // that switching the theme right now should be blocked or reverted.
+    AsyncStorage.setItem(THEME_MODE_KEY, next).catch((error) => {
+      if (__DEV__) console.warn('Failed to persist theme mode:', error);
+    });
   };
 
   const scheme = resolveScheme(mode, deviceScheme);

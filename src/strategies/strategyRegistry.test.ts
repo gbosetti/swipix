@@ -1,5 +1,4 @@
 import { createStrategy } from './strategyRegistry';
-import { OnThisDayStrategy } from './OnThisDayStrategy';
 import { RandomPhotosStrategy } from './RandomPhotosStrategy';
 import { MonthYearStrategy } from './MonthYearStrategy';
 import { ScreenshotStrategy } from './ScreenshotStrategy';
@@ -7,7 +6,6 @@ import { DuplicatesAndSimilarStrategy } from './DuplicatesAndSimilarStrategy';
 import { BigPicturesStrategy } from './BigPicturesStrategy';
 import { BlurredImagesStrategy } from './BlurredImagesStrategy';
 import { BrightnessStrategy } from './BrightnessStrategy';
-import { OnThisDayVideosStrategy } from './OnThisDayVideosStrategy';
 import { AllVideosStrategy } from './AllVideosStrategy';
 import { MonthYearVideosStrategy } from './MonthYearVideosStrategy';
 import { ShortVideosStrategy } from './ShortVideosStrategy';
@@ -20,12 +18,10 @@ import { BigVideosStrategy } from './BigVideosStrategy';
 // live instance (see navigation/types.ts's SwipeRouteParams).
 describe('createStrategy', () => {
   it('reconstructs every parameterless strategy as the right class', () => {
-    expect(createStrategy('on-this-day')).toBeInstanceOf(OnThisDayStrategy);
     expect(createStrategy('random')).toBeInstanceOf(RandomPhotosStrategy);
     expect(createStrategy('screenshots')).toBeInstanceOf(ScreenshotStrategy);
     expect(createStrategy('duplicates-similar')).toBeInstanceOf(DuplicatesAndSimilarStrategy);
     expect(createStrategy('blurred-images')).toBeInstanceOf(BlurredImagesStrategy);
-    expect(createStrategy('on-this-day-videos')).toBeInstanceOf(OnThisDayVideosStrategy);
     expect(createStrategy('all-videos')).toBeInstanceOf(AllVideosStrategy);
   });
 
