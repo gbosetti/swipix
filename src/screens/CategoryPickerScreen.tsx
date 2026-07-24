@@ -81,6 +81,14 @@ function toBigVideoMaxBytes(highMB: number): number {
 }
 const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
 const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
+// Blurred Photos and Dark Photos are the only previews that trigger real
+// pixel analysis (full-resolution decode via ImageAnalysisService's pure-JS
+// JPEG decoder) rather than a cheap metadata check — on a real device with
+// real high-resolution photos, analyzing the full allPhotos sample (up to
+// 150) just for two small preview icons is real, unnecessary memory
+// pressure never exercised against the simulator's tiny seeded library.
+// A much smaller sample is enough to very likely surface one preview match.
+const PREVIEW_ANALYSIS_SAMPLE_SIZE = 25;
 const MONTH_YEAR_KEY = '@swipix/monthYear';
 const MONTH_YEAR_VIDEO_KEY = '@swipix/monthYearVideo';
 
@@ -250,10 +258,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // its own slider/picker actually changes (below), not on every render.
   useEffect(() => {
     if (!allPhotos) return;
+    const previewAnalysisSample = allPhotos.slice(0, PREVIEW_ANALYSIS_SAMPLE_SIZE);
     refreshPreview(randomPhotosStrategy, allPhotos);
     refreshPreview(screenshotStrategy, allPhotos);
     refreshPreview(duplicatesAndSimilarStrategy, []);
-    refreshPreview(blurredImagesStrategy, allPhotos);
+    refreshPreview(blurredImagesStrategy, previewAnalysisSample);
     refreshPreview(allVideosStrategy, allVideos ?? []);
     refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), allVideos ?? []);
     refreshPreview(
@@ -267,7 +276,10 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1])),
       allVideos ?? []
     );
-    refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]), allPhotos);
+    refreshPreview(
+      new BrightnessStrategy(brightnessRange[0], brightnessRange[1]),
+      previewAnalysisSample
+    );
     refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month), allPhotos);
     refreshPreview(
       new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month),
@@ -315,7 +327,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistBrightnessRange = (low: number, high: number) => {
     AsyncStorage.setItem(BRIGHTNESS_RANGE_KEY, `${low},${high}`);
-    if (allPhotos) refreshPreview(new BrightnessStrategy(low, high), allPhotos);
+    if (allPhotos) {
+      refreshPreview(new BrightnessStrategy(low, high), allPhotos.slice(0, PREVIEW_ANALYSIS_SAMPLE_SIZE));
+    }
   };
 
   const handleMonthYearChange = (year: number, month: number) => {

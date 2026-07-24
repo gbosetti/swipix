@@ -13,6 +13,42 @@ type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
 // identical requests and never serves stale data to a later, separate call.
 const inFlight = new Map<string, Promise<AssetPage>>();
 
+// Confirmed via a real-device crash: MediaLibrary.getAssetInfoAsync isn't
+// as cheap as it looks — when an asset's properties weren't already
+// prefetched by getAssetsAsync, iOS resolves them synchronously on the
+// MAIN THREAD (logged as "Missing prefetched properties... Fetching on
+// demand on the main queue"). Firing all of a page's calls at once via a
+// flat Promise.all (as this used to) floods the main thread badly enough,
+// for a large page (e.g. DuplicatesAndSimilarStrategy's self-fetched 500),
+// to trip iOS's hang watchdog and get the whole app force-killed — with no
+// crash report, since it's a watchdog kill, not a memory/segfault crash.
+// Bounding concurrency, the same way ImageAnalysisService already bounds
+// concurrent image decodes, keeps the main thread responsive regardless of
+// page size. 30 is a deliberate middle ground: SwipeScreen/CategoryPickerScreen
+// pages (60/150 assets) stay close to fully parallel — they were never the
+// crash trigger — while a 500-asset self-fetch (DuplicatesAndSimilarStrategy)
+// still gets spread over ~17 batches instead of flooding the main thread in
+// one shot. An earlier, more conservative value (12) fixed the crash but
+// made every page noticeably slower, including ones that were never at risk.
+const ASSET_INFO_CONCURRENCY = 30;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const current = index++;
+      results[current] = await fn(items[current]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 /**
  * Single source of truth for reading the device photo library.
  *
@@ -111,8 +147,10 @@ export const PhotoLibraryService = {
     // not mapping info.location (GPS coordinates) onto Asset: nothing in
     // the app reads it, and capturing sensitive location data nothing
     // uses is exactly what data-minimization rules out.
-    const detailed: (Asset | null)[] = await Promise.all(
-      page.assets.map(async (asset): Promise<Asset | null> => {
+    const detailed: (Asset | null)[] = await mapWithConcurrency(
+      page.assets,
+      ASSET_INFO_CONCURRENCY,
+      async (asset): Promise<Asset | null> => {
         const info = await MediaLibrary.getAssetInfoAsync(asset);
         // asset.uri is a ph:// reference on iOS, not directly renderable by
         // <Image> — localUri is the actual displayable file URI. If it's
@@ -130,7 +168,7 @@ export const PhotoLibraryService = {
           height: asset.height,
           mediaSubtypes: info.mediaSubtypes ?? [],
         };
-      })
+      }
     );
 
     return {

@@ -7,6 +7,15 @@ import i18n from '../i18n';
 
 const BURST_WINDOW_MS = 3 * 1000; // photos this close together are probably a burst
 
+// Confirmed via a real-device crash: fetching the default 500 assets in one
+// self-fetch, then running full pixel-decode analysis (dHash) on every
+// photo among them, is enough real-device main-thread/CPU pressure to trip
+// iOS's hang watchdog and get the app force-killed. A smaller cap keeps
+// this category safe on real hardware, at the cost of only scanning the
+// 200 most recent items for duplicates rather than 500 — a real but
+// accepted completeness tradeoff, not a correctness bug.
+const FETCH_LIMIT = 200;
+
 /**
  * Merges what used to be two separate categories, since to a user
  * they're the same underlying question — "which of these are redundant
@@ -36,7 +45,7 @@ const BURST_WINDOW_MS = 3 * 1000; // photos this close together are probably a b
  */
 export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
   async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
-    const media = await PhotoLibraryService.getAllMedia();
+    const media = await PhotoLibraryService.getAllMedia({ first: FETCH_LIMIT });
 
     const bySizeAndDimensions = new Map<string, Asset[]>();
     for (const asset of media) {
@@ -80,10 +89,10 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
       .map((asset) => ({ asset, hash: analysis.get(asset.id)?.dHash }))
       .filter((entry): entry is { asset: Asset; hash: string } => entry.hash !== undefined);
 
-    // O(n^2) pairwise comparison. At the library's real cap (getAllMedia
-    // defaults to 500), that's at most ~125k comparisons, each a couple
-    // of integer XOR+popcount ops — a few ms, not worth an
-    // approximate-nearest-neighbor index at this scale.
+    // O(n^2) pairwise comparison. At this strategy's fetch cap (FETCH_LIMIT
+    // = 200), that's at most ~20k comparisons, each a couple of integer
+    // XOR+popcount ops — a few ms, not worth an approximate-nearest-neighbor
+    // index at this scale.
     const similarIds = new Set<string>();
     for (let i = 0; i < hashed.length; i++) {
       for (let j = i + 1; j < hashed.length; j++) {
