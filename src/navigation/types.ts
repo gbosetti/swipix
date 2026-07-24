@@ -1,6 +1,8 @@
-import { CategoryStrategy } from '../strategies/CategoryStrategy';
+import { StrategyId } from '../strategies/strategyRegistry';
 
-export type SwipeRouteParams = { strategy: CategoryStrategy };
+/** Plain, serializable — see strategyRegistry.ts's createStrategy, which
+ * SwipeScreen uses to turn this back into a real CategoryStrategy. */
+export type SwipeRouteParams = { strategyId: StrategyId; params?: Record<string, number> };
 
 export type CategoriesStackParamList = {
   CategoryPicker: undefined;

@@ -10,11 +10,11 @@ jest.mock('expo-media-library', () => ({
 const mockedGetAssetsAsync = MediaLibrary.getAssetsAsync as jest.Mock;
 const mockedGetAssetInfoAsync = MediaLibrary.getAssetInfoAsync as jest.Mock;
 
-function rawAsset(id: string) {
+function rawAsset(id: string, mediaType: 'photo' | 'video' = 'photo') {
   return {
     id,
     uri: `ph://${id}`,
-    mediaType: 'photo',
+    mediaType,
     creationTime: 1000,
     duration: 0,
     width: 100,
@@ -79,6 +79,31 @@ describe('PhotoLibraryService.getMediaPage', () => {
     expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
       expect.objectContaining({ mediaType: ['photo', 'video'] })
     );
+  });
+});
+
+describe('PhotoLibraryService.getSplitMediaPage', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('splits one combined fetch into photos and videos', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('p1', 'photo'), rawAsset('v1', 'video'), rawAsset('p2', 'photo')],
+      endCursor: 'cursor-2',
+      hasNextPage: true,
+      totalCount: 3,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
+
+    const page = await PhotoLibraryService.getSplitMediaPage({ first: 150 });
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(1);
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: ['photo', 'video'] })
+    );
+    expect(page.photos.map((a) => a.id)).toEqual(['p1', 'p2']);
+    expect(page.videos.map((a) => a.id)).toEqual(['v1']);
+    expect(page.endCursor).toBe('cursor-2');
+    expect(page.hasNextPage).toBe(true);
   });
 });
 

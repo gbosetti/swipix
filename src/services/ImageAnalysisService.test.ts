@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   toLuma,
   averageBrightness,
@@ -6,7 +7,10 @@ import {
   differenceHash,
   hammingDistance,
   popcount32,
+  analyzeImages,
+  MAX_CACHE_ENTRIES,
 } from './ImageAnalysisService';
+import { Asset } from '../types';
 
 /** Builds a synthetic RGBA buffer for a solid color — the simplest case
  * for verifying brightness/luma math without needing a real JPEG. */
@@ -153,6 +157,33 @@ describe('differenceHash / hammingDistance', () => {
     const hashSolid = differenceHash(solid, width, height);
     const hashGradient = differenceHash(gradient, width, height);
     expect(hammingDistance(hashSolid, hashGradient)).toBeGreaterThan(20);
+  });
+});
+
+describe('analyzeImages cache eviction', () => {
+  it('evicts the least-recently-seen entries once the cache exceeds MAX_CACHE_ENTRIES', async () => {
+    const CACHE_KEY = '@swipix/imageAnalysisCache';
+    const total = MAX_CACHE_ENTRIES + 10;
+    const seeded: Record<string, { analysis: unknown; lastSeenAt: number }> = {};
+    for (let i = 0; i < total; i++) {
+      seeded[`id-${i}`] = {
+        analysis: { brightness: 100, blurScore: 0, dHash: '0'.repeat(16) },
+        lastSeenAt: i, // ascending — id-0 is oldest
+      };
+    }
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(seeded));
+
+    // No assets passed — eviction runs purely off cache size, independent
+    // of any hits/misses in this call.
+    const result = await analyzeImages([] as Asset[]);
+
+    expect(result.size).toBe(MAX_CACHE_ENTRIES);
+    expect(result.has('id-0')).toBe(false);
+    expect(result.has('id-9')).toBe(false);
+    expect(result.has(`id-${total - 1}`)).toBe(true);
+
+    const persistedRaw = await AsyncStorage.getItem(CACHE_KEY);
+    expect(Object.keys(JSON.parse(persistedRaw as string)).length).toBe(MAX_CACHE_ENTRIES);
   });
 });
 

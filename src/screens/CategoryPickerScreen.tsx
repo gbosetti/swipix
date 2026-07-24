@@ -235,9 +235,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         // photo+video window — getPreviewUri already treats a missing
         // preview as normal, not broken, and the actual swipe session
         // (SwipeScreen) always searches properly regardless.
-        PhotoLibraryService.getMediaPage({ mediaTypes: ['photo', 'video'], first: 150 }).then((page) => {
-          setAllPhotos(page.assets.filter((asset) => asset.mediaType === 'photo'));
-          setAllVideos(page.assets.filter((asset) => asset.mediaType === 'video'));
+        PhotoLibraryService.getSplitMediaPage({ first: 150 }).then((page) => {
+          setAllPhotos(page.photos);
+          setAllVideos(page.videos);
         });
       }
     });
@@ -351,9 +351,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         </View>
       )}
 
+      <Text style={styles.sectionHeader}>{t('categoryPicker.picturesSectionHeader')}</Text>
+
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: onThisDayStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'on-this-day' })}
       >
         <TitleRow
           title={onThisDayStrategy.meta.title}
@@ -362,11 +364,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         />
       </Pressable>
 
-      <Text style={styles.sectionHeader}>{t('categoryPicker.picturesSectionHeader')}</Text>
-
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: randomPhotosStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'random' })}
       >
         <TitleRow
           title={randomPhotosStrategy.meta.title}
@@ -379,7 +379,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new MonthYearStrategy(monthYear.year, monthYear.month),
+              strategyId: 'month-year',
+              params: { year: monthYear.year, month: monthYear.month },
             })
           }
         >
@@ -398,7 +399,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: screenshotStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'screenshots' })}
       >
         <TitleRow
           title={screenshotStrategy.meta.title}
@@ -409,7 +410,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: duplicatesAndSimilarStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'duplicates-similar' })}
       >
         <TitleRow
           title={duplicatesAndSimilarStrategy.meta.title}
@@ -422,10 +423,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new BigPicturesStrategy(
-                bigPictureRangeMB[0] * 1024 * 1024,
-                toBigPictureMaxBytes(bigPictureRangeMB[1])
-              ),
+              strategyId: 'big-pictures',
+              params: {
+                minBytes: bigPictureRangeMB[0] * 1024 * 1024,
+                maxBytes: toBigPictureMaxBytes(bigPictureRangeMB[1]),
+              },
             })
           }
         >
@@ -456,7 +458,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: blurredImagesStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'blurred-images' })}
       >
         <TitleRow
           title={blurredImagesStrategy.meta.title}
@@ -469,7 +471,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new BrightnessStrategy(brightnessRange[0], brightnessRange[1]),
+              strategyId: 'dark-photos',
+              params: { minBrightness: brightnessRange[0], maxBrightness: brightnessRange[1] },
             })
           }
         >
@@ -497,7 +500,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: onThisDayVideosStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'on-this-day-videos' })}
       >
         <TitleRow
           title={onThisDayVideosStrategy.meta.title}
@@ -508,7 +511,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
       <Pressable
         style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategy: allVideosStrategy })}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'all-videos' })}
       >
         <TitleRow
           title={allVideosStrategy.meta.title}
@@ -521,7 +524,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month),
+              strategyId: 'month-year-videos',
+              params: { year: monthYearVideo.year, month: monthYearVideo.month },
             })
           }
         >
@@ -542,7 +546,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]),
+              strategyId: 'short-videos',
+              params: { minSeconds: shortVideoRange[0], maxSeconds: shortVideoRange[1] },
             })
           }
         >
@@ -570,10 +575,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         <Pressable
           onPress={() =>
             navigation.navigate('Swipe', {
-              strategy: new BigVideosStrategy(
-                bigVideoRangeMB[0] * 1024 * 1024,
-                toBigVideoMaxBytes(bigVideoRangeMB[1])
-              ),
+              strategyId: 'big-videos',
+              params: {
+                minBytes: bigVideoRangeMB[0] * 1024 * 1024,
+                maxBytes: toBigVideoMaxBytes(bigVideoRangeMB[1]),
+              },
             })
           }
         >

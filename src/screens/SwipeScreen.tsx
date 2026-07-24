@@ -9,6 +9,7 @@ import PhotoCard from '../components/PhotoCard';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
+import { createStrategy } from '../strategies/strategyRegistry';
 import { SwipeRouteParams } from '../navigation/types';
 import { Asset } from '../types';
 import { ColorPalette } from '../theme/colors';
@@ -59,7 +60,15 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { strategy } = route.params;
+  // route.params only ever carries plain data (see SwipeRouteParams) —
+  // reconstructed into a real CategoryStrategy here, once per navigation
+  // (route.params keeps the same object identity for the lifetime of this
+  // screen instance, so this only re-runs when it's genuinely a new session).
+  const { strategyId, params: strategyParams } = route.params;
+  const strategy = useMemo(
+    () => createStrategy(strategyId, strategyParams),
+    [strategyId, strategyParams]
+  );
   const headerHeight = useHeaderHeight();
   const [candidates, setCandidates] = useState<Asset[] | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);

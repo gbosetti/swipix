@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-07-18 (rev. 2)_
+_Last updated: 2026-07-24 (rev. 3)_
 
 This policy explains what Swipix ("the App") does and does not do with
 your data. The short version: everything happens on your device, and
@@ -35,6 +35,10 @@ standard on-device storage — never transmitted anywhere:
   decision to permanently delete them (nothing is ever deleted
   automatically)
 - Whether you've completed the onboarding flow
+- A small technical cache of values derived from your photos (such as
+  brightness and blur measurements) used to power categories like
+  Blurred Photos and Duplicates, so the App doesn't have to
+  re-analyze the same photo every time
 
 Uninstalling the App removes all of this.
 
@@ -76,7 +80,13 @@ published constitutes acceptance of the updated policy.
 
 ## 8. Governing Law
 
-[To be determined — specify jurisdiction before public release.]
+This policy is governed by the laws of Italy, without regard to its
+conflict-of-laws principles. Any dispute arising from this policy or
+your use of the App is subject to the exclusive jurisdiction of the
+courts of Rome, Italy, except where applicable law (such as mandatory
+data-protection rules in your country of residence, including GDPR
+rights enforceable before your own local supervisory authority)
+requires otherwise.
 
 ## 9. Contact
 

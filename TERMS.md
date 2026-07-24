@@ -1,6 +1,6 @@
 # Terms of Use
 
-_Last updated: 2026-07-18 (rev. 2)_
+_Last updated: 2026-07-24 (rev. 3)_
 
 By using Swipix ("the App"), you agree to these terms. If you do not
 agree, do not use the App.
@@ -70,7 +70,12 @@ privacy.
 
 ## 7. Governing Law
 
-[To be determined — specify jurisdiction before public release.]
+These terms are governed by the laws of Italy, without regard to its
+conflict-of-laws principles. Any dispute arising from these terms or
+your use of the App is subject to the exclusive jurisdiction of the
+courts of Rome, Italy, except where applicable law (such as mandatory
+consumer-protection rules in your country of residence) requires
+otherwise.
 
 ## 8. Contact
 

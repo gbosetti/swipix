@@ -59,6 +59,26 @@ export const PhotoLibraryService = {
     return this._fetchAssets(type, first, after);
   },
 
+  /** Same one combined `getMediaPage(['photo','video'])` fetch a caller
+   * needing both photo and video previews from a single shared window
+   * would otherwise have to split by hand (see CategoryPickerScreen) —
+   * done here once so that logic isn't duplicated at every call site. */
+  async getSplitMediaPage({
+    first,
+    after,
+  }: {
+    first: number;
+    after?: string;
+  }): Promise<{ photos: Asset[]; videos: Asset[]; endCursor: string; hasNextPage: boolean }> {
+    const page = await this.getMediaPage({ mediaTypes: ['photo', 'video'], first, after });
+    return {
+      photos: page.assets.filter((asset) => asset.mediaType === 'photo'),
+      videos: page.assets.filter((asset) => asset.mediaType === 'video'),
+      endCursor: page.endCursor,
+      hasNextPage: page.hasNextPage,
+    };
+  },
+
   async _fetchAssets(
     mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
     first: number,

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { StorageService, StorageInfo } from '../services/StorageService';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
@@ -17,6 +18,7 @@ function formatBytes(bytes: number): string {
  * actually frees real device storage) is reflected right away.
  */
 export default function StorageMeter() {
+  const { t } = useTranslation();
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [info, setInfo] = useState<StorageInfo | null>(null);
@@ -36,9 +38,9 @@ export default function StorageMeter() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.label}>iPhone Storage</Text>
+        <Text style={styles.label}>{t('categoryPicker.storageLabel')}</Text>
         <Text style={[styles.freeText, isLow && styles.freeTextLow]}>
-          {formatBytes(info.freeBytes)} free
+          {t('categoryPicker.storageFree', { amount: formatBytes(info.freeBytes) })}
         </Text>
       </View>
       <View style={styles.track}>
@@ -51,7 +53,10 @@ export default function StorageMeter() {
         />
       </View>
       <Text style={styles.totalText}>
-        {formatBytes(usedBytes)} of {formatBytes(info.totalBytes)} used
+        {t('categoryPicker.storageUsed', {
+          used: formatBytes(usedBytes),
+          total: formatBytes(info.totalBytes),
+        })}
       </Text>
     </View>
   );

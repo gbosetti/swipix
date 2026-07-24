@@ -45,15 +45,37 @@ const HASH_ROWS = 8;
 // not maxed out to whatever the device could theoretically sustain.
 const CONCURRENCY = 3;
 
+interface CacheEntry {
+  analysis: ImageAnalysis;
+  lastSeenAt: number;
+}
+
 const CACHE_KEY = '@swipix/imageAnalysisCache';
-let memoryCache: Map<string, ImageAnalysis> | null = null;
+
+// A photo dropped from the library (deleted, or simply not paginated into
+// view again for a long time) stops getting its lastSeenAt refreshed —
+// without a cap this cache would otherwise grow forever, one entry per
+// photo ever analyzed across the app's lifetime. This isn't a full
+// library reconciliation (that would mean re-fetching everything, exactly
+// what pagination exists to avoid) — it's a simple LRU-style bound.
+export const MAX_CACHE_ENTRIES = 5000;
+
+let memoryCache: Map<string, CacheEntry> | null = null;
 let cacheDirty = false;
 
-async function ensureCacheLoaded(): Promise<Map<string, ImageAnalysis>> {
+async function ensureCacheLoaded(): Promise<Map<string, CacheEntry>> {
   if (memoryCache) return memoryCache;
   const raw = await AsyncStorage.getItem(CACHE_KEY);
   memoryCache = new Map(raw ? Object.entries(JSON.parse(raw)) : []);
   return memoryCache;
+}
+
+function evictLeastRecentlySeen(cache: Map<string, CacheEntry>): void {
+  if (cache.size <= MAX_CACHE_ENTRIES) return;
+  const byAge = [...cache.entries()].sort((a, b) => a[1].lastSeenAt - b[1].lastSeenAt);
+  const excess = cache.size - MAX_CACHE_ENTRIES;
+  for (let i = 0; i < excess; i++) cache.delete(byAge[i][0]);
+  cacheDirty = true;
 }
 
 async function flushCacheIfDirty(): Promise<void> {
@@ -78,18 +100,37 @@ async function flushCacheIfDirty(): Promise<void> {
  */
 export async function analyzeImages(assets: Asset[]): Promise<Map<string, ImageAnalysis>> {
   const cache = await ensureCacheLoaded();
-  const misses = assets.filter((asset) => asset.mediaType === 'photo' && !cache.has(asset.id));
+  const photoAssets = assets.filter((asset) => asset.mediaType === 'photo');
+  const misses = photoAssets.filter((asset) => !cache.has(asset.id));
+  const now = Date.now();
+
+  // Touch every hit's lastSeenAt (in memory only — deliberately NOT marked
+  // dirty here) so eviction below favors photos the app hasn't looked at
+  // in a while, not just insertion order. Not flushing on every touch
+  // preserves the "write once per call that found something new" property
+  // above; a touch-only call's freshened timestamps just ride along with
+  // the next miss-triggered flush. Worst case, a restart before that
+  // happens means eviction judges by a slightly stale timestamp — fine
+  // for a heuristic cache bound, not worth a write on every call for.
+  for (const asset of photoAssets) {
+    const existing = cache.get(asset.id);
+    if (existing) existing.lastSeenAt = now;
+  }
 
   await mapWithConcurrency(misses, CONCURRENCY, async (asset) => {
     const result = await analyzeOne(asset.uri);
     if (result) {
-      cache.set(asset.id, result);
+      cache.set(asset.id, { analysis: result, lastSeenAt: now });
       cacheDirty = true;
     }
   });
 
+  evictLeastRecentlySeen(cache);
   await flushCacheIfDirty();
-  return cache;
+
+  const analyses = new Map<string, ImageAnalysis>();
+  for (const [id, entry] of cache) analyses.set(id, entry.analysis);
+  return analyses;
 }
 
 /**

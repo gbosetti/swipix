@@ -30,6 +30,8 @@
     "getStarted": "Accetta e inizia",
     "next": "Avanti",
     "decline": "Rifiuta",
+    "declineCancel": "Annulla",
+    "declineCloseApp": "Chiudi app",
     "termsTitle": "Termini di utilizzo",
     "close": "Chiudi"
   },
@@ -44,7 +46,10 @@
     "bigPicturesLabelUnbounded": "Segnala foto da {{min}} MB in su",
     "bigVideosLabel": "Segnala video tra {{min}} e {{max}} MB",
     "bigVideosLabelUnbounded": "Segnala video da {{min}} MB in su",
-    "brightnessLabel": "Segnala foto con luminosità tra {{min}} e {{max}}/255"
+    "brightnessLabel": "Segnala foto con luminosità tra {{min}} e {{max}}/255",
+    "storageLabel": "Archiviazione dispositivo",
+    "storageFree": "{{amount}} liberi",
+    "storageUsed": "{{used}} di {{total}} usati"
   },
   "swipe": {
     "permissionDeniedTitle": "L'accesso alle foto è disattivato",

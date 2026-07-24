@@ -30,6 +30,8 @@
     "getStarted": "Accept and Start",
     "next": "Next",
     "decline": "Decline",
+    "declineCancel": "Cancel",
+    "declineCloseApp": "Close App",
     "termsTitle": "Terms of Use",
     "close": "Close"
   },
@@ -44,7 +46,10 @@
     "bigPicturesLabelUnbounded": "Flag photos {{min}} MB and up",
     "bigVideosLabel": "Flag videos between {{min}} and {{max}} MB",
     "bigVideosLabelUnbounded": "Flag videos {{min}} MB and up",
-    "brightnessLabel": "Flag photos between {{min}} and {{max}}/255 brightness"
+    "brightnessLabel": "Flag photos between {{min}} and {{max}}/255 brightness",
+    "storageLabel": "Device Storage",
+    "storageFree": "{{amount}} free",
+    "storageUsed": "{{used}} of {{total}} used"
   },
   "swipe": {
     "permissionDeniedTitle": "Photo access is off",

@@ -28,7 +28,7 @@ const SCRUB_THUMB_SIZE = 12;
  * and no ambiguity about which one is being dragged, so an absolute
  * touch-to-fraction mapping is simpler and just as reliable.
  */
-export default function VideoCard({ asset, isTop }: VideoCardProps) {
+function VideoCard({ asset, isTop }: VideoCardProps) {
   const [muted, setMuted] = useState(true);
   const [scrubbing, setScrubbing] = useState(false);
   const [scrubFraction, setScrubFraction] = useState(0);
@@ -125,6 +125,8 @@ export default function VideoCard({ asset, isTop }: VideoCardProps) {
     </View>
   );
 }
+
+export default React.memo(VideoCard);
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

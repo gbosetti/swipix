@@ -38,7 +38,7 @@ const CONTAINER_HEIGHT = 32;
  * once (via useRef) and its callbacks would otherwise capture stale
  * lowValue/highValue from the render they were created in.
  */
-export default function RangeSlider({
+function RangeSlider({
   minimumValue,
   maximumValue,
   step = 1,
@@ -147,6 +147,8 @@ export default function RangeSlider({
     </View>
   );
 }
+
+export default React.memo(RangeSlider);
 
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({

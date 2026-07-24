@@ -30,6 +30,8 @@
     "getStarted": "Accepter et commencer",
     "next": "Suivant",
     "decline": "Refuser",
+    "declineCancel": "Annuler",
+    "declineCloseApp": "Fermer l'application",
     "termsTitle": "Conditions d'utilisation",
     "close": "Fermer"
   },
@@ -44,7 +46,10 @@
     "bigPicturesLabelUnbounded": "Repérer les photos à partir de {{min}} Mo",
     "bigVideosLabel": "Repérer les vidéos entre {{min}} et {{max}} Mo",
     "bigVideosLabelUnbounded": "Repérer les vidéos à partir de {{min}} Mo",
-    "brightnessLabel": "Repérer les photos avec une luminosité entre {{min}} et {{max}}/255"
+    "brightnessLabel": "Repérer les photos avec une luminosité entre {{min}} et {{max}}/255",
+    "storageLabel": "Stockage de l'appareil",
+    "storageFree": "{{amount}} libres",
+    "storageUsed": "{{used}} sur {{total}} utilisés"
   },
   "swipe": {
     "permissionDeniedTitle": "L'accès aux photos est désactivé",
