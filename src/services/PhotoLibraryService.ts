@@ -1,5 +1,5 @@
 import * as MediaLibrary from 'expo-media-library';
-import { Asset } from '../types';
+import { Asset, MediaTypeFilter } from '../types';
 
 type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
 
@@ -39,13 +39,24 @@ export const PhotoLibraryService = {
     return (await this._fetchAssets(['photo', 'video'], first)).assets;
   },
 
-  /** Cursor-paginated photo fetch — lets a caller load a small first page
-   * fast, then fetch further pages on demand, instead of resolving
-   * hundreds of assets' detail up front (see SwipeScreen, which uses this
-   * to avoid a multi-second stall on large libraries). `after` is the
-   * previous page's `endCursor`; omit it for the first page. */
-  async getPhotosPage({ first, after }: { first: number; after?: string }): Promise<AssetPage> {
-    return this._fetchAssets('photo', first, after);
+  /** Cursor-paginated fetch — lets a caller load a small first page fast,
+   * then fetch further pages on demand, instead of resolving hundreds of
+   * assets' detail up front (see SwipeScreen, which uses this to avoid a
+   * multi-second stall on large libraries). `after` is the previous page's
+   * `endCursor`; omit it for the first page. `mediaTypes` mirrors
+   * CategoryStrategy.mediaTypes, so a caller can ask for exactly what the
+   * active strategy needs. */
+  async getMediaPage({
+    mediaTypes,
+    first,
+    after,
+  }: {
+    mediaTypes: MediaTypeFilter[];
+    first: number;
+    after?: string;
+  }): Promise<AssetPage> {
+    const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
+    return this._fetchAssets(type, first, after);
   },
 
   async _fetchAssets(

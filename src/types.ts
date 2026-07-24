@@ -21,3 +21,5 @@ export interface CategoryMeta {
   title: string;
   icon: ComponentProps<typeof Ionicons>['name'];
 }
+
+export type MediaTypeFilter = 'photo' | 'video';

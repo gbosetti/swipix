@@ -22,7 +22,7 @@ function rawAsset(id: string) {
   };
 }
 
-describe('PhotoLibraryService.getPhotosPage', () => {
+describe('PhotoLibraryService.getMediaPage', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('passes the cursor through to getAssetsAsync and returns endCursor/hasNextPage', async () => {
@@ -34,7 +34,11 @@ describe('PhotoLibraryService.getPhotosPage', () => {
     });
     mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
 
-    const page = await PhotoLibraryService.getPhotosPage({ first: 60, after: 'cursor-1' });
+    const page = await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['photo'],
+      first: 60,
+      after: 'cursor-1',
+    });
 
     expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
       expect.objectContaining({ first: 60, after: 'cursor-1', mediaType: 'photo' })
@@ -55,10 +59,26 @@ describe('PhotoLibraryService.getPhotosPage', () => {
       asset.id === 'good' ? { localUri: 'file:///good.jpg', mediaSubtypes: [] } : { localUri: null }
     );
 
-    const page = await PhotoLibraryService.getPhotosPage({ first: 60 });
+    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['photo'], first: 60 });
 
     expect(page.assets.map((a) => a.id)).toEqual(['good']);
     expect(page.hasNextPage).toBe(false);
+  });
+
+  it('passes a multi-type mediaTypes array through un-collapsed', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
+
+    await PhotoLibraryService.getMediaPage({ mediaTypes: ['photo', 'video'], first: 60 });
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: ['photo', 'video'] })
+    );
   });
 });
 

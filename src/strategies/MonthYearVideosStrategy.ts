@@ -1,6 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
-import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
 
 /**
@@ -19,11 +18,10 @@ export class MonthYearVideosStrategy extends CategoryStrategy {
     this.month = month;
   }
 
-  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     const start = new Date(this.year, this.month, 1).getTime();
     const end = new Date(this.year, this.month + 1, 1).getTime();
-    const media = await PhotoLibraryService.getAllMedia();
-    return media.filter(
+    return assets.filter(
       (asset) => asset.mediaType === 'video' && asset.creationTime >= start && asset.creationTime < end
     );
   }
@@ -34,5 +32,9 @@ export class MonthYearVideosStrategy extends CategoryStrategy {
       title: i18n.t('categories.month-year-videos'),
       icon: 'calendar-outline',
     };
+  }
+
+  get mediaTypes(): MediaTypeFilter[] {
+    return ['video'];
   }
 }

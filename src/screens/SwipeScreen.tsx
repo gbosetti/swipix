@@ -95,7 +95,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // while a page fetch was still in flight).
   const sessionTokenRef = useRef(0);
 
-  // Fetches pages (via PhotoLibraryService.getPhotosPage) and runs them
+  // Fetches pages (via PhotoLibraryService.getMediaPage, scoped to whatever
+  // media types the active strategy declares it needs) and runs them
   // through the strategy, accumulating matches until there are enough to
   // be worth showing, the library is exhausted, or the safety cap is hit.
   // Used both for the very first load and for background top-ups — the
@@ -109,7 +110,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
         hasNextPageRef.current &&
         attempts < MAX_PAGE_ATTEMPTS_PER_CYCLE
       ) {
-        const page = await PhotoLibraryService.getPhotosPage({
+        const page = await PhotoLibraryService.getMediaPage({
+          mediaTypes: strategy.mediaTypes,
           first: PAGE_SIZE,
           after: cursorRef.current,
         });

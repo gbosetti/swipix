@@ -191,6 +191,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   });
   const [trashCount, setTrashCount] = useState(0);
   const [allPhotos, setAllPhotos] = useState<Asset[] | null>(null);
+  const [allVideos, setAllVideos] = useState<Asset[] | null>(null);
   const [previews, setPreviews] = useState<Record<string, string | VideoThumbnail | null>>({});
 
   useEffect(() => {
@@ -223,15 +224,21 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   useEffect(() => {
     PhotoLibraryService.requestPermission().then((granted) => {
       if (granted) {
-        // Only feeds preview thumbnails for the pass-through strategies
-        // below (Random/Screenshot/Blurred/Brightness), which just need
-        // matched[0] — a small page is enough, and far cheaper than the
-        // default 500-asset fetch. A sparse category may occasionally show
-        // its fallback icon instead of a real thumbnail even though real
-        // matches exist deeper in the library — getPreviewUri already
-        // treats a missing preview as normal, not broken, and the actual
-        // swipe session (SwipeScreen) always searches properly regardless.
-        PhotoLibraryService.getPhotosPage({ first: 150 }).then((page) => setAllPhotos(page.assets));
+        // One combined fetch, split client-side — feeds preview thumbnails
+        // for every pass-through strategy below, which each only need
+        // matched[0]. A small shared page is far cheaper than the default
+        // 500-asset fetch, and cheaper than two separate photo/video
+        // fetches would be (each asset still costs a getAssetInfoAsync
+        // call to enrich). A sparse category may occasionally show its
+        // fallback icon instead of a real thumbnail even though real
+        // matches exist deeper in the library, or outside this shared
+        // photo+video window — getPreviewUri already treats a missing
+        // preview as normal, not broken, and the actual swipe session
+        // (SwipeScreen) always searches properly regardless.
+        PhotoLibraryService.getMediaPage({ mediaTypes: ['photo', 'video'], first: 150 }).then((page) => {
+          setAllPhotos(page.assets.filter((asset) => asset.mediaType === 'photo'));
+          setAllVideos(page.assets.filter((asset) => asset.mediaType === 'video'));
+        });
       }
     });
   }, []);
@@ -248,13 +255,13 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   useEffect(() => {
     if (!allPhotos) return;
     refreshPreview(onThisDayStrategy, allPhotos);
-    refreshPreview(onThisDayVideosStrategy, []);
+    refreshPreview(onThisDayVideosStrategy, allVideos ?? []);
     refreshPreview(randomPhotosStrategy, allPhotos);
     refreshPreview(screenshotStrategy, allPhotos);
     refreshPreview(duplicatesAndSimilarStrategy, []);
     refreshPreview(blurredImagesStrategy, allPhotos);
-    refreshPreview(allVideosStrategy, []);
-    refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), []);
+    refreshPreview(allVideosStrategy, allVideos ?? []);
+    refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), allVideos ?? []);
     refreshPreview(
       new BigPicturesStrategy(
         bigPictureRangeMB[0] * 1024 * 1024,
@@ -264,14 +271,20 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     );
     refreshPreview(
       new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1])),
-      []
+      allVideos ?? []
     );
     refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]), allPhotos);
     refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month), allPhotos);
-    refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month), []);
-    // Deliberately only depends on allPhotos — this is the one-time initial
-    // load. Re-runs for range/month changes happen at their own slider's
-    // onSlidingComplete/onChange instead, not by reacting to this state.
+    refreshPreview(
+      new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month),
+      allVideos ?? []
+    );
+    // Deliberately only depends on allPhotos, not allVideos — this is the
+    // one-time initial load, and both are set together from the same fetch
+    // (see the effect above), so allPhotos becoming non-null is a valid
+    // trigger for both. Re-runs for range/month changes happen at their own
+    // slider's onSlidingComplete/onChange instead, not by reacting to this
+    // state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allPhotos]);
 
@@ -289,7 +302,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistShortVideoRange = (low: number, high: number) => {
     AsyncStorage.setItem(SHORT_VIDEO_RANGE_KEY, `${low},${high}`);
-    refreshPreview(new ShortVideosStrategy(low, high), []);
+    if (allVideos) refreshPreview(new ShortVideosStrategy(low, high), allVideos);
   };
 
   const persistBigPictureRange = (low: number, high: number) => {
@@ -301,7 +314,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistBigVideoRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_VIDEO_RANGE_KEY, `${low},${high}`);
-    refreshPreview(new BigVideosStrategy(low * 1024 * 1024, toBigVideoMaxBytes(high)), []);
+    if (allVideos) {
+      refreshPreview(new BigVideosStrategy(low * 1024 * 1024, toBigVideoMaxBytes(high)), allVideos);
+    }
   };
 
   const persistBrightnessRange = (low: number, high: number) => {
@@ -318,7 +333,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const handleMonthYearVideoChange = (year: number, month: number) => {
     setMonthYearVideo({ year, month });
     AsyncStorage.setItem(MONTH_YEAR_VIDEO_KEY, `${year},${month}`);
-    refreshPreview(new MonthYearVideosStrategy(year, month), []);
+    if (allVideos) refreshPreview(new MonthYearVideosStrategy(year, month), allVideos);
   };
 
   return (

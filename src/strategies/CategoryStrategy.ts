@@ -1,4 +1,4 @@
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
 
@@ -35,4 +35,11 @@ export abstract class CategoryStrategy {
 
   protected abstract matchCandidates(assets: Asset[]): Promise<Asset[]>;
   abstract get meta(): CategoryMeta;
+
+  /** Which media types this strategy needs from a paginated fetch — lets
+   * SwipeScreen/CategoryPickerScreen know whether to include videos.
+   * Defaults to photos only; override for a video-only strategy. */
+  get mediaTypes(): MediaTypeFilter[] {
+    return ['photo'];
+  }
 }

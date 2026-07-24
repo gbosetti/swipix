@@ -1,7 +1,6 @@
 import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
-import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
 
 const DEFAULT_MIN_BYTES = 100 * 1024 * 1024; // 100 MB
@@ -26,9 +25,8 @@ export class BigVideosStrategy extends CategoryStrategy {
     this.maxBytes = maxBytes;
   }
 
-  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
-    const media = await PhotoLibraryService.getAllMedia();
-    return media.filter((asset) => {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
+    return assets.filter((asset) => {
       if (asset.mediaType !== 'video') return false;
       const size = new File(asset.uri).size;
       return size >= this.minBytes && size <= this.maxBytes;
@@ -41,5 +39,9 @@ export class BigVideosStrategy extends CategoryStrategy {
       title: i18n.t('categories.big-videos'),
       icon: 'archive-outline',
     };
+  }
+
+  get mediaTypes(): MediaTypeFilter[] {
+    return ['video'];
   }
 }

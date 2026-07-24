@@ -1,6 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
-import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
 
 /**
@@ -17,12 +16,11 @@ export class OnThisDayVideosStrategy extends CategoryStrategy {
     this.today = today;
   }
 
-  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
     const month = this.today.getMonth();
     const day = this.today.getDate();
     const year = this.today.getFullYear();
-    const media = await PhotoLibraryService.getAllMedia();
-    return media.filter((asset) => {
+    return assets.filter((asset) => {
       if (asset.mediaType !== 'video') return false;
       const takenOn = new Date(asset.creationTime);
       return takenOn.getFullYear() < year && takenOn.getMonth() === month && takenOn.getDate() === day;
@@ -35,5 +33,9 @@ export class OnThisDayVideosStrategy extends CategoryStrategy {
       title: i18n.t('categories.on-this-day-videos'),
       icon: 'sparkles-outline',
     };
+  }
+
+  get mediaTypes(): MediaTypeFilter[] {
+    return ['video'];
   }
 }
