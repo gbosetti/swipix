@@ -5,12 +5,13 @@ import type { VideoThumbnail } from 'expo-video';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { TrashService } from '../services/TrashService';
+import { TrashService, DELETE_BATCH_SIZE } from '../services/TrashService';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import { showInterstitialAd } from '../services/AdService';
 import { TrashedAsset } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
+import { useBulkOperation } from '../navigation/BulkOperationContext';
 import VideoCard from '../components/VideoCard';
 
 /**
@@ -40,6 +41,7 @@ export default function TrashScreen() {
   // second tap — track which item is in flight so its own button can
   // show a spinner and ignore repeat presses.
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const { setBulkDeleteInProgress } = useBulkOperation();
 
   const refresh = useCallback(() => {
     TrashService.getTrash().then(setTrash);
@@ -83,9 +85,17 @@ export default function TrashScreen() {
 
   const handleEmptyAll = () => {
     if (!trash || trash.length === 0) return;
+    // Deletion itself is chunked into DELETE_BATCH_SIZE-sized native calls
+    // (see TrashService), each triggering its own OS "Allow Swipix to
+    // delete N photos?" confirmation — surfaced here so a count that'll
+    // need more than one doesn't read as the app asking twice by mistake.
+    const body =
+      trash.length > DELETE_BATCH_SIZE
+        ? `${t('trash.emptyAllBody', { count: trash.length })} ${t('trash.emptyAllBatchNote', { batchSize: DELETE_BATCH_SIZE })}`
+        : t('trash.emptyAllBody', { count: trash.length });
     Alert.alert(
       t('trash.emptyAllTitle'),
-      t('trash.emptyAllBody', { count: trash.length }),
+      body,
       [
         { text: t('trash.cancel'), style: 'cancel' },
         {
@@ -99,7 +109,14 @@ export default function TrashScreen() {
             // most a few seconds, never block it outright. setEmptying
             // keeps the button showing a spinner for that whole window —
             // otherwise a silent multi-second wait reads as broken.
+            // setBulkDeleteInProgress also blocks switching tabs for the
+            // same window — confirmed on a real device: without it, the ad
+            // and the native per-batch delete confirmations can still be
+            // resolving after the user has already navigated elsewhere, so
+            // a delete dialog for Trash's photos surfaces on top of a
+            // completely unrelated screen.
             setEmptying(true);
+            setBulkDeleteInProgress(true);
             try {
               await showInterstitialAd();
               try {
@@ -115,6 +132,7 @@ export default function TrashScreen() {
             } finally {
               setEmptying(false);
               setDeleteProgress(null);
+              setBulkDeleteInProgress(false);
             }
           },
         },

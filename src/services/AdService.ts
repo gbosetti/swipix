@@ -70,6 +70,14 @@ export async function showInterstitialAd(): Promise<void> {
       resolve();
     };
 
+    // Only guards the load phase. Confirmed on a real device: if this timer
+    // is left running for the ad's whole lifetime, an ad that takes longer
+    // than LOAD_TIMEOUT_MS to load *and* be watched lets it fire while the
+    // ad is still on screen — resolving this promise (and letting the
+    // delete flow start) underneath a still-visible ad, stacking the native
+    // "Allow Swipix to delete N photos?" dialog on top of it. Cleared the
+    // moment the ad actually starts showing, so from then on only CLOSED/
+    // ERROR can resolve, no matter how long the user watches.
     const timeoutId = setTimeout(finish, LOAD_TIMEOUT_MS);
 
     const interstitial = InterstitialAd.createForAdRequest(INTERSTITIAL_AD_UNIT_ID, {
@@ -77,6 +85,7 @@ export async function showInterstitialAd(): Promise<void> {
     });
 
     const unsubscribeLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
+      clearTimeout(timeoutId);
       interstitial.show().catch(finish);
     });
     const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, finish);

@@ -80,6 +80,7 @@
     "emptyAllTitle": "Vider la corbeille ?",
     "emptyAllBody_one": "Cela supprime définitivement {{count}} photo. Cette action est irréversible.",
     "emptyAllBody_other": "Cela supprime définitivement {{count}} photos. Cette action est irréversible.",
+    "emptyAllBatchNote": "Swipix supprime par groupes de {{batchSize}}, vous devrez peut-être confirmer plusieurs fois.",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "deletingProgress": "Suppression {{done}} sur {{total}}…"

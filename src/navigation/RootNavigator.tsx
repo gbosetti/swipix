@@ -10,6 +10,7 @@ import KeptStackNavigator from './KeptStackNavigator';
 import SettingsStackNavigator from './SettingsStackNavigator';
 import { RootTabParamList } from './types';
 import { useTheme } from '../theme/ThemeContext';
+import { BulkOperationProvider, useBulkOperation } from './BulkOperationContext';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -39,50 +40,62 @@ export default function RootNavigator() {
   };
   return (
     <NavigationContainer theme={navTheme}>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.textSecondary,
-          tabBarStyle: { backgroundColor: colors.background, borderTopColor: colors.card },
-          tabBarIcon: ({ color, size, focused }) => {
-            const icon = ICONS[route.name];
-            return (
-              <Ionicons
-                name={focused ? icon.focused : icon.unfocused}
-                size={size}
-                color={color}
-              />
-            );
-          },
-        })}
-      >
-        <Tab.Screen
-          name="CategoriesTab"
-          component={CategoriesStackNavigator}
-          options={{ title: t('tabs.categories') }}
-        />
-        <Tab.Screen
-          name="SwipeTab"
-          component={SwipeTabNavigator}
-          options={{ title: t('tabs.swipe') }}
-        />
-        <Tab.Screen
-          name="TrashTab"
-          component={TrashStackNavigator}
-          options={{ title: t('tabs.trash') }}
-        />
-        <Tab.Screen
-          name="KeptTab"
-          component={KeptStackNavigator}
-          options={{ title: t('tabs.kept') }}
-        />
-        <Tab.Screen
-          name="SettingsTab"
-          component={SettingsStackNavigator}
-          options={{ title: t('tabs.settings') }}
-        />
-      </Tab.Navigator>
+      <BulkOperationProvider>
+        <Tabs colors={colors} t={t} />
+      </BulkOperationProvider>
     </NavigationContainer>
+  );
+}
+
+/** Split out from RootNavigator so it can read BulkOperationContext — the
+ * provider has to sit above this, not around it. */
+function Tabs({
+  colors,
+  t,
+}: {
+  colors: ReturnType<typeof useTheme>['colors'];
+  t: ReturnType<typeof useTranslation>['t'];
+}) {
+  const { isBulkDeleteInProgress } = useBulkOperation();
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: { backgroundColor: colors.background, borderTopColor: colors.card },
+        tabBarIcon: ({ color, size, focused }) => {
+          const icon = ICONS[route.name];
+          return <Ionicons name={focused ? icon.focused : icon.unfocused} size={size} color={color} />;
+        },
+      })}
+      // Blocks switching tabs while a bulk trash deletion is in flight (see
+      // BulkOperationContext) — every tab stays mounted in a bottom tab
+      // navigator, so without this a native "Allow Swipix to delete N
+      // photos?" dialog can surface on whatever screen the user has since
+      // navigated to, looking totally disconnected from Trash.
+      screenListeners={{
+        tabPress: (e) => {
+          if (isBulkDeleteInProgress) {
+            e.preventDefault();
+          }
+        },
+      }}
+    >
+      <Tab.Screen
+        name="CategoriesTab"
+        component={CategoriesStackNavigator}
+        options={{ title: t('tabs.categories') }}
+      />
+      <Tab.Screen name="SwipeTab" component={SwipeTabNavigator} options={{ title: t('tabs.swipe') }} />
+      <Tab.Screen name="TrashTab" component={TrashStackNavigator} options={{ title: t('tabs.trash') }} />
+      <Tab.Screen name="KeptTab" component={KeptStackNavigator} options={{ title: t('tabs.kept') }} />
+      <Tab.Screen
+        name="SettingsTab"
+        component={SettingsStackNavigator}
+        options={{ title: t('tabs.settings') }}
+      />
+    </Tab.Navigator>
   );
 }

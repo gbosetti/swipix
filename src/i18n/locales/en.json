@@ -80,6 +80,7 @@
     "emptyAllTitle": "Empty Trash?",
     "emptyAllBody_one": "This permanently deletes {{count}} photo. This cannot be undone.",
     "emptyAllBody_other": "This permanently deletes {{count}} photos. This cannot be undone.",
+    "emptyAllBatchNote": "Swipix deletes in batches of {{batchSize}}, so you may need to confirm more than once.",
     "cancel": "Cancel",
     "delete": "Delete",
     "deletingProgress": "Deleting {{done}} of {{total}}…"

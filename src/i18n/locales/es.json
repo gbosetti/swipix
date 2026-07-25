@@ -80,6 +80,7 @@
     "emptyAllTitle": "¿Vaciar papelera?",
     "emptyAllBody_one": "Esto elimina permanentemente {{count}} foto. Esta acción no se puede deshacer.",
     "emptyAllBody_other": "Esto elimina permanentemente {{count}} fotos. Esta acción no se puede deshacer.",
+    "emptyAllBatchNote": "Swipix elimina en grupos de {{batchSize}}, así que es posible que debas confirmar más de una vez.",
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "deletingProgress": "Eliminando {{done}} de {{total}}…"

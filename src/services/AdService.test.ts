@@ -74,6 +74,23 @@ describe('showInterstitialAd', () => {
     expect(mockPlayer.show).not.toHaveBeenCalled();
   });
 
+  it('does not resolve on the load timeout once the ad is already showing (regression: this used to let the delete flow start underneath a still-visible ad)', async () => {
+    const promise = showInterstitialAd();
+    await Promise.resolve();
+    await Promise.resolve();
+    listeners.loaded();
+    await Promise.resolve();
+    let resolved = false;
+    promise.then(() => {
+      resolved = true;
+    });
+    jest.advanceTimersByTime(8000);
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+    listeners.closed();
+    await expect(promise).resolves.toBeUndefined();
+  });
+
   it('requests non-personalized ads only', async () => {
     const promise = showInterstitialAd();
     await Promise.resolve();

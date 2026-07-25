@@ -80,6 +80,7 @@
     "emptyAllTitle": "Svuotare il cestino?",
     "emptyAllBody_one": "Questo elimina definitivamente {{count}} foto. Non può essere annullato.",
     "emptyAllBody_other": "Questo elimina definitivamente {{count}} foto. Non può essere annullato.",
+    "emptyAllBatchNote": "Swipix elimina in gruppi di {{batchSize}}, quindi potresti dover confermare più di una volta.",
     "cancel": "Annulla",
     "delete": "Elimina",
     "deletingProgress": "Eliminazione {{done}} di {{total}}…"

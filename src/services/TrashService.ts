@@ -11,7 +11,9 @@ const TRASH_KEY = '@swipix/trash';
 // with very large batches. Chunking sidesteps both, and as a bonus makes
 // a cancelled/failed batch only lose progress on the remainder, not the
 // whole delete.
-const DELETE_BATCH_SIZE = 50;
+// Exported so TrashScreen can warn the user up front when a bulk delete
+// will need more than one native confirmation.
+export const DELETE_BATCH_SIZE = 50;
 
 /**
  * Deletion is NEVER instant. This is the single most important UX decision
