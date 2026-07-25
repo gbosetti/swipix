@@ -13,11 +13,9 @@ import { BrightnessStrategy } from './BrightnessStrategy';
 import { MonthYearStrategy } from './MonthYearStrategy';
 import { MonthYearVideosStrategy } from './MonthYearVideosStrategy';
 
-/** Every strategy's stable identifier — matches that strategy's own
- * `meta.id` exactly (each strategy file is the source of truth for its
- * own literal; this type just enumerates them). This is what travels
+/** Every strategy's stable identifier, matching its own `meta.id`. Travels
  * through navigation params instead of a live class instance — see
- * navigation/types.ts's SwipeRouteParams and createStrategy below. */
+ * navigation/types.ts's SwipeRouteParams. */
 export type StrategyId =
   | 'random'
   | 'month-year'
@@ -33,16 +31,9 @@ export type StrategyId =
   | 'short-videos'
   | 'big-videos';
 
-/**
- * Reconstructs a CategoryStrategy instance from a plain, serializable
- * {strategyId, params} pair. Exists because passing a live class instance
- * through React Navigation params (the previous approach) only worked by
- * accident — nothing about instances is serializable, so anything relying
- * on real navigation state (deep links, state persistence/restoration)
- * would have broken. `params` only needs the handful of primitive values
- * each strategy's constructor actually takes; strategies with no
- * constructor args ignore it entirely.
- */
+/** Reconstructs a CategoryStrategy from a plain, serializable
+ * `{strategyId, params}` pair — a live class instance isn't serializable,
+ * so it can't travel through React Navigation params directly. */
 export function createStrategy(
   strategyId: StrategyId,
   params: Record<string, number | string> = {}

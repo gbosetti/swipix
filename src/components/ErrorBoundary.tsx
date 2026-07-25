@@ -10,17 +10,14 @@ interface State {
 }
 
 /**
- * The last line of defense: without this, any uncaught render error
- * anywhere in the tree crashes to a blank/white screen with no way back
- * except force-quitting. Deliberately placed outside ThemeProvider in
- * App.tsx and deliberately NOT using useColors()/t() here — this has to
- * keep working even if theme or i18n setup itself is what threw, so the
- * fallback below is plain, hardcoded, self-contained.
+ * Last line of defense — without this, an uncaught render error crashes
+ * to a blank screen with no way back except force-quitting.
  *
- * No crash reporting is wired up here on purpose — Swipix has none
- * anywhere (see PRIVACY.md's "no analytics or activity tracking"), and
- * this boundary isn't the place to quietly add telemetry. It only stops
- * the app from going fully blank.
+ * @remarks
+ * Deliberately outside ThemeProvider in App.tsx and not using
+ * useColors()/t() — must keep working even if theme/i18n setup itself
+ * threw, so the fallback is plain and self-contained. No crash reporting
+ * wired up on purpose (Swipix has no analytics anywhere).
  */
 export default class ErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false };

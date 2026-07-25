@@ -1,10 +1,7 @@
 import { StrategyId } from '../strategies/strategyRegistry';
 
 /** Plain, serializable — see strategyRegistry.ts's createStrategy, which
- * SwipeScreen uses to turn this back into a real CategoryStrategy. Values
- * are numbers for every range/date param (byte counts, year/month...)
- * except AlbumStrategy's albumId, which is a native album identifier —
- * not something meaningful to represent as a number. */
+ * turns this back into a real CategoryStrategy. */
 export type SwipeRouteParams = {
   strategyId: StrategyId;
   params?: Record<string, number | string>;

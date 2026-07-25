@@ -4,15 +4,10 @@ import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
 /**
- * Lets someone target a specific month (e.g. clear out an old trip or a
- * one-off backlog) by date rather than by what the photo looks like.
- * Photos only — MonthYearVideosStrategy is the Videos-section
- * counterpart, so each section's "by month" card only ever surfaces its
- * own media type, consistent with the rest of the Pictures/Videos split.
- * Filters whatever photos it's handed rather than self-fetching —
- * SwipeScreen's pagination already keeps searching further back until it
- * finds enough matches (or exhausts the library), which is more thorough
- * than a one-shot fetch of only the most recent photos.
+ * Targets a specific month by date rather than by what the photo looks
+ * like. Photos only — MonthYearVideosStrategy is the Videos counterpart.
+ * Filters whatever it's handed; SwipeScreen's pagination already keeps
+ * searching further back until it finds enough matches.
  */
 export class MonthYearStrategy extends CategoryStrategy {
   year: number;
@@ -40,11 +35,8 @@ export class MonthYearStrategy extends CategoryStrategy {
     };
   }
 
-  // createdAfter/createdBefore are native filters (see
-  // PhotoLibraryService), so this asks the OS directly for the most
-  // recent photo IN that specific month instead of hoping one turns up in
-  // a shared "most recent overall" sample — a January 2020 selection
-  // would never find anything in a recency-sorted sample otherwise.
+  // Native date filters ask the OS directly for a photo IN that month,
+  // rather than hoping one turns up in a "most recent overall" sample.
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,

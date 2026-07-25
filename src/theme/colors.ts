@@ -21,14 +21,12 @@ export interface ColorPalette {
 }
 
 /**
- * Single source of truth for color values across the app. Change a color
- * here once instead of hunting through every screen's StyleSheet.
+ * Single source of truth for color values across the app.
  *
- * accent/success are sampled from the app icon's gradient (mint -> sky
- * blue) rather than plain iOS system colors, so the UI's own interactive
- * color actually matches the brand instead of just "a blue." They stay
- * identical between light and dark — a brand color shouldn't change
- * depending on appearance mode, only the neutrals around it should.
+ * @remarks
+ * accent/success are sampled from the app icon's gradient, not plain iOS
+ * system colors, and stay identical between light and dark — a brand
+ * color shouldn't change with appearance mode, only the neutrals should.
  */
 export const DarkColors: ColorPalette = {
   background: '#000000',

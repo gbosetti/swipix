@@ -5,16 +5,11 @@ import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
 /**
- * The terms text itself, shared between the onboarding modal and the
- * standalone Terms screen reachable from Settings — one source of truth
- * so the two never drift out of sync. Full legal text lives in TERMS.md.
+ * The terms text, shared between the onboarding modal and the standalone
+ * Terms screen — one source of truth. Full text lives in TERMS.md.
  *
- * Deliberately English-only: the `terms.*` keys exist only in en.json,
- * so i18next's fallbackLng renders this in English regardless of the
- * active app language. Legal text is high-stakes to get precisely right
- * and hard to verify in a language the team can't proofread, so it isn't
- * translated — unlike the surrounding UI chrome (nav labels, buttons),
- * which is.
+ * @remarks
+ * Deliberately English-only, same reasoning as PrivacyContent.
  */
 export default function TermsContent() {
   const { t } = useTranslation();

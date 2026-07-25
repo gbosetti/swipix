@@ -8,36 +8,25 @@ import { Asset } from '../types';
 
 interface VideoCardProps {
   asset: Asset;
-  /** Only the top card in the deck should actually play — the two cards
-   * stacked behind it stay paused, so at most one video (and one audio
-   * stream) plays at a time no matter how many are mounted. */
+  /** Only the top card actually plays — the stacked cards behind it stay
+   * paused. */
   isTop: boolean;
 }
 
 const SCRUB_TRACK_HEIGHT = 24;
 const SCRUB_THUMB_SIZE = 12;
 
-// Confirmed on a real device: a video the OS won't grant read access to
-// (FIGSANDBOX "deny file-issue-extension", e.g. a WhatsApp-saved .MP4 —
-// same underlying failure VideoThumbnailService now bounds too) can sit
-// in the player's 'loading' status forever, retrying the same denied read
-// in the background indefinitely — with no fallback UI here, that reads
-// as the whole app being stuck, not "this one video won't play." Bounds
-// how long an unresolved status is tolerated before treating it the same
-// as an explicit 'error'.
+// A video the OS won't grant read access to can sit in 'loading' forever,
+// retrying the denied read indefinitely. Bounds how long an unresolved
+// status is tolerated before treating it as an explicit 'error'.
 const LOAD_TIMEOUT_MS = 8000;
 
 /**
- * A real playing preview instead of a static "Video" placeholder — you
- * can actually see what's in a short clip, and drag the bar at the
- * bottom to scrub through it, before deciding. Muted and looping by
- * default (a swipe session is quick browsing, not a place to be
- * startled by audio); tap the speaker to unmute.
+ * A real playing preview, muted and looping by default, with a scrub bar.
  *
- * Position is tracked from the raw touch's locationX within the track
- * (not gesture.dx deltas like RangeSlider) — there's only one thumb here
- * and no ambiguity about which one is being dragged, so an absolute
- * touch-to-fraction mapping is simpler and just as reliable.
+ * @remarks
+ * Scrub position tracks the raw touch's locationX within the track, not
+ * gesture.dx deltas — only one thumb, so an absolute mapping is simpler.
  */
 function VideoCard({ asset, isTop }: VideoCardProps) {
   const { t } = useTranslation();
@@ -64,10 +53,8 @@ function VideoCard({ asset, isTop }: VideoCardProps) {
 
   const { status } = useEvent(player, 'statusChange', { status: player.status });
   const [timedOut, setTimedOut] = useState(false);
-  // Belt-and-suspenders alongside the 'error' check below: a genuinely
-  // broken/sandboxed file may never emit 'error' at all, just stay
-  // 'loading' forever (see LOAD_TIMEOUT_MS above) — this is what actually
-  // catches that case, since waiting on 'error' alone would never fire.
+  // A broken/sandboxed file may never emit 'error', just stay 'loading' —
+  // the timeout is what actually catches that case.
   useEffect(() => {
     if (status === 'readyToPlay' || status === 'error') return;
     const timeoutId = setTimeout(() => setTimedOut(true), LOAD_TIMEOUT_MS);
@@ -83,9 +70,7 @@ function VideoCard({ asset, isTop }: VideoCardProps) {
     if (isTop && !failed) {
       player.play();
     } else {
-      // Stops retrying a file that's confirmed (or timed out) broken —
-      // without this, the player keeps hammering the same denied native
-      // read in the background even after the fallback UI is showing.
+      // Stops retrying a confirmed-broken file in the background.
       player.pause();
     }
   }, [isTop, player, failed]);
@@ -128,10 +113,7 @@ function VideoCard({ asset, isTop }: VideoCardProps) {
   };
 
   if (failed) {
-    // Honest confidence signaling: a video that will never play reads as
-    // a frozen/broken app if it just sits there blank — say plainly that
-    // it couldn't load instead, matching PhotoCard's icon-fallback
-    // philosophy for a preview that never resolved.
+    // Say plainly that it couldn't load, rather than sitting blank.
     return (
       <View style={styles.container}>
         <View style={[styles.video, styles.videoPlaceholder]}>

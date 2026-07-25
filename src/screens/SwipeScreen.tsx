@@ -18,53 +18,37 @@ import { useColors } from '../theme/ThemeContext';
 interface SwipeHistoryEntry {
   asset: Asset;
   direction: 'left' | 'right';
-  /** Only meaningful for 'left' entries: was this photo already in Kept
-   * immediately before this swipe (e.g. reconsidering it in the Kept
-   * tab)? If so, undoing this swipe needs to restore that status, not
-   * just pull it back out of Trash. */
+  /** Was this already Kept before the swipe (e.g. reconsidered from the
+   * Kept tab)? Undo needs to restore that, not just pull it out of Trash. */
   wasKept?: boolean;
 }
 
-// After this many undos in a row, nudge the user toward Trash instead of
-// continuing to step back one card at a time — undo is for fixing a
-// mistake, not for browsing.
+// After this many undos in a row, nudge toward Trash instead of stepping
+// back one card at a time.
 const UNDO_NUDGE_THRESHOLD = 3;
 
-// Small enough to load fast (the whole reason this file paginates instead
-// of fetching everything up front — see PhotoLibraryService.getMediaPage),
-// big enough to feel like a full deck. Also how much the fetch window
-// (windowSizeRef) grows by each cycle — see its own comment above.
+// Small enough to load fast, big enough to feel like a full deck. Also how
+// much the fetch window (windowSizeRef) grows by each cycle.
 const PAGE_SIZE = 60;
-// Both "top up now" trigger and the minimum number of NEW matches a fetch
-// cycle tries to accumulate before stopping.
+// Both the "top up now" trigger and the minimum new matches per fetch cycle.
 const MIN_BUFFER = 15;
-// Safety cap per fetch cycle (10 * PAGE_SIZE = 600 raw assets scanned,
-// comparable to or better than the old flat 500) so a genuinely sparse or
-// empty category (e.g. Screenshots with none in the library) still
-// resolves to "empty" instead of paging through the whole library.
+// Safety cap per fetch cycle so a sparse/empty category still resolves to
+// "empty" instead of paging through the whole library.
 const MAX_PAGE_ATTEMPTS_PER_CYCLE = 10;
 
-// Loosely typed against just the 'Swipe' route shape rather than one
-// specific stack's full param list — this screen is mounted from two
-// different stacks (pushed from Categories, or as the standalone Swipe
-// tab's root), and only needs goBack/canGoBack, not sibling route names.
+// Loosely typed against just the route shape — this screen mounts from two
+// different stacks and only needs goBack/canGoBack.
 type Props = NativeStackScreenProps<{ Swipe: SwipeRouteParams }, 'Swipe'>;
 
 /**
- * This screen is the "composition root" for one swipe session: it asks
- * the library for photos, asks the chosen Strategy which ones qualify,
- * then hands them to the generic SwipeDeck. Notice this screen doesn't
- * know HOW the strategy decides what qualifies — it just calls
- * `strategy.match(allPhotos)`. Swap the strategy, nothing else changes.
+ * Composition root for one swipe session: fetches candidates, asks the
+ * chosen {@link Strategy} which qualify, hands them to {@link SwipeDeck}.
+ * Doesn't know HOW a strategy decides what qualifies.
  */
 export default function SwipeScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  // route.params only ever carries plain data (see SwipeRouteParams) —
-  // reconstructed into a real CategoryStrategy here, once per navigation
-  // (route.params keeps the same object identity for the lifetime of this
-  // screen instance, so this only re-runs when it's genuinely a new session).
   const { strategyId, params: strategyParams } = route.params;
   const strategy = useMemo(
     () => createStrategy(strategyId, strategyParams),
@@ -78,65 +62,37 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const [history, setHistory] = useState<SwipeHistoryEntry[]>([]);
   const [undoSignal, setUndoSignal] = useState(0);
   const [consecutiveUndos, setConsecutiveUndos] = useState(0);
-  // Bumping this re-runs the fetch below — used by "Swipe again" when
-  // there's no previous screen to go back to (the standalone Swipe tab).
+  // Bumped by "Swipe again" when there's no previous screen to go back to.
   const [sessionKey, setSessionKey] = useState(0);
 
-  // Pagination state — refs, not React state, since they're read/written
-  // from inside async loops and swipe handlers without needing a re-render
-  // of their own (only `candidates` changing triggers a re-render).
+  // Refs, not state — read/written from async loops and swipe handlers
+  // without needing their own re-render.
   //
-  // windowSizeRef, not a cursor: confirmed via reading expo-media-library's
-  // native iOS pagination (MediaLibraryUtilities.swift) that passing an
-  // `after` cursor resolves it via `fetchResult.index(of: cursor)` against
-  // a BRAND NEW PHFetchResult built fresh on every call. PHFetchResult's
-  // ordering for assets that tie on the sort key (creationDate — very
-  // common: bulk imports, WhatsApp/social-media saves, restored backups)
-  // isn't guaranteed stable across independently-built fetch results, so
-  // that index lookup can land far past where the previous page actually
-  // ended — flipping hasNextPage to false after only a few pages even
-  // though most of the library is unseen (reproduced: "All Photos" showing
-  // "finished" after swiping only a few). Every branch of the native code
-  // skips that lookup entirely when no cursor is passed, so instead of
-  // `after`, every fetch asks for the whole growing window from the start
-  // (first: windowSize, no after) and only the newly-appeared slice is
-  // matched — sidesteps the bug completely rather than working around it.
+  // windowSizeRef, not a cursor: expo-media-library's iOS cursor resolution
+  // (`fetchResult.index(of:)` against a fresh PHFetchResult each call) isn't
+  // reliable when assets tie on the sort key — the index can land past
+  // where the previous page ended, flipping hasNextPage to false too early.
+  // Growing `first` from 0 and slicing off only the new tail sidesteps it.
   const windowSizeRef = useRef(0);
   const hasNextPageRef = useRef(true);
   const fetchingMoreRef = useRef(false);
-  // Mirrors how many cards the user has swiped through this session —
-  // SwipeDeck tracks its own index internally, but doesn't expose it, so
-  // this is incremented/decremented in lockstep by the same handlers that
-  // already fire once per swipe/undo.
+  // Mirrors how many cards have been swiped — SwipeDeck tracks its own
+  // index but doesn't expose it.
   const swipedCountRef = useRef(0);
-  // Mirrors `candidates?.length` so the "did a top-up fetch just find the
-  // true end of the library?" check below doesn't need to read the
-  // (possibly stale-by-then) `candidates` closure from whichever render
-  // scheduled the fetch.
+  // Mirrors candidates?.length without reading a possibly-stale closure.
   const candidatesLengthRef = useRef(0);
-  // Every id ever added to `candidates` this session. Needed because
-  // "self-fetching" strategies (Duplicates & Similar is the one that
-  // matters here) ignore the page they're handed and re-scan their whole
-  // dataset from scratch on every call — so a background top-up can
-  // legitimately return almost the same match set as the one already on
-  // screen. Without this, the same photo lands at multiple positions in
-  // the deck, gets swiped (and trashed/kept) more than once with
-  // inconsistent decisions, and duplicate ids in Trash/Kept break their
-  // list rendering (confirmed: "two children with the same key").
+  // Every id ever added this session. Needed because self-fetching
+  // strategies (Duplicates & Similar) re-scan their whole dataset on every
+  // call, so a top-up can return matches already on screen — without this,
+  // the same photo could land at two deck positions and get decided twice.
   const seenIdsRef = useRef<Set<string>>(new Set());
-  // Bumped every time a fresh session starts (strategy or sessionKey
-  // change) — every async continuation below checks this before touching
-  // state, so a background fetch from a stale session can't leak into a
-  // new one (e.g. the user backed out and picked a different category
-  // while a page fetch was still in flight).
+  // Bumped on every fresh session (strategy or sessionKey change) so a
+  // stale background fetch can't leak state into a newer session.
   const sessionTokenRef = useRef(0);
 
-  // Fetches pages (via PhotoLibraryService.getMediaPage, scoped to whatever
-  // media types the active strategy declares it needs) and runs them
-  // through the strategy, accumulating matches until there are enough to
-  // be worth showing, the library is exhausted, or the safety cap is hit.
-  // Used both for the very first load and for background top-ups — the
-  // only difference is what the caller does with the result.
+  /** Pages through the library via the strategy, accumulating matches
+   * until there's enough to show, the library's exhausted, or the safety
+   * cap hits. Shared by the initial load and background top-ups. */
   const fetchMoreMatches = useCallback(
     async (token: number): Promise<Asset[]> => {
       const collected: Asset[] = [];
@@ -169,10 +125,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
     [strategy]
   );
 
-  // Kicks off a background fetch for more candidates once the user is
-  // getting close to the end of what's currently loaded. A no-op while a
-  // fetch is already in flight, or once the library's been fully paged
-  // through (hasNextPageRef is false).
+  /** Kicks off a background fetch once the deck is running low. No-op
+   * while a fetch is already in flight or the library's fully paged. */
   const maybeTopUp = useCallback(
     (remaining: number) => {
       if (remaining > MIN_BUFFER) return;
@@ -186,11 +140,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
           candidatesLengthRef.current += more.length;
           setCandidates((prev) => (prev ? [...prev, ...more] : more));
         } else if (!hasNextPageRef.current && swipedCountRef.current >= candidatesLengthRef.current) {
-          // Truly exhausted: no more pages, this fetch found nothing new,
-          // and the user already swiped through everything loaded so far.
-          // SwipeDeck's own onEmpty won't fire again on its own here since
-          // no further swipe happens — this is the only place left to
-          // surface "finished" for this case.
+          // Truly exhausted and no further swipe will happen to re-trigger
+          // SwipeDeck's own onEmpty — this is the last place left to
+          // surface "finished".
           setFinished(true);
         }
       });
@@ -220,23 +172,17 @@ export default function SwipeScreen({ route, navigation }: Props) {
       const matches = await fetchMoreMatches(token);
       if (token !== sessionTokenRef.current) return;
       candidatesLengthRef.current = matches.length;
-      // Set even when empty — that's what lets the screen fall through to
-      // the "empty" branch below instead of spinning forever.
+      // Set even when empty, so the screen falls through to "empty" below.
       setCandidates(matches);
     })();
   }, [strategy, sessionKey, fetchMoreMatches]);
 
   const handleSwipeLeft = async (asset: Asset) => {
-    // Left = delete. Never permanent — see TrashService: it only stages
-    // the photo, permanent deletion requires an explicit later action.
-    // This is the single most important safety decision in the whole app.
+    // Never permanent — TrashService only stages it.
     const wasKept = await KeptService.isKept(asset.id);
     await TrashService.moveToTrash(asset);
-    // Covers reconsidering a kept photo (Kept tab) and the rarer case of
-    // re-encountering an already-kept photo in a normal category swipe —
-    // a delete decision always overrides a previous keep, so a photo is
-    // never left sitting in both Trash and Kept at once. A harmless
-    // no-op otherwise (removing an id that was never kept).
+    // A delete always overrides a previous keep, so nothing sits in both
+    // Trash and Kept. No-op if it was never kept.
     await KeptService.removeKept(asset.id);
     setFreedCount((c) => c + 1);
     setHistory((h) => [...h, { asset, direction: 'left', wasKept }]);
@@ -246,8 +192,6 @@ export default function SwipeScreen({ route, navigation }: Props) {
   };
 
   const handleSwipeRight = async (asset: Asset) => {
-    // Right = keep. Recorded in KeptService (not just this session) so
-    // it shows up in the Kept tab for reconsidering later.
     await KeptService.addKept(asset);
     setHistory((h) => [...h, { asset, direction: 'right' }]);
     setConsecutiveUndos(0);
@@ -255,14 +199,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
     maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
   };
 
-  // A photo that fails to load (confirmed on a real device: the OS can
-  // deny file access under native resource contention) must never be left
-  // swipeable — left/right would delete or keep something the user never
-  // actually saw. Not a "decision" of any kind: no Trash, no Kept, no
-  // history entry (so Undo can't land back on it), just quietly dropped
-  // from the deck so it's left exactly as it was in the library. The next
-  // card already sitting behind it in `candidates` slides forward on its
-  // own — no index bookkeeping needed here, unlike a real swipe.
+  /** A photo that fails to load must never be swipeable — left/right would
+   * delete or keep something never seen. Not a decision: no Trash, no
+   * Kept, no history entry, just dropped from the deck. */
   const handleCardLoadError = (asset: Asset) => {
     setCandidates((prev) => (prev ? prev.filter((a) => a.id !== asset.id) : prev));
     candidatesLengthRef.current = Math.max(0, candidatesLengthRef.current - 1);
@@ -325,12 +264,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
       </View>
     );
   } else {
-    // SwipeDeck stays mounted here regardless of `finished` — its
-    // internal card index lives in a ref that only survives while the
-    // component is mounted. If the finished state fully replaced this
-    // tree (like every other branch above), undoing from the finished
-    // screen would remount a fresh SwipeDeck at index 0 instead of
-    // stepping back from the real last card. The finished UI renders as
+    // SwipeDeck stays mounted regardless of `finished` — its card index is
+    // a ref, so replacing this tree would remount at index 0 instead of
+    // stepping back from the real last card on Undo. Finished renders as
     // an overlay on top instead.
     content = (
       <View style={styles.swipeArea}>
@@ -350,11 +286,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
           onSwipeLeft={handleSwipeLeft}
           onSwipeRight={handleSwipeRight}
           onEmpty={() => {
-            // The deck can run dry mid-fetch (more pages are still on the
-            // way, or a fetch just hasn't been kicked off yet this tick) —
-            // only treat it as truly "finished" once there's nothing left
-            // to page in. SwipeDeck resumes on its own as soon as
-            // `candidates` grows past the current index.
+            // Can run dry mid-fetch — only "finished" once nothing's left
+            // to page in. SwipeDeck resumes on its own once candidates grows.
             if (hasNextPageRef.current || fetchingMoreRef.current) return;
             setFinished(true);
           }}

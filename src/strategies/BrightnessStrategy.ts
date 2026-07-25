@@ -4,14 +4,12 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
-// See BlurredImagesStrategy's identical constants for the rationale — real
-// pixel decode, no native filter, so a small sample and a bit more time.
+// See BlurredImagesStrategy's identical constants.
 const PREVIEW_SAMPLE_SIZE = 15;
 
 /**
- * Flags photos within a brightness range. This is a cheap, deterministic
- * pixel-average calculation — no ML involved, so it's never embarrassingly
- * wrong — which is why it's the category to lead with in the UI.
+ * Flags photos within a brightness range — a cheap, deterministic
+ * pixel-average, no ML involved, so it's the category to lead with.
  */
 export class BrightnessStrategy extends CategoryStrategy {
   minBrightness: number;
@@ -24,10 +22,8 @@ export class BrightnessStrategy extends CategoryStrategy {
   }
 
   async matchCandidates(assets: Asset[]): Promise<Asset[]> {
-    // One bulk call, not one await per photo — analyzeImages shares a
-    // single decode across brightness/blur/duplicate-hash and caches by
-    // asset id, so this doesn't re-analyze photos already seen this
-    // session (e.g. from the Categories preview pass).
+    // One bulk call, not one per photo — analyzeImages shares a decode
+    // across brightness/blur/duplicate-hash and caches by asset id.
     const analysis = await analyzeImages(assets);
     return assets.filter((asset) => {
       const brightness = analysis.get(asset.id)?.brightness;

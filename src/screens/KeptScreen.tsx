@@ -14,19 +14,11 @@ import { useColors } from '../theme/ThemeContext';
 import VideoCard from '../components/VideoCard';
 
 /**
- * Browsable list of every photo you've swiped right on, across every
- * category — same list-plus-preview shape as TrashScreen. The action
- * here is "Swipe Again," not "Restore" — nothing was ever done to the
- * photo itself; kept status only exists so category strategies stop
- * offering it as a candidate. Un-marking it just drops it back into the
- * normal, undecided pool, where it'll reappear next time a matching
- * category is swiped.
- *
- * Unlike Trash's "Empty Trash Now," the bulk action here ("Swipe Again
- * on All") isn't destructive — nothing is deleted, photos just go back
- * into the swipe queue — so it doesn't need the same scary/red
- * confirmation styling, just a plain heads-up that it affects everything
- * in the list at once.
+ * Every photo swiped right, across every category — same shape as
+ * TrashScreen, but "Swipe Again" instead of "Restore": kept status only
+ * stops a strategy from offering it as a candidate, nothing was done to
+ * the photo itself. The bulk action isn't destructive, so it skips
+ * Trash's scary/red confirmation styling.
  */
 export default function KeptScreen() {
   const { t } = useTranslation();
@@ -35,12 +27,8 @@ export default function KeptScreen() {
   const [kept, setKept] = useState<Asset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<Asset | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
-  // Same reasoning as TrashScreen's `emptying` — showInterstitialAd can
-  // take up to ~8s to settle, and a silent wait that long reads as a bug.
+  // Same reasoning as TrashScreen's `emptying`/`restoringId`.
   const [swipingAgainAll, setSwipingAgainAll] = useState(false);
-  // Same reasoning as TrashScreen's `restoringId` — removeKept is a fast
-  // local write, but with no visual feedback a tap that lands mid-render
-  // reads as "nothing happened" and invites a second tap.
   const [swipingAgainId, setSwipingAgainId] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
@@ -49,8 +37,7 @@ export default function KeptScreen() {
 
   useFocusEffect(refresh);
 
-  // Same caching approach as TrashScreen: extract one frame per video
-  // item, once, rather than on every refresh.
+  // Same caching approach as TrashScreen.
   useEffect(() => {
     if (!kept) return;
     const pending = kept.filter(
@@ -84,11 +71,7 @@ export default function KeptScreen() {
       {
         text: t('kept.swipeAgainAll'),
         onPress: async () => {
-          // Same non-blocking pattern as Trash's "Empty Trash Now": the ad
-          // shows first when available, but always resolves within its own
-          // timeout, so a missing ad delays this by at most a few seconds,
-          // never blocks it. setSwipingAgainAll keeps the button showing a
-          // spinner for that whole window.
+          // Same non-blocking pattern as Trash's "Empty Trash Now".
           setSwipingAgainAll(true);
           try {
             await showInterstitialAd();
@@ -123,9 +106,6 @@ export default function KeptScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
-          // Same as TrashScreen — every item has a renderable uri by
-          // construction, ph:// included, since expo-image's <Image>
-          // (imported above) ships a native loader for it.
           const isVideo = item.mediaType === 'video';
           const videoThumbnail = videoThumbnails[item.id];
           return (
@@ -135,8 +115,7 @@ export default function KeptScreen() {
                   videoThumbnail ? (
                     <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
                   ) : (
-                    // Still extracting the frame (or extraction failed) —
-                    // <Image> can't decode the raw video file URI itself.
+                    // Still extracting the frame, or extraction failed.
                     <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
                       <Ionicons name="videocam" size={22} color={colors.textSecondary} />
                     </View>

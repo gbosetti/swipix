@@ -4,20 +4,16 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
 
-// See BigPicturesStrategy's identical constant for the rationale.
+// See BigPicturesStrategy's identical constant.
 const PREVIEW_SAMPLE_SIZE = 5;
 
 const DEFAULT_MIN_BYTES = 100 * 1024 * 1024; // 100 MB
 const DEFAULT_MAX_BYTES = 2000 * 1024 * 1024; // ~2 GB
 
 /**
- * Large videos specifically — the other half of the old combined "Big
- * Files" category, split out so it lives with the rest of the Videos
- * section instead of mixed in with photo categories. Uses a much higher
- * byte range than Big Pictures: a photo rarely exceeds ~200MB even at
- * ProRAW quality, but a longer or higher-resolution video routinely
- * lands in the 1-3GB range, so a photo-sized ceiling would silently
- * miss most of what people actually mean by "big video."
+ * Large videos — the other half of the old "Big Files" category. Uses a
+ * much higher byte range than Big Pictures: a video routinely lands in
+ * the 1-3GB range, where a photo-sized ceiling would miss most of it.
  */
 export class BigVideosStrategy extends CategoryStrategy {
   minBytes: number;
@@ -49,14 +45,12 @@ export class BigVideosStrategy extends CategoryStrategy {
     return ['video'];
   }
 
-  // Reads real file bytes off asset.uri (above) — needs a resolved file
-  // path, not the fast ph:// reference SwipeScreen/previews otherwise use.
+  // Reads real file bytes off asset.uri — needs a resolved file path.
   get needsDetailedFetch(): boolean {
     return true;
   }
 
-  // See BigPicturesStrategy's identical override for the rationale —
-  // confirmed via a real-device timeout log for that category.
+  // See BigPicturesStrategy's identical override.
   protected previewTimeoutMs = 6000;
 
   protected async findPreviewAsset(): Promise<Asset | null> {

@@ -4,13 +4,9 @@ import { Asset } from '../types';
 const KEPT_KEY = '@swipix/kept';
 
 /**
- * Every photo you've swiped right on, across every category — lets you
- * browse back through past "keep" decisions and reconsider some,
- * without needing to remember which category each one came from.
- *
- * Mirrors TrashService's storage pattern, but there's no permanent
- * deletion here: keeping a photo isn't a destructive action, so nothing
- * needs an explicit "empty" step.
+ * Every photo swiped right on, across every category. Mirrors
+ * TrashService's storage pattern, but nothing here is destructive, so
+ * there's no explicit "empty" step.
  */
 export const KeptService = {
   async addKept(asset: Asset): Promise<void> {
@@ -28,10 +24,8 @@ export const KeptService = {
     await this._save(updated);
   },
 
-  /** Un-marks every kept photo at once — same effect as tapping "Swipe
-   * Again" on each one individually, just without doing it one by one.
-   * Still not destructive: every photo just goes back into the normal,
-   * undecided pool to be swiped on again later. */
+  /** Un-marks every kept photo at once, same as "Swipe Again" on each
+   * individually — every photo just returns to the undecided pool. */
   async clearAll(): Promise<void> {
     await this._save([]);
   },
@@ -48,9 +42,7 @@ export const KeptService = {
   async _load(): Promise<Asset[]> {
     const raw = await AsyncStorage.getItem(KEPT_KEY);
     const kept: Asset[] = raw ? JSON.parse(raw) : [];
-    // Self-healing de-dupe — see TrashService._load()'s comment. addKept
-    // already guards against writing a new duplicate, but this cleans up
-    // anything already sitting in storage from before that guard existed.
+    // Self-healing de-dupe — see TrashService._load().
     const byId = new Map(kept.map((item) => [item.id, item]));
     return Array.from(byId.values());
   },

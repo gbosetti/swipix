@@ -70,11 +70,9 @@ function Tabs({
           return <Ionicons name={focused ? icon.focused : icon.unfocused} size={size} color={color} />;
         },
       })}
-      // Blocks switching tabs while a bulk trash deletion is in flight (see
-      // BulkOperationContext) — every tab stays mounted in a bottom tab
-      // navigator, so without this a native "Allow Swipix to delete N
-      // photos?" dialog can surface on whatever screen the user has since
-      // navigated to, looking totally disconnected from Trash.
+      // Blocks switching tabs during a bulk trash deletion (see
+      // BulkOperationContext) — every tab stays mounted, so a native
+      // delete dialog could otherwise surface on an unrelated screen.
       screenListeners={{
         tabPress: (e) => {
           if (isBulkDeleteInProgress) {

@@ -30,14 +30,9 @@ interface SwipeDeckProps<T extends { id: string }> {
 }
 
 /**
- * SwipeDeck is deliberately generic: it takes `data` (any array) and a
- * `renderCard` function, plus onSwipeLeft/onSwipeRight callbacks.
- *
- * It does NOT know about photos, trash, or categories. This means the
- * exact same component could power a totally different feature later
- * (e.g. swiping through contacts to merge duplicates) with zero changes —
- * that's the reusability payoff of keeping UI mechanics separate from
- * domain logic (separate what changes for different reasons).
+ * Deliberately generic: takes `data` and a `renderCard` function, knows
+ * nothing about photos, trash, or categories — the same component could
+ * power an unrelated swipe feature with zero changes.
  */
 export default function SwipeDeck<T extends { id: string }>({
   data,
@@ -56,13 +51,9 @@ export default function SwipeDeck<T extends { id: string }>({
   const [, forceRender] = React.useReducer((x) => x + 1, 0);
   const prevUndoSignal = useRef(undoSignal);
 
-  // The PanResponder below is built once via `useRef` and never rebuilt, so
-  // its handlers close over whichever `data`/callback props existed at
-  // mount — normally invisible since `data` never changed identity after
-  // the first render. Now that SwipeScreen can append pages to `data`
-  // while this stays mounted, `onSwipeComplete` must read the CURRENT
-  // props, not the frozen ones — this ref is kept in sync on every render
-  // for exactly that.
+  // panResponder below is built once via useRef and closes over whatever
+  // props existed at mount — this ref keeps onSwipeComplete reading the
+  // current data/callbacks instead of a frozen first-render snapshot.
   const latest = useRef({ data, onSwipeLeft, onSwipeRight, onEmpty });
   latest.current = { data, onSwipeLeft, onSwipeRight, onEmpty };
 
@@ -75,18 +66,11 @@ export default function SwipeDeck<T extends { id: string }>({
     prevUndoSignal.current = undoSignal;
   }, [undoSignal, position]);
 
-  // useNativeDriver: false here, deliberately — a PanResponder's move
-  // handler always runs on the JS thread anyway (gesture recognition itself
-  // is JS-computed), so there's no native-driver optimization to gain, and
-  // Animated.event's native-driver mode returns an AnimatedEvent object
-  // rather than a callable function — PanResponder requires a real
-  // function and throws ("config.onPanResponderMove is not a function")
-  // otherwise, confirmed on-device. forceSwipe/resetPosition below are also
-  // kept non-native for the same value, since mixing a native-driven
-  // release animation with JS-driven setValue() calls on the next drag is
-  // what caused the freeze-after-first-swipe regression. transform-based
-  // styling (getCardStyle below) is still what fixes the actual jank —
-  // it's cheaper than layout (left/top) regardless of native driver.
+  // useNativeDriver: false — PanResponder needs a callable move handler,
+  // and Animated.event's native mode returns a non-callable AnimatedEvent
+  // instead. Mixing a native-driven release with JS-driven setValue() on
+  // the next drag also caused a freeze-after-first-swipe regression, so
+  // forceSwipe/resetPosition below stay non-native too.
   const handlePanMove = useRef(
     Animated.event([null, { dx: position.x, dy: position.y }], { useNativeDriver: false })
   ).current;
@@ -136,14 +120,9 @@ export default function SwipeDeck<T extends { id: string }>({
     Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
   };
 
-  // transform-based positioning (translateX/Y + rotate), not
-  // position.getLayout()'s left/top — layout properties trigger a full
-  // layout recalculation on every frame, which read as stuttery or
-  // "freezing" on a real device even under the JS driver (confirmed
-  // on-device). transform doesn't require layout, so it's noticeably
-  // cheaper regardless of native vs. JS driver — see the note above
-  // panResponder for why this whole gesture stays JS-driven
-  // (useNativeDriver: false) rather than native-driven.
+  // transform (translateX/Y + rotate), not getLayout()'s left/top —
+  // layout properties trigger a full recalculation every frame, which
+  // read as stuttery even under the JS driver.
   const getCardStyle = () => {
     const rotate = position.x.interpolate({
       inputRange: [-SCREEN_WIDTH * 1.5, 0, SCREEN_WIDTH * 1.5],
@@ -195,11 +174,8 @@ export default function SwipeDeck<T extends { id: string }>({
               )}
             </Animated.View>
           ) : (
-            // Fully opaque, not dimmed — a translucent stacked card let the
-            // photo underneath visibly bleed through the top one while
-            // dragging, which read as a rendering glitch rather than a
-            // depth cue. The small vertical offset below is enough on its
-            // own to convey "there's more behind this."
+            // Fully opaque, not dimmed — translucency let the photo
+            // underneath bleed through the top one while dragging.
             <Animated.View key={item.id} style={[styles.card, { top: 6 * i }]}>
               {renderCard(item, false)}
             </Animated.View>
@@ -212,11 +188,6 @@ export default function SwipeDeck<T extends { id: string }>({
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    // container above is already flex:1 (all space left after SwipeScreen's
-    // status bar and hint row) — sizing the card much closer to that full
-    // area, instead of 75% of it, both makes the photo bigger and moves it
-    // away from looking nearly square, since width was already 90% of the
-    // screen while height had a lot of headroom unused.
     card: { position: 'absolute', width: SCREEN_WIDTH * 0.94, height: '94%' },
     stamp: {
       position: 'absolute',

@@ -19,12 +19,6 @@ export default function SwipeTabNavigator() {
       <Stack.Screen
         name="Swipe"
         component={SwipeScreen}
-        // SwipeScreen reconstructs the real strategy from this id (see
-        // strategyRegistry.ts) — it loads photos page by page rather than
-        // all at once, so RandomPhotosStrategy's shuffle happens within
-        // each fetched page rather than across the whole library, an
-        // accepted tradeoff for a Swipe screen that opens instantly even
-        // with thousands of photos.
         initialParams={{ strategyId: 'random' }}
         options={{
           headerShown: true,

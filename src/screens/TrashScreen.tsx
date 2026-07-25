@@ -27,19 +27,14 @@ export default function TrashScreen() {
   const [trash, setTrash] = useState<TrashedAsset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<TrashedAsset | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
-  // True from the moment "Delete" is confirmed until the whole ad+delete
-  // flow settles — showInterstitialAd can take up to ~8s to resolve on
-  // its own timeout, and silent, unresponsive-looking wait that long
-  // reads as a bug, not "still working."
+  // True until the whole ad+delete flow settles — showInterstitialAd can
+  // take up to ~8s, and a silent wait that long reads as broken.
   const [emptying, setEmptying] = useState(false);
-  // Large trash counts delete in batches (see TrashService), each with
-  // its own native confirmation — worth surfacing progress rather than
-  // one opaque spinner for what can be a multi-step, several-second wait.
+  // Large trash counts delete in batches, each with its own native
+  // confirmation — worth surfacing progress, not one opaque spinner.
   const [deleteProgress, setDeleteProgress] = useState<{ done: number; total: number } | null>(null);
-  // Restore is a fast local write, but with zero visual feedback a tap
-  // that lands mid-render reads as "nothing happened" and invites a
-  // second tap — track which item is in flight so its own button can
-  // show a spinner and ignore repeat presses.
+  // Tracks which restore is in flight so its button shows a spinner and
+  // ignores repeat taps.
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const { setBulkDeleteInProgress } = useBulkOperation();
 
@@ -49,10 +44,8 @@ export default function TrashScreen() {
 
   useFocusEffect(refresh);
 
-  // Row thumbnails can't just reuse an asset's own URI for videos (see
-  // getVideoThumbnail's doc comment), so extract one frame per video item
-  // once and cache it here — only for items not already generated,
-  // rather than re-extracting on every refresh.
+  // Extracts one frame per video item once, caching it here — only for
+  // items not already generated.
   useEffect(() => {
     if (!trash) return;
     const pending = trash.filter(
@@ -64,10 +57,8 @@ export default function TrashScreen() {
         setVideoThumbnails((current) => ({ ...current, [item.id]: thumbnail }));
       });
     });
-    // Deliberately excludes videoThumbnails — reading it above (via
-    // `pending`) is for filtering only; including it would re-run this
-    // effect every time it updates and immediately regenerate what was
-    // just added.
+    // Excludes videoThumbnails deliberately — including it would re-run
+    // this on every thumbnail just added.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trash]);
 
@@ -85,10 +76,9 @@ export default function TrashScreen() {
 
   const handleEmptyAll = () => {
     if (!trash || trash.length === 0) return;
-    // Deletion itself is chunked into DELETE_BATCH_SIZE-sized native calls
-    // (see TrashService), each triggering its own OS "Allow Swipix to
-    // delete N photos?" confirmation — surfaced here so a count that'll
-    // need more than one doesn't read as the app asking twice by mistake.
+    // Deletion chunks into DELETE_BATCH_SIZE-sized native calls, each
+    // with its own OS confirmation — noted here so multiple confirmations
+    // don't read as the app asking twice by mistake.
     const body =
       trash.length > DELETE_BATCH_SIZE
         ? `${t('trash.emptyAllBody', { count: trash.length })} ${t('trash.emptyAllBatchNote', { batchSize: DELETE_BATCH_SIZE })}`
@@ -102,19 +92,11 @@ export default function TrashScreen() {
           text: t('trash.delete'),
           style: 'destructive',
           onPress: async () => {
-            // Gates this specific bulk action, not per-item restore —
-            // awaited so it shows before the delete, but showInterstitialAd
-            // always resolves within its own timeout even with no fill/
-            // slow network/offline, so a missing ad can delay this by at
-            // most a few seconds, never block it outright. setEmptying
-            // keeps the button showing a spinner for that whole window —
-            // otherwise a silent multi-second wait reads as broken.
-            // setBulkDeleteInProgress also blocks switching tabs for the
-            // same window — confirmed on a real device: without it, the ad
-            // and the native per-batch delete confirmations can still be
-            // resolving after the user has already navigated elsewhere, so
-            // a delete dialog for Trash's photos surfaces on top of a
-            // completely unrelated screen.
+            // showInterstitialAd always resolves within its own timeout,
+            // so this delays at most a few seconds. setBulkDeleteInProgress
+            // blocks switching tabs for the same window — without it, a
+            // delete confirmation could surface on top of an unrelated
+            // screen the user has already navigated to.
             setEmptying(true);
             setBulkDeleteInProgress(true);
             try {
@@ -125,8 +107,7 @@ export default function TrashScreen() {
                   (done, total) => setDeleteProgress({ done, total })
                 );
               } catch {
-                // User cancelled the native confirmation, or deletion failed —
-                // trash bookkeeping is left untouched, nothing to do here.
+                // Cancelled or failed — trash bookkeeping stays untouched.
               }
               refresh();
             } finally {
@@ -159,12 +140,6 @@ export default function TrashScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
-          // Every item has a renderable uri by construction — a ph:// asset-
-          // library reference (the live-browsing fetch path's fast path for
-          // photos, see PhotoLibraryService) or a resolved file path (video,
-          // or the detailed fetch path). expo-image's <Image> (imported
-          // above) ships a native loader specifically for ph:// URIs, unlike
-          // React Native's own <Image>, so both render correctly here.
           const isVideo = item.mediaType === 'video';
           const videoThumbnail = videoThumbnails[item.id];
           return (
@@ -174,8 +149,7 @@ export default function TrashScreen() {
                   videoThumbnail ? (
                     <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
                   ) : (
-                    // Still extracting the frame (or extraction failed) —
-                    // <Image> can't decode the raw video file URI itself.
+                    // Still extracting the frame, or extraction failed.
                     <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
                       <Ionicons name="videocam" size={22} color={colors.textSecondary} />
                     </View>

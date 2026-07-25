@@ -1,42 +1,25 @@
 import { createVideoPlayer, VideoPlayer, VideoThumbnail } from 'expo-video';
 
-// A video whose file the OS won't hand over (confirmed on a real device:
-// FIGSANDBOX "deny file-issue-extension" against a WhatsApp-saved .MP4)
-// can leave the player stuck in 'loading' forever, retrying the same
-// denied read — without a bound, `extractThumbnail` below never settles,
-// so `player.release()` (in getVideoThumbnail's `finally`) never runs
-// either. The underlying AVPlayer then keeps silently retrying in the
-// background for a preview nobody's even looking at anymore, burning real
-// native resources that compete with unrelated photo/video loads
+// A video the OS won't hand over can leave the player stuck in 'loading'
+// forever, retrying indefinitely — without a bound, player.release()
+// never runs either, and the retries keep competing for native resources
 // elsewhere in the app. Bounds the whole extraction (ready-wait AND frame
-// generation — both are native calls that could hang the same way), not
-// just one stage of it.
+// generation), not just one stage.
 const EXTRACTION_TIMEOUT_MS = 5000;
 
-// Confirmed on a real device across MULTIPLE fresh app launches: the same
-// specific video(s) fail this same way every single time (a persistent OS-
-// level sandbox denial, not a one-off network blip) — CategoryPickerScreen
-// re-requests a preview for the same video category on every mount, focus
-// regain, and album selection change, so without this, the app pays the
-// full ~5s timeout again and again for a file it already knows is a dead
-// end, each time competing for native resources with whatever else the
-// user is actually trying to do (confirmed: made the album picker's own
-// taps feel "ultra slow" and block the app while a doomed retry was still
-// in flight). Session-lifetime only, not persisted — a transient failure
-// (e.g. iCloud still downloading the asset) should get a fresh chance next
-// app launch, not be blacklisted forever.
+// Some videos fail this same way on every app launch (a persistent OS
+// denial, not a one-off blip), and previews get re-requested on every
+// mount/focus/selection change — without this, each retry pays the full
+// timeout again, competing for resources with whatever else is happening.
+// Session-lifetime only: a transient failure gets a fresh chance next launch.
 const knownFailedUris = new Set<string>();
 
 /**
- * Extracts a single representative frame from a video file, for use as a
- * static preview (category cards, Trash/Kept list rows) where actually
- * playing the video would be overkill — that's what VideoCard is for.
+ * Extracts a single representative frame from a video file, for a static
+ * preview where playing the video would be overkill.
  *
- * The returned VideoThumbnail is a native image reference, not a URI —
- * it can only be rendered via expo-image's <Image>, not React Native's
- * core <Image>. Swallows all failures (corrupt file, unsupported codec,
- * timeout) and returns null instead: a missing thumbnail should fall back
- * to a generic icon, not break the screen.
+ * @returns A native image reference (not a URI, only expo-image's
+ * `<Image>` can render it), or `null` on any failure/timeout.
  */
 export async function getVideoThumbnail(uri: string): Promise<VideoThumbnail | null> {
   if (knownFailedUris.has(uri)) return null;
@@ -58,9 +41,8 @@ async function extractThumbnail(player: VideoPlayer): Promise<VideoThumbnail | n
 }
 
 // Manual settled-flag + clearTimeout, not a bare Promise.race — a race
-// never cancels the losing side's timer, so every SUCCESSFUL extraction
-// would still leave a live 5s setTimeout running for no reason (the exact
-// bug CategoryStrategy.getPreview hit and fixed the same way).
+// never cancels the losing side's timer, leaving a live timer running
+// past every successful extraction (see CategoryStrategy.getPreview).
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     let settled = false;

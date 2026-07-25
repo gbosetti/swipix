@@ -4,15 +4,10 @@ import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
 /**
- * Swipe through one specific album's photos instead of the whole library
- * — the "By Month" idea, but for a folder you already organized yourself
- * rather than a date range. Photos only — AlbumVideosStrategy is the
- * Videos-section counterpart, same split as MonthYearStrategy/
- * MonthYearVideosStrategy. The actual scoping happens natively (see
- * PhotoLibraryService.albumId threaded through getMediaPage/
- * getPreviewCandidates), so this strategy itself does no filtering of its
- * own: whatever SwipeScreen/CategoryPickerScreen hand it already only
- * contains this album's photos.
+ * Swipes one specific album's photos instead of the whole library.
+ * Photos only — AlbumVideosStrategy is the Videos counterpart. Scoping
+ * happens natively (see PhotoLibraryService's `albumId` param), so this
+ * strategy does no filtering of its own.
  */
 export class AlbumStrategy extends CategoryStrategy {
   private readonly id: string;
@@ -28,10 +23,8 @@ export class AlbumStrategy extends CategoryStrategy {
 
   get meta(): CategoryMeta {
     return {
-      // Fixed category label, like MonthYearStrategy's "By Month" — the
-      // specific album name belongs in AlbumPicker's own row below the
-      // card, not the card's title itself. id stays per-album so each
-      // album gets its own preview cache entry when switched.
+      // Fixed label — the album name belongs in AlbumPicker's own row,
+      // not the card title. id stays per-album for its own preview cache.
       id: `album-${this.id}`,
       title: i18n.t('categories.album'),
       icon: 'folder-outline',

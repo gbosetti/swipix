@@ -5,59 +5,37 @@ import { analyzeImages, hammingDistance, HAMMING_THRESHOLD } from '../services/I
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
-const BURST_WINDOW_MS = 3 * 1000; // photos this close together are probably a burst
+// Photos this close together are probably a burst.
+const BURST_WINDOW_MS = 3 * 1000;
 
-// Confirmed via a real-device crash: fetching the default 500 assets in one
-// self-fetch, then running full pixel-decode analysis (dHash) on every
-// photo among them, is enough real-device main-thread/CPU pressure to trip
-// iOS's hang watchdog and get the app force-killed. A smaller cap keeps
-// this category safe on real hardware, at the cost of only scanning the
-// 200 most recent items for duplicates rather than 500 — a real but
-// accepted completeness tradeoff, not a correctness bug.
+// Fetching 500 assets and dHash-analyzing all of them was enough real-
+// device CPU pressure to trip iOS's hang watchdog. A smaller cap trades
+// completeness (200 most recent, not 500) for safety.
 const FETCH_LIMIT = 200;
 
-// The one category with no fast native shortcut at all — finding a
-// duplicate genuinely requires comparing photos against each other. The
-// preview reuses the exact same detection logic on a much smaller,
-// separately-fetched sample (findDuplicates below), and gets the most
-// generous timeout of any category since even that smaller pass still
-// means real work, not a metadata check. 15, not 60: confirmed on a real
-// device that capping JS-side concurrency (see PhotoLibraryService) isn't
-// enough on its own — these calls are effectively serialized on iOS's
-// MAIN THREAD regardless of concurrency, so total main-thread time scales
-// with the raw count, not how many run "at once." Combined with Big
-// Pictures/Big Videos' own preview samples, the old total (80 detailed
-// calls across all three on one Categories mount) was enough to freeze
-// the whole app, not just show a slow preview.
+// No fast native shortcut exists for this category — finding a duplicate
+// requires comparing photos against each other, so the preview reuses the
+// same detection on a smaller sample (see findDuplicates) with the most
+// generous timeout of any category. 15, not 60: these calls effectively
+// serialize on iOS's main thread regardless of JS concurrency, so total
+// time scales with raw count.
 const PREVIEW_FETCH_LIMIT = 15;
 const PREVIEW_TIMEOUT_MS = 5000;
 
 /**
- * Merges what used to be two separate categories, since to a user
- * they're the same underlying question — "which of these are redundant
- * copies?" — just detected three different ways:
+ * "Which of these are redundant copies?", detected three ways, unioned
+ * rather than intersected — a photo needs to match only one signal:
  *
- *  - Exact duplicates: same file size AND same pixel dimensions, a
- *    strong signal that catches the same photo saved twice from
- *    different apps (e.g. WhatsApp), regardless of when each copy was
- *    taken/saved.
- *  - Burst clusters: photos shot within a few seconds of each other —
- *    an honest, cheap proxy for near-duplicates (several attempts at the
- *    same shot) without claiming to compare actual image content.
- *  - Perceptual similarity: a difference hash (dHash) comparing rough
- *    visual similarity, not exact pixels — catches near-duplicates the
- *    other two signals miss (a retake, a minor edit), at the cost of
- *    occasionally flagging genuinely different but visually similar
- *    photos. That tradeoff is exactly what issue #10 is worried about,
- *    which is why it's unioned with (not the sole authority over) the
- *    other two signals rather than trusted alone. Photos only, since the
- *    hash comes from decoded image pixels — videos still participate in
- *    the other two signals unchanged.
+ * - Exact duplicates: same file size and pixel dimensions (e.g. the same
+ *   photo saved twice from different apps).
+ * - Burst clusters: shot within a few seconds of each other.
+ * - Perceptual similarity: a difference hash comparing rough visual
+ *   similarity, not exact pixels — catches a retake or minor edit, at
+ *   the cost of occasional false positives (tracked in issue #10).
+ *   Photos only; videos still participate in the other two signals.
  *
- * A photo only needs to match one signal to show up here; the three id
- * sets are unioned, not intersected. Sources its own photos+videos
- * dataset via getAllMedia(), like Big Files and Short Videos, since
- * exact-duplicate detection needs videos too.
+ * Sources its own photos+videos via `getAllMedia()`, since exact-duplicate
+ * detection needs videos too.
  */
 export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
   async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
@@ -65,9 +43,8 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
     return this.findDuplicates(media);
   }
 
-  /** The actual duplicate/burst/similarity detection — pulled out of
-   * matchCandidates so findPreviewAsset below can run the identical logic
-   * on a smaller, separately-fetched sample instead of duplicating it. */
+  /** Shared by matchCandidates and findPreviewAsset so both run the same
+   * detection, just on differently-sized samples. */
   private async findDuplicates(media: Asset[]): Promise<Asset[]> {
     const bySizeAndDimensions = new Map<string, Asset[]>();
     for (const asset of media) {
@@ -111,10 +88,8 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
       .map((asset) => ({ asset, hash: analysis.get(asset.id)?.dHash }))
       .filter((entry): entry is { asset: Asset; hash: string } => entry.hash !== undefined);
 
-    // O(n^2) pairwise comparison. At this strategy's fetch cap (FETCH_LIMIT
-    // = 200), that's at most ~20k comparisons, each a couple of integer
-    // XOR+popcount ops — a few ms, not worth an approximate-nearest-neighbor
-    // index at this scale.
+    // O(n^2), but at FETCH_LIMIT=200 that's ~20k cheap integer ops — not
+    // worth an approximate-nearest-neighbor index at this scale.
     const similarIds = new Set<string>();
     for (let i = 0; i < hashed.length; i++) {
       for (let j = i + 1; j < hashed.length; j++) {

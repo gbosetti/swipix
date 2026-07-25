@@ -1,16 +1,10 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
 interface BulkOperationContextValue {
-  /** True for the whole "Empty Trash Now" window — from confirming the
-   * in-app alert through the interstitial ad and every native "Allow
-   * Swipix to delete N photos?" batch confirmation. Read by RootNavigator
-   * to block switching tabs mid-flow: the bottom tab navigator keeps every
-   * tab mounted, so without this a native delete dialog can surface on
-   * whichever screen the user has since wandered to, looking completely
-   * disconnected from the Trash action that actually triggered it
-   * (confirmed: reported as a delete dialog appearing on the "By Month"
-   * category, when the real cause was Trash's own bulk delete still
-   * finishing in the background). */
+  /** True for the whole "Empty Trash Now" window. Read by RootNavigator
+   * to block switching tabs mid-flow — every tab stays mounted, so
+   * without this a native delete dialog can surface on an unrelated
+   * screen the user has since wandered to. */
   isBulkDeleteInProgress: boolean;
   setBulkDeleteInProgress: (value: boolean) => void;
 }

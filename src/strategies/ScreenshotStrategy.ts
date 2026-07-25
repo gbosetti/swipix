@@ -21,9 +21,7 @@ export class ScreenshotStrategy extends CategoryStrategy {
     };
   }
 
-  // mediaSubtypes is a native filter (see PhotoLibraryService), so this
-  // asks the OS directly for the most recent screenshot instead of
-  // scanning a shared sample that might not contain one at all.
+  // Native filter — asks the OS directly for the most recent screenshot.
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,

@@ -22,21 +22,14 @@ const CONTAINER_HEIGHT = 32;
 
 /**
  * A minimal two-thumb range slider, hand-built with PanResponder (same
- * technique as SwipeDeck) rather than adding a third-party dependency —
- * no actively-maintained range-slider library for this exact need was
- * worth the added supply-chain surface for something this small.
+ * technique as SwipeDeck) rather than a third-party dependency.
  *
- * Position is tracked via gesture.dx (movement relative to where the
- * drag started), not absolute screen coordinates — the same approach
- * SwipeDeck already uses successfully. An earlier version tried to
- * convert absolute touch position to a track-relative fraction via
- * View.measure(), which is unreliable enough (especially under the New
- * Architecture) that it made the thumbs effectively undraggable.
- *
- * Values read inside the PanResponder callbacks come from refs, not
- * directly from props/closures: the PanResponder instance is created
- * once (via useRef) and its callbacks would otherwise capture stale
- * lowValue/highValue from the render they were created in.
+ * @remarks
+ * Tracks gesture.dx, not absolute touch position — an earlier version
+ * used View.measure() for that, which was unreliable enough to make the
+ * thumbs undraggable. PanResponder callbacks read from refs rather than
+ * props/closures, since the instance is created once via useRef and
+ * would otherwise capture stale values.
  */
 function RangeSlider({
   minimumValue,

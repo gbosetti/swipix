@@ -5,17 +5,13 @@ import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
 /**
- * The privacy summary, shared between the standalone Privacy screen
- * reachable from Settings and (should a future onboarding step need it)
- * anywhere else — one source of truth so copies never drift. Full text
- * lives in PRIVACY.md.
+ * The privacy summary, shared between every screen that shows it — one
+ * source of truth so copies never drift. Full text lives in PRIVACY.md.
  *
- * Deliberately English-only: the `privacy.*` keys exist only in en.json,
- * so i18next's fallbackLng renders this in English regardless of the
- * active app language. Legal text is high-stakes to get precisely right
- * and hard to verify in a language the team can't proofread, so it isn't
- * translated — unlike the surrounding UI chrome (nav labels, buttons),
- * which is.
+ * @remarks
+ * Deliberately English-only: `privacy.*` keys exist only in en.json, so
+ * i18next's fallbackLng renders this in English regardless of app
+ * language — legal text isn't translated, unlike surrounding UI chrome.
  */
 export default function PrivacyContent() {
   const { t } = useTranslation();

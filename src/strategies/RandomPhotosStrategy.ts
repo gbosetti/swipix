@@ -5,12 +5,9 @@ import i18n from '../i18n';
 
 /**
  * No filter at all — every photo, shuffled. The "just start swiping"
- * entry point for people who don't want to pick a category first, and
- * the reliable fallback when the more specific categories don't turn up
- * much (a light library, or one already mostly cleaned up). Surfaced
- * both as the standalone Swipe tab and as the first card in Categories.
- * Fisher-Yates keeps the shuffle unbiased and doesn't mutate the input
- * array PhotoLibraryService handed us.
+ * entry point, and the fallback when more specific categories turn up
+ * little. Fisher-Yates keeps the shuffle unbiased and doesn't mutate
+ * the input array.
  */
 export class RandomPhotosStrategy extends CategoryStrategy {
   async matchCandidates(assets: Asset[]): Promise<Asset[]> {
@@ -30,8 +27,7 @@ export class RandomPhotosStrategy extends CategoryStrategy {
     };
   }
 
-  // No filter at all, so the single most recent photo is always a valid
-  // preview — one targeted native query, not a scan.
+  // No filter, so the single most recent photo is always a valid preview.
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({ mediaTypes: this.mediaTypes });
     const undecided = await this.excludeDecided(candidates);
