@@ -72,7 +72,8 @@
     "deleteLabel": "ELIMINAR",
     "undoLast": "Deshacer el último deslizamiento",
     "undoLimitTitle": "¿Deshaciendo mucho?",
-    "undoLimitBody": "Si quieres revisar varias fotos, consulta la papelera para ver todo lo que has eliminado hasta ahora."
+    "undoLimitBody": "Si quieres revisar varias fotos, consulta la papelera para ver todo lo que has eliminado hasta ahora.",
+    "videoUnavailable": "No se pudo cargar este video"
   },
   "trash": {
     "emptyTitle": "La papelera está vacía 🎉",

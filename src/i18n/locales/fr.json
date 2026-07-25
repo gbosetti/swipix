@@ -72,7 +72,8 @@
     "deleteLabel": "SUPPRIMER",
     "undoLast": "Annuler le dernier balayage",
     "undoLimitTitle": "Vous annulez beaucoup ?",
-    "undoLimitBody": "Si vous voulez revoir plusieurs photos, consultez la corbeille pour voir tout ce que vous avez supprimé jusqu'ici."
+    "undoLimitBody": "Si vous voulez revoir plusieurs photos, consultez la corbeille pour voir tout ce que vous avez supprimé jusqu'ici.",
+    "videoUnavailable": "Cette vidéo n'a pas pu être chargée"
   },
   "trash": {
     "emptyTitle": "La corbeille est vide 🎉",

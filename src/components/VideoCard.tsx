@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, PanResponder, LayoutChangeEvent, Pressable, GestureResponderEvent } from 'react-native';
+import { View, Text, StyleSheet, PanResponder, LayoutChangeEvent, Pressable, GestureResponderEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useEvent } from 'expo';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Asset } from '../types';
@@ -16,6 +17,16 @@ interface VideoCardProps {
 const SCRUB_TRACK_HEIGHT = 24;
 const SCRUB_THUMB_SIZE = 12;
 
+// Confirmed on a real device: a video the OS won't grant read access to
+// (FIGSANDBOX "deny file-issue-extension", e.g. a WhatsApp-saved .MP4 —
+// same underlying failure VideoThumbnailService now bounds too) can sit
+// in the player's 'loading' status forever, retrying the same denied read
+// in the background indefinitely — with no fallback UI here, that reads
+// as the whole app being stuck, not "this one video won't play." Bounds
+// how long an unresolved status is tolerated before treating it the same
+// as an explicit 'error'.
+const LOAD_TIMEOUT_MS = 8000;
+
 /**
  * A real playing preview instead of a static "Video" placeholder — you
  * can actually see what's in a short clip, and drag the bar at the
@@ -29,6 +40,7 @@ const SCRUB_THUMB_SIZE = 12;
  * touch-to-fraction mapping is simpler and just as reliable.
  */
 function VideoCard({ asset, isTop }: VideoCardProps) {
+  const { t } = useTranslation();
   const [muted, setMuted] = useState(true);
   const [scrubbing, setScrubbing] = useState(false);
   const [scrubFraction, setScrubFraction] = useState(0);
@@ -50,17 +62,33 @@ function VideoCard({ asset, isTop }: VideoCardProps) {
     bufferedPosition: 0,
   });
 
+  const { status } = useEvent(player, 'statusChange', { status: player.status });
+  const [timedOut, setTimedOut] = useState(false);
+  // Belt-and-suspenders alongside the 'error' check below: a genuinely
+  // broken/sandboxed file may never emit 'error' at all, just stay
+  // 'loading' forever (see LOAD_TIMEOUT_MS above) — this is what actually
+  // catches that case, since waiting on 'error' alone would never fire.
+  useEffect(() => {
+    if (status === 'readyToPlay' || status === 'error') return;
+    const timeoutId = setTimeout(() => setTimedOut(true), LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [status]);
+  const failed = status === 'error' || timedOut;
+
   useEffect(() => {
     player.muted = muted;
   }, [muted, player]);
 
   useEffect(() => {
-    if (isTop) {
+    if (isTop && !failed) {
       player.play();
     } else {
+      // Stops retrying a file that's confirmed (or timed out) broken —
+      // without this, the player keeps hammering the same denied native
+      // read in the background even after the fallback UI is showing.
       player.pause();
     }
-  }, [isTop, player]);
+  }, [isTop, player, failed]);
 
   const progressFraction = scrubbing
     ? scrubFraction
@@ -99,6 +127,21 @@ function VideoCard({ asset, isTop }: VideoCardProps) {
     setTrackWidth(e.nativeEvent.layout.width);
   };
 
+  if (failed) {
+    // Honest confidence signaling: a video that will never play reads as
+    // a frozen/broken app if it just sits there blank — say plainly that
+    // it couldn't load instead, matching PhotoCard's icon-fallback
+    // philosophy for a preview that never resolved.
+    return (
+      <View style={styles.container}>
+        <View style={[styles.video, styles.videoPlaceholder]}>
+          <Ionicons name="videocam-off-outline" size={28} color="#ffffff" />
+          <Text style={styles.videoUnavailableText}>{t('swipe.videoUnavailable')}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <VideoView
@@ -131,6 +174,18 @@ export default React.memo(VideoCard);
 const styles = StyleSheet.create({
   container: { flex: 1 },
   video: { flex: 1 },
+  videoPlaceholder: {
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  videoUnavailableText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+    opacity: 0.8,
+  },
   muteButton: {
     position: 'absolute',
     top: 12,

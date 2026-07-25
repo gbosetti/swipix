@@ -72,7 +72,8 @@
     "deleteLabel": "ELIMINA",
     "undoLast": "Annulla l'ultimo swipe",
     "undoLimitTitle": "Stai annullando molto?",
-    "undoLimitBody": "Se vuoi rivedere più foto, controlla il cestino per vedere tutto ciò che hai eliminato finora."
+    "undoLimitBody": "Se vuoi rivedere più foto, controlla il cestino per vedere tutto ciò che hai eliminato finora.",
+    "videoUnavailable": "Impossibile caricare questo video"
   },
   "trash": {
     "emptyTitle": "Il cestino è vuoto 🎉",

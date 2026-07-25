@@ -255,6 +255,20 @@ export default function SwipeScreen({ route, navigation }: Props) {
     maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
   };
 
+  // A photo that fails to load (confirmed on a real device: the OS can
+  // deny file access under native resource contention) must never be left
+  // swipeable — left/right would delete or keep something the user never
+  // actually saw. Not a "decision" of any kind: no Trash, no Kept, no
+  // history entry (so Undo can't land back on it), just quietly dropped
+  // from the deck so it's left exactly as it was in the library. The next
+  // card already sitting behind it in `candidates` slides forward on its
+  // own — no index bookkeeping needed here, unlike a real swipe.
+  const handleCardLoadError = (asset: Asset) => {
+    setCandidates((prev) => (prev ? prev.filter((a) => a.id !== asset.id) : prev));
+    candidatesLengthRef.current = Math.max(0, candidatesLengthRef.current - 1);
+    maybeTopUp((candidates?.length ?? 1) - 1 - swipedCountRef.current);
+  };
+
   const handleUndo = async () => {
     const last = history[history.length - 1];
     if (!last) return;
@@ -330,7 +344,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
         </View>
         <SwipeDeck
           data={candidates}
-          renderCard={(asset, isTop) => <PhotoCard asset={asset} isTop={isTop} />}
+          renderCard={(asset, isTop) => (
+            <PhotoCard asset={asset} isTop={isTop} onLoadError={() => handleCardLoadError(asset)} />
+          )}
           onSwipeLeft={handleSwipeLeft}
           onSwipeRight={handleSwipeRight}
           onEmpty={() => {
