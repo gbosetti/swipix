@@ -1,4 +1,5 @@
 import { getVideoThumbnail } from './VideoThumbnailService';
+import { createVideoPlayer } from 'expo-video';
 
 type StatusListener = (event: { status: string; error?: unknown }) => void;
 
@@ -27,6 +28,8 @@ let mockPlayer: ReturnType<typeof makeFakePlayer>;
 jest.mock('expo-video', () => ({
   createVideoPlayer: jest.fn(() => mockPlayer),
 }));
+
+const mockedCreateVideoPlayer = createVideoPlayer as jest.Mock;
 
 describe('getVideoThumbnail', () => {
   beforeEach(() => {
@@ -69,5 +72,25 @@ describe('getVideoThumbnail', () => {
 
     await expect(promise).resolves.toBeNull();
     expect(mockPlayer.release).toHaveBeenCalledTimes(1);
+  });
+
+  // Regression test: confirmed on a real device across multiple fresh app
+  // launches that the same specific video fails this same way every time
+  // (a persistent OS-level sandbox denial, not a one-off blip) — and
+  // CategoryPickerScreen re-requests a preview for it on every mount,
+  // focus regain, and album selection change. Before this, each of those
+  // paid the full ~5s timeout again, which was slow enough to make an
+  // unrelated interaction (tapping an option in the album picker) feel
+  // "ultra slow" and block the app while a doomed retry was in flight.
+  it('does not retry a URI that already failed once this session', async () => {
+    mockPlayer = makeFakePlayer('loading');
+    const firstAttempt = getVideoThumbnail('ph://persistently-broken');
+    mockPlayer.emit('error', new Error('sandbox denied'));
+    await expect(firstAttempt).resolves.toBeNull();
+    expect(mockedCreateVideoPlayer).toHaveBeenCalledTimes(1);
+
+    const secondAttempt = await getVideoThumbnail('ph://persistently-broken');
+    expect(secondAttempt).toBeNull();
+    expect(mockedCreateVideoPlayer).toHaveBeenCalledTimes(1);
   });
 });

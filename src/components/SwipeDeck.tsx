@@ -195,7 +195,12 @@ export default function SwipeDeck<T extends { id: string }>({
               )}
             </Animated.View>
           ) : (
-            <Animated.View key={item.id} style={[styles.card, { top: 6 * i, opacity: 0.7 }]}>
+            // Fully opaque, not dimmed — a translucent stacked card let the
+            // photo underneath visibly bleed through the top one while
+            // dragging, which read as a rendering glitch rather than a
+            // depth cue. The small vertical offset below is enough on its
+            // own to convey "there's more behind this."
+            <Animated.View key={item.id} style={[styles.card, { top: 6 * i }]}>
               {renderCard(item, false)}
             </Animated.View>
           );

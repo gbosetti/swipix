@@ -13,6 +13,20 @@ import { createVideoPlayer, VideoPlayer, VideoThumbnail } from 'expo-video';
 // just one stage of it.
 const EXTRACTION_TIMEOUT_MS = 5000;
 
+// Confirmed on a real device across MULTIPLE fresh app launches: the same
+// specific video(s) fail this same way every single time (a persistent OS-
+// level sandbox denial, not a one-off network blip) — CategoryPickerScreen
+// re-requests a preview for the same video category on every mount, focus
+// regain, and album selection change, so without this, the app pays the
+// full ~5s timeout again and again for a file it already knows is a dead
+// end, each time competing for native resources with whatever else the
+// user is actually trying to do (confirmed: made the album picker's own
+// taps feel "ultra slow" and block the app while a doomed retry was still
+// in flight). Session-lifetime only, not persisted — a transient failure
+// (e.g. iCloud still downloading the asset) should get a fresh chance next
+// app launch, not be blacklisted forever.
+const knownFailedUris = new Set<string>();
+
 /**
  * Extracts a single representative frame from a video file, for use as a
  * static preview (category cards, Trash/Kept list rows) where actually
@@ -25,10 +39,12 @@ const EXTRACTION_TIMEOUT_MS = 5000;
  * to a generic icon, not break the screen.
  */
 export async function getVideoThumbnail(uri: string): Promise<VideoThumbnail | null> {
+  if (knownFailedUris.has(uri)) return null;
   const player = createVideoPlayer(uri);
   try {
     return await withTimeout(extractThumbnail(player), EXTRACTION_TIMEOUT_MS);
   } catch {
+    knownFailedUris.add(uri);
     return null;
   } finally {
     player.release();
