@@ -5,7 +5,7 @@ import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
 
 // See BigPicturesStrategy's identical constant for the rationale.
-const PREVIEW_SAMPLE_SIZE = 10;
+const PREVIEW_SAMPLE_SIZE = 5;
 
 const DEFAULT_MIN_BYTES = 100 * 1024 * 1024; // 100 MB
 const DEFAULT_MAX_BYTES = 2000 * 1024 * 1024; // ~2 GB

@@ -42,31 +42,54 @@ const CACHE_EVICTION_MS = 15000;
 // crash report, since it's a watchdog kill, not a memory/segfault crash.
 // Bounding concurrency, the same way ImageAnalysisService already bounds
 // concurrent image decodes, keeps the main thread responsive regardless of
-// page size. Only matters for "detailed" fetches now (see `detailed` below)
-// — SwipeScreen/CategoryPickerScreen's own paginated pages skip
-// getAssetInfoAsync for photos entirely, so this mainly governs the
-// self-fetching strategies' 500-asset fetches (e.g.
-// DuplicatesAndSimilarStrategy), still spread over ~17 batches instead of
-// flooding the main thread in one shot. An earlier, more conservative value
-// (12) fixed the original crash but made every detailed fetch noticeably
-// slower than it needed to be.
+// page size. Only matters for "detailed" fetches (see `detailed` below) —
+// the live-browsing path skips getAssetInfoAsync for photos entirely.
 const ASSET_INFO_CONCURRENCY = 30;
 
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let index = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (index < items.length) {
-      const current = index++;
-      results[current] = await fn(items[current]);
-    }
+// GLOBAL across every call, not scoped to one fetch — confirmed on a real
+// device: every category now loads its own preview independently (see
+// CategoryStrategy.getPreview), and several of them need a detailed fetch
+// at once (Big Pictures, Big Videos, Duplicates & Similar all mounting
+// together). Each used to run its own full ASSET_INFO_CONCURRENCY-wide
+// batch, but the underlying getAssetInfoAsync calls all still land on the
+// SAME iOS main thread regardless of which JS-side batch issued them —
+// three batches of 30 is 90 concurrent main-thread hits, not 30. That was
+// enough contention to stall even the fast, non-detailed categories past
+// their own timeouts, not just the detailed ones. A shared queue, not a
+// fresh worker pool per call, keeps the real total bounded everywhere.
+let activeNativeCalls = 0;
+const pendingNativeCalls: (() => void)[] = [];
+
+function acquireNativeCallSlot(): Promise<void> {
+  if (activeNativeCalls < ASSET_INFO_CONCURRENCY) {
+    activeNativeCalls++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    pendingNativeCalls.push(() => {
+      activeNativeCalls++;
+      resolve();
+    });
   });
-  await Promise.all(workers);
-  return results;
+}
+
+function releaseNativeCallSlot(): void {
+  activeNativeCalls--;
+  const next = pendingNativeCalls.shift();
+  if (next) next();
+}
+
+async function mapWithConcurrency<T, R>(items: T[], fn: (item: T) => Promise<R>): Promise<R[]> {
+  return Promise.all(
+    items.map(async (item) => {
+      await acquireNativeCallSlot();
+      try {
+        return await fn(item);
+      } finally {
+        releaseNativeCallSlot();
+      }
+    })
+  );
 }
 
 /**
@@ -234,7 +257,6 @@ export const PhotoLibraryService = {
     // uses is exactly what data-minimization rules out.
     const detailedAssets: (Asset | null)[] = await mapWithConcurrency(
       page.assets,
-      ASSET_INFO_CONCURRENCY,
       async (asset): Promise<Asset | null> => {
         // Photos in the non-detailed (live-browsing) path skip
         // getAssetInfoAsync entirely and hand back the raw ph:// URI

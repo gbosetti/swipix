@@ -7,11 +7,14 @@ import i18n from '../i18n';
 // How many of the most recent photos to scan for the preview. Smaller than
 // it looks like it needs to be: `detailed: true` below means each of these
 // costs a real getAssetInfoAsync call, which — confirmed earlier this
-// session, and confirmed again via a real-device timeout log for this
-// exact category — resolves synchronously on iOS's MAIN THREAD when not
-// already prefetched, easily blowing past a few seconds for even a modest
-// sample on a real library. 10, not 20, plus previewTimeoutMs below.
-const PREVIEW_SAMPLE_SIZE = 10;
+// session — resolves synchronously on iOS's MAIN THREAD when not already
+// prefetched. Confirmed again on a real device: capping JS-side
+// concurrency isn't enough on its own, since these calls are effectively
+// serialized on that one main thread regardless — total main-thread time
+// scales with the raw count. 5, not 10/20: this preview, Big Videos', and
+// Duplicates & Similar's all fire together on one Categories mount, and
+// their combined total is what matters, not any one of them alone.
+const PREVIEW_SAMPLE_SIZE = 5;
 
 const DEFAULT_MIN_BYTES = 20 * 1024 * 1024; // 20 MB
 const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; // 200 MB

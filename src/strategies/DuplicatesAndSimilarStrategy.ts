@@ -21,8 +21,15 @@ const FETCH_LIMIT = 200;
 // preview reuses the exact same detection logic on a much smaller,
 // separately-fetched sample (findDuplicates below), and gets the most
 // generous timeout of any category since even that smaller pass still
-// means real work, not a metadata check.
-const PREVIEW_FETCH_LIMIT = 60;
+// means real work, not a metadata check. 15, not 60: confirmed on a real
+// device that capping JS-side concurrency (see PhotoLibraryService) isn't
+// enough on its own — these calls are effectively serialized on iOS's
+// MAIN THREAD regardless of concurrency, so total main-thread time scales
+// with the raw count, not how many run "at once." Combined with Big
+// Pictures/Big Videos' own preview samples, the old total (80 detailed
+// calls across all three on one Categories mount) was enough to freeze
+// the whole app, not just show a slow preview.
+const PREVIEW_FETCH_LIMIT = 15;
 const PREVIEW_TIMEOUT_MS = 5000;
 
 /**

@@ -151,6 +151,46 @@ describe('PhotoLibraryService.getAllPhotos / getAllMedia (detailed fetch)', () =
   });
 });
 
+describe('PhotoLibraryService native-call concurrency', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('caps concurrent getAssetInfoAsync calls globally, across two simultaneous detailed fetches, not per-fetch (regression: on a real device, several categories loading detailed previews at once — Big Pictures, Big Videos, Duplicates & Similar — each ran their own full-width concurrency batch, so the real combined total on iOS\'s main thread was several times the intended limit, stalling even unrelated categories past their own timeouts)', async () => {
+    let active = 0;
+    let peak = 0;
+    mockedGetAssetInfoAsync.mockImplementation(async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active -= 1;
+      return { localUri: 'file:///a.jpg', mediaSubtypes: [] };
+    });
+
+    // Two distinct fetches (different `first`, so different cache keys —
+    // not coalesced by the single-flight cache), each larger than the
+    // concurrency cap on its own, started together.
+    mockedGetAssetsAsync
+      .mockResolvedValueOnce({
+        assets: Array.from({ length: 25 }, (_, i) => rawAsset(`a${i}`)),
+        endCursor: 'a',
+        hasNextPage: false,
+        totalCount: 25,
+      })
+      .mockResolvedValueOnce({
+        assets: Array.from({ length: 25 }, (_, i) => rawAsset(`b${i}`)),
+        endCursor: 'b',
+        hasNextPage: false,
+        totalCount: 25,
+      });
+
+    await Promise.all([
+      PhotoLibraryService.getAllPhotos({ first: 25 }),
+      PhotoLibraryService.getAllMedia({ first: 25 }),
+    ]);
+
+    expect(peak).toBeLessThanOrEqual(30);
+  });
+});
+
 describe('PhotoLibraryService.getSplitMediaPage', () => {
   beforeEach(() => jest.clearAllMocks());
 

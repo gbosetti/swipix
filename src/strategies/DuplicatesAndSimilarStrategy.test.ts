@@ -166,6 +166,6 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const strategy = new DuplicatesAndSimilarStrategy();
     const preview = await strategy.getPreview();
     expect(['a', 'b']).toContain(preview?.id);
-    expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({ first: 60 });
+    expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({ first: 15 });
   });
 });
