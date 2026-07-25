@@ -1,7 +1,17 @@
 import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
+
+// How many of the most recent photos to scan for the preview. Smaller than
+// it looks like it needs to be: `detailed: true` below means each of these
+// costs a real getAssetInfoAsync call, which — confirmed earlier this
+// session, and confirmed again via a real-device timeout log for this
+// exact category — resolves synchronously on iOS's MAIN THREAD when not
+// already prefetched, easily blowing past a few seconds for even a modest
+// sample on a real library. 10, not 20, plus previewTimeoutMs below.
+const PREVIEW_SAMPLE_SIZE = 10;
 
 const DEFAULT_MIN_BYTES = 20 * 1024 * 1024; // 20 MB
 const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
@@ -39,5 +49,27 @@ export class BigPicturesStrategy extends CategoryStrategy {
       title: i18n.t('categories.big-pictures'),
       icon: 'archive',
     };
+  }
+
+  // Reads real file bytes off asset.uri (above) — needs a resolved file
+  // path, not the fast ph:// reference SwipeScreen/previews otherwise use.
+  get needsDetailedFetch(): boolean {
+    return true;
+  }
+
+  // Real device confirmed: 3s (the default) wasn't enough for even 20
+  // detailed fetches, let alone accounting for normal variance — see
+  // PREVIEW_SAMPLE_SIZE's comment.
+  protected previewTimeoutMs = 6000;
+
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: this.mediaTypes,
+      first: PREVIEW_SAMPLE_SIZE,
+      detailed: true,
+    });
+    const matched = await this.matchCandidates(candidates);
+    const undecided = await this.excludeDecided(matched);
+    return undecided[0] ?? null;
   }
 }

@@ -1,4 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
 
@@ -22,5 +23,12 @@ export class AllVideosStrategy extends CategoryStrategy {
 
   get mediaTypes(): MediaTypeFilter[] {
     return ['video'];
+  }
+
+  // No filter at all, so the single most recent video is always valid.
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({ mediaTypes: this.mediaTypes });
+    const undecided = await this.excludeDecided(candidates);
+    return undecided[0] ?? null;
   }
 }

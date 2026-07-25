@@ -1,4 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
@@ -27,5 +28,13 @@ export class RandomPhotosStrategy extends CategoryStrategy {
       title: i18n.t('categories.random'),
       icon: 'shuffle',
     };
+  }
+
+  // No filter at all, so the single most recent photo is always a valid
+  // preview — one targeted native query, not a scan.
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({ mediaTypes: this.mediaTypes });
+    const undecided = await this.excludeDecided(candidates);
+    return undecided[0] ?? null;
   }
 }

@@ -1,8 +1,14 @@
 import { BigPicturesStrategy } from './BigPicturesStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset } from '../types';
 
 jest.mock('../services/TrashService', () => ({ TrashService: { getTrash: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/KeptService', () => ({ KeptService: { getKept: jest.fn().mockResolvedValue([]) } }));
+jest.mock('../services/PhotoLibraryService', () => ({
+  PhotoLibraryService: { getPreviewCandidates: jest.fn() },
+}));
+
+const mockedPhotoLibraryService = PhotoLibraryService as jest.Mocked<typeof PhotoLibraryService>;
 
 // expo-file-system's File is a class whose `.size` this strategy reads
 // directly from the (real) file on disk — tests fake that per-uri via a
@@ -56,5 +62,23 @@ describe('BigPicturesStrategy', () => {
     const assets = [makeAsset('video', 'video', 500 * MB)];
     const strategy = new BigPicturesStrategy();
     await expect(strategy.match(assets)).resolves.toEqual([]);
+  });
+
+  it('requests a detailed (resolved-file-path) fetch, not the fast ph:// path (regression: a ph:// reference has no real bytes for `new File(...).size` to read — this strategy silently broke on real devices once the default fetch switched to ph:// for speed)', () => {
+    const strategy = new BigPicturesStrategy();
+    expect(strategy.needsDetailedFetch).toBe(true);
+  });
+
+  it('getPreview finds a big photo among a small detailed preview sample', async () => {
+    mockedPhotoLibraryService.getPreviewCandidates.mockResolvedValue([
+      makeAsset('big', 'photo', 50 * MB),
+      makeAsset('small', 'photo', 1 * MB),
+    ]);
+    const strategy = new BigPicturesStrategy();
+    const preview = await strategy.getPreview();
+    expect(preview?.id).toBe('big');
+    expect(mockedPhotoLibraryService.getPreviewCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ detailed: true })
+    );
   });
 });

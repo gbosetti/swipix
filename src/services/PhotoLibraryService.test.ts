@@ -230,3 +230,101 @@ describe('PhotoLibraryService request coalescing', () => {
     expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('PhotoLibraryService.getPreviewCandidates', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('passes mediaSubtypes and a date range through to getAssetsAsync as native filters', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+
+    const createdAfter = new Date(2026, 0, 1);
+    const createdBefore = new Date(2026, 1, 1);
+    await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: ['photo'],
+      mediaSubtypes: ['screenshot'],
+      createdAfter,
+      createdBefore,
+      first: 5,
+    });
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        first: 5,
+        mediaSubtypes: ['screenshot'],
+        createdAfter,
+        createdBefore,
+      })
+    );
+    expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
+  });
+
+  it('defaults to 5 candidates and the fast (non-detailed) path', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+
+    const candidates = await PhotoLibraryService.getPreviewCandidates({ mediaTypes: ['photo'] });
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(expect.objectContaining({ first: 5 }));
+    expect(candidates[0].uri).toBe('ph://a');
+  });
+
+  it('resolves a real file path when detailed is requested (Big Pictures/Videos need real file size)', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
+
+    const candidates = await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: ['photo'],
+      detailed: true,
+    });
+
+    expect(mockedGetAssetInfoAsync).toHaveBeenCalled();
+    expect(candidates[0].uri).toBe('file:///a.jpg');
+  });
+});
+
+describe('PhotoLibraryService cache eviction', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('evicts a request that never settles, so a later identical request can retry instead of hanging on the same dead promise forever (regression: a real device report — thumbnails loaded once, then never again, even after restarting the app)', async () => {
+    // First call's underlying native fetch never resolves.
+    mockedGetAssetsAsync.mockReturnValueOnce(new Promise(() => {}));
+    const stuckPromise = PhotoLibraryService.getPreviewCandidates({ mediaTypes: ['photo'] });
+    // Move past the 15s eviction window.
+    jest.advanceTimersByTime(15000);
+
+    // A later, identical request should get a fresh fetch, not the same
+    // still-pending promise.
+    mockedGetAssetsAsync.mockResolvedValueOnce({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    const recovered = await PhotoLibraryService.getPreviewCandidates({ mediaTypes: ['photo'] });
+
+    expect(recovered.map((a) => a.id)).toEqual(['a']);
+    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
+    void stuckPromise; // never resolves; deliberately not awaited
+  });
+});

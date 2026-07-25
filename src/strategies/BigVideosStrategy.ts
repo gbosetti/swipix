@@ -1,7 +1,11 @@
 import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
+
+// See BigPicturesStrategy's identical constant for the rationale.
+const PREVIEW_SAMPLE_SIZE = 10;
 
 const DEFAULT_MIN_BYTES = 100 * 1024 * 1024; // 100 MB
 const DEFAULT_MAX_BYTES = 2000 * 1024 * 1024; // ~2 GB
@@ -43,5 +47,26 @@ export class BigVideosStrategy extends CategoryStrategy {
 
   get mediaTypes(): MediaTypeFilter[] {
     return ['video'];
+  }
+
+  // Reads real file bytes off asset.uri (above) — needs a resolved file
+  // path, not the fast ph:// reference SwipeScreen/previews otherwise use.
+  get needsDetailedFetch(): boolean {
+    return true;
+  }
+
+  // See BigPicturesStrategy's identical override for the rationale —
+  // confirmed via a real-device timeout log for that category.
+  protected previewTimeoutMs = 6000;
+
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: this.mediaTypes,
+      first: PREVIEW_SAMPLE_SIZE,
+      detailed: true,
+    });
+    const matched = await this.matchCandidates(candidates);
+    const undecided = await this.excludeDecided(matched);
+    return undecided[0] ?? null;
   }
 }

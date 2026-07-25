@@ -16,6 +16,15 @@ const BURST_WINDOW_MS = 3 * 1000; // photos this close together are probably a b
 // accepted completeness tradeoff, not a correctness bug.
 const FETCH_LIMIT = 200;
 
+// The one category with no fast native shortcut at all — finding a
+// duplicate genuinely requires comparing photos against each other. The
+// preview reuses the exact same detection logic on a much smaller,
+// separately-fetched sample (findDuplicates below), and gets the most
+// generous timeout of any category since even that smaller pass still
+// means real work, not a metadata check.
+const PREVIEW_FETCH_LIMIT = 60;
+const PREVIEW_TIMEOUT_MS = 5000;
+
 /**
  * Merges what used to be two separate categories, since to a user
  * they're the same underlying question — "which of these are redundant
@@ -46,7 +55,13 @@ const FETCH_LIMIT = 200;
 export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
   async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
     const media = await PhotoLibraryService.getAllMedia({ first: FETCH_LIMIT });
+    return this.findDuplicates(media);
+  }
 
+  /** The actual duplicate/burst/similarity detection — pulled out of
+   * matchCandidates so findPreviewAsset below can run the identical logic
+   * on a smaller, separately-fetched sample instead of duplicating it. */
+  private async findDuplicates(media: Asset[]): Promise<Asset[]> {
     const bySizeAndDimensions = new Map<string, Asset[]>();
     for (const asset of media) {
       const size = new File(asset.uri).size;
@@ -113,5 +128,14 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
       title: i18n.t('categories.duplicates-similar'),
       icon: 'copy',
     };
+  }
+
+  protected previewTimeoutMs = PREVIEW_TIMEOUT_MS;
+
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const media = await PhotoLibraryService.getAllMedia({ first: PREVIEW_FETCH_LIMIT });
+    const matched = await this.findDuplicates(media);
+    const undecided = await this.excludeDecided(matched);
+    return undecided[0] ?? null;
   }
 }

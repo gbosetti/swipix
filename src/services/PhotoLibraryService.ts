@@ -2,6 +2,11 @@ import * as MediaLibrary from 'expo-media-library';
 import { Asset, MediaTypeFilter } from '../types';
 
 type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
+type AssetFilters = {
+  mediaSubtypes?: MediaLibrary.MediaSubtype[];
+  createdAfter?: Date;
+  createdBefore?: Date;
+};
 
 // Single-flight de-dupe: CategoryPickerScreen mounts and immediately fires
 // several strategies' preview computation in a row, and multiple
@@ -12,6 +17,19 @@ type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
 // instant its promise settles, so this only coalesces genuinely-concurrent
 // identical requests and never serves stale data to a later, separate call.
 const inFlight = new Map<string, Promise<AssetPage>>();
+
+// A safety net independent of whether the underlying native call ever
+// settles. An entry is normally removed the instant its promise settles
+// (see the .finally() below) — but if the native call itself hangs and
+// never settles at all (confirmed plausible: e.g. right after a large
+// native deletion, while iOS's Photos index may still be updating), that
+// .finally() never fires either, and this cache key stays poisoned for
+// the rest of the app's process lifetime. Every later request with the
+// same fetch signature — even a real Swipe session's, not just a
+// preview — would then hang on that same dead promise forever,
+// indistinguishable from "no matches." getPreview()'s own timeout only
+// protects its caller from waiting on this; it doesn't free this cache.
+const CACHE_EVICTION_MS = 15000;
 
 // Confirmed via a real-device crash: MediaLibrary.getAssetInfoAsync isn't
 // as cheap as it looks — when an asset's properties weren't already
@@ -101,13 +119,49 @@ export const PhotoLibraryService = {
     mediaTypes,
     first,
     after,
+    detailed = false,
   }: {
     mediaTypes: MediaTypeFilter[];
     first: number;
     after?: string;
+    // Defaults to the fast ph:// path. SwipeScreen passes true for a
+    // strategy whose needsDetailedFetch is true (Big Pictures/Big Videos —
+    // see CategoryStrategy.needsDetailedFetch for why).
+    detailed?: boolean;
   }): Promise<AssetPage> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
-    return this._fetchAssets(type, first, after, false);
+    return this._fetchAssets(type, first, after, detailed);
+  },
+
+  /** Small, targeted fetch for a single category's own preview lookup —
+   * newest-first, with optional native mediaSubtypes/date-range filters so
+   * a strategy can ask the OS directly for e.g. "the most recent
+   * screenshot" instead of scanning a shared client-side sample for one.
+   * `first` defaults to a handful (not 1) so a caller can skip past
+   * already-decided (trashed/kept) assets locally without a second
+   * round-trip in the common case. */
+  async getPreviewCandidates({
+    mediaTypes,
+    mediaSubtypes,
+    createdAfter,
+    createdBefore,
+    first = 5,
+    detailed = false,
+  }: {
+    mediaTypes: MediaTypeFilter[];
+    mediaSubtypes?: MediaLibrary.MediaSubtype[];
+    createdAfter?: Date;
+    createdBefore?: Date;
+    first?: number;
+    detailed?: boolean;
+  }): Promise<Asset[]> {
+    const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
+    const page = await this._fetchAssets(type, first, undefined, detailed, {
+      mediaSubtypes,
+      createdAfter,
+      createdBefore,
+    });
+    return page.assets;
   },
 
   /** Same one combined `getMediaPage(['photo','video'])` fetch a caller
@@ -134,15 +188,25 @@ export const PhotoLibraryService = {
     mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
     first: number,
     after?: string,
-    detailed = true
+    detailed = true,
+    filters?: AssetFilters
   ): Promise<AssetPage> {
-    const key = JSON.stringify({ mediaType, first, after: after ?? null, detailed });
+    const key = JSON.stringify({ mediaType, first, after: after ?? null, detailed, filters: filters ?? null });
     const existing = inFlight.get(key);
     if (existing) return existing;
-    const promise = this._fetchAssetsUncached(mediaType, first, after, detailed).finally(() => {
+    // See CACHE_EVICTION_MS's comment — evictionTimer is the actual safety
+    // net for a native call that never settles at all, since .finally()
+    // only ever fires for a call that does. Cleared on normal settlement
+    // too, so a fast, healthy fetch doesn't leave a 15s timer dangling.
+    let evictionTimer: ReturnType<typeof setTimeout>;
+    const promise = this._fetchAssetsUncached(mediaType, first, after, detailed, filters).finally(() => {
+      clearTimeout(evictionTimer);
       inFlight.delete(key);
     });
     inFlight.set(key, promise);
+    evictionTimer = setTimeout(() => {
+      if (inFlight.get(key) === promise) inFlight.delete(key);
+    }, CACHE_EVICTION_MS);
     return promise;
   },
 
@@ -150,13 +214,17 @@ export const PhotoLibraryService = {
     mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
     first: number,
     after: string | undefined,
-    detailed: boolean
+    detailed: boolean,
+    filters?: AssetFilters
   ): Promise<AssetPage> {
     const page = await MediaLibrary.getAssetsAsync({
       mediaType,
       first,
       after,
       sortBy: [MediaLibrary.SortBy.creationTime],
+      ...(filters?.mediaSubtypes ? { mediaSubtypes: filters.mediaSubtypes } : {}),
+      ...(filters?.createdAfter ? { createdAfter: filters.createdAfter } : {}),
+      ...(filters?.createdBefore ? { createdBefore: filters.createdBefore } : {}),
     });
 
     // Enrich with full info — normalize the shape here so the rest of the

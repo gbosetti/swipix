@@ -156,4 +156,16 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const strategy = new DuplicatesAndSimilarStrategy();
     await expect(strategy.match([])).resolves.toEqual([]);
   });
+
+  it('getPreview reuses the same duplicate-detection logic on a much smaller, separately-fetched sample instead of the full 200-item match set', async () => {
+    const a = makeAsset('a', { width: 200, height: 200 });
+    const b = makeAsset('b', { width: 200, height: 200 });
+    fileSizes[a.uri] = 5000;
+    fileSizes[b.uri] = 5000;
+    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b]);
+    const strategy = new DuplicatesAndSimilarStrategy();
+    const preview = await strategy.getPreview();
+    expect(['a', 'b']).toContain(preview?.id);
+    expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({ first: 60 });
+  });
 });

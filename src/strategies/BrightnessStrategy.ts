@@ -1,7 +1,12 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { analyzeImages } from '../services/ImageAnalysisService';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
+
+// See BlurredImagesStrategy's identical constants for the rationale — real
+// pixel decode, no native filter, so a small sample and a bit more time.
+const PREVIEW_SAMPLE_SIZE = 15;
 
 /**
  * Flags photos within a brightness range. This is a cheap, deterministic
@@ -40,5 +45,17 @@ export class BrightnessStrategy extends CategoryStrategy {
       title: i18n.t('categories.dark-photos'),
       icon: 'moon',
     };
+  }
+
+  protected previewTimeoutMs = 4000;
+
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: this.mediaTypes,
+      first: PREVIEW_SAMPLE_SIZE,
+    });
+    const matched = await this.matchCandidates(candidates);
+    const undecided = await this.excludeDecided(matched);
+    return undecided[0] ?? null;
   }
 }

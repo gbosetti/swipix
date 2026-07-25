@@ -28,31 +28,22 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
-import { Asset, CategoryMeta } from '../types';
+import { CategoryMeta } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
-/** A representative preview for the category card: the first match's
- * photo URI, or an extracted video frame if the first match is a video
- * (a raw video file URI can't be handed to <Image> — it decodes photos
- * only). Strategies that source their own dataset (Big Files, Short
- * Videos, Duplicate Files, By Month) ignore whatever's passed in, so an
- * empty array is fine for those. Swallows errors rather than throwing —
- * a missing preview just means no thumbnail (falls back to the
- * category's icon), not a broken screen. */
-async function getPreviewUri(
-  strategy: CategoryStrategy,
-  sourceAssets: Asset[]
-): Promise<string | VideoThumbnail | null> {
-  try {
-    const matched = await strategy.match(sourceAssets);
-    const first = matched[0];
-    if (!first) return null;
-    if (first.mediaType === 'video') return getVideoThumbnail(first.uri);
-    return first.uri;
-  } catch {
-    return null;
-  }
+/** A representative preview for the category card: the asset each
+ * strategy's own getPreview() template method finds (see
+ * CategoryStrategy), converted to whatever <Image> needs — a plain URI,
+ * or an extracted video frame if it's a video (a raw video file URI can't
+ * be handed to <Image> directly — it decodes photos only). getPreview()
+ * itself never rejects and is already bounded by its own timeout, so
+ * there's nothing to catch here. */
+async function resolvePreviewDisplay(strategy: CategoryStrategy): Promise<string | VideoThumbnail | null> {
+  const asset = await strategy.getPreview();
+  if (!asset) return null;
+  if (asset.mediaType === 'video') return getVideoThumbnail(asset.uri);
+  return asset.uri;
 }
 
 // Ordered by real-world impact/confidence: cheap-and-trustworthy signals
@@ -86,22 +77,10 @@ function toBigVideoMaxBytes(highMB: number): number {
 const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 70];
 const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 // Blurred Photos and Dark Photos are the only previews that trigger real
-// pixel analysis (full-resolution decode via ImageAnalysisService's pure-JS
-// JPEG decoder) rather than a cheap metadata check — on a real device with
-// real high-resolution photos, analyzing the full allPhotos sample (up to
-// 150) just for two small preview icons is real, unnecessary memory
-// pressure never exercised against the simulator's tiny seeded library.
-// A much smaller sample is enough to very likely surface one preview match.
-const PREVIEW_ANALYSIS_SAMPLE_SIZE = 25;
-// Caps how long a preview waits before falling back to the category's plain
-// icon — mainly for Duplicates & Similar, which (unlike every other
-// category here) self-fetches its own few-hundred-photo batch AND runs
-// full pixel-hash analysis on it, on every single visit to this screen, no
-// matter how small a sample the other previews use. Not a hard cutoff: if
-// the real match arrives after the timeout already showed the icon,
-// refreshPreview still swaps in the real photo once it's ready — this only
-// bounds the wait for the *first* impression, not the total work.
-const PREVIEW_TIMEOUT_MS = 5000;
+// pixel analysis. Sample size and timeout for that now live on each
+// strategy itself (see BlurredImagesStrategy/BrightnessStrategy's
+// PREVIEW_SAMPLE_SIZE and previewTimeoutMs) — this screen no longer
+// manages a shared analysis budget across categories.
 const MONTH_YEAR_KEY = '@swipix/monthYear';
 const MONTH_YEAR_VIDEO_KEY = '@swipix/monthYearVideo';
 
@@ -207,8 +186,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     month: now.getMonth(),
   });
   const [trashCount, setTrashCount] = useState(0);
-  const [allPhotos, setAllPhotos] = useState<Asset[] | null>(null);
-  const [allVideos, setAllVideos] = useState<Asset[] | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
   const [previews, setPreviews] = useState<Record<string, string | VideoThumbnail | null>>({});
 
   useEffect(() => {
@@ -240,142 +218,115 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   useEffect(() => {
     PhotoLibraryService.requestPermission().then((granted) => {
-      if (granted) {
-        // One combined fetch, split client-side — feeds preview thumbnails
-        // for every pass-through strategy below, which each only need
-        // matched[0]. A small shared page is far cheaper than the default
-        // 500-asset fetch, and cheaper than two separate photo/video
-        // fetches would be (each asset still costs a getAssetInfoAsync
-        // call to enrich). A sparse category may occasionally show its
-        // fallback icon instead of a real thumbnail even though real
-        // matches exist deeper in the library, or outside this shared
-        // photo+video window — getPreviewUri already treats a missing
-        // preview as normal, not broken, and the actual swipe session
-        // (SwipeScreen) always searches properly regardless.
-        PhotoLibraryService.getSplitMediaPage({ first: 150 })
-          .then((page) => {
-            setAllPhotos(page.photos);
-            setAllVideos(page.videos);
-          })
-          .catch((error) => {
-            // Every category's preview shares this one fetch — previously
-            // a rejection here left allPhotos/allVideos stuck at null
-            // forever with nothing surfaced anywhere, which looked
-            // identical to "every category legitimately has no matches."
-            // PhotoLibraryService now guards the per-asset case that
-            // actually caused this, but logging here too means a genuinely
-            // new failure is visible instead of silently indistinguishable
-            // from normal empty-preview behavior.
-            if (__DEV__) console.warn('Failed to load category previews:', error);
-          });
-      }
+      if (__DEV__ && !granted) console.warn('CategoryPickerScreen: photo permission not granted, previews will never load');
+      setPermissionGranted(granted);
     });
   }, []);
 
-  const refreshPreview = useCallback((strategy: CategoryStrategy, sourceAssets: Asset[]) => {
-    // The timeout only shows the icon early — it doesn't cancel the real
-    // computation. If getPreviewUri resolves after the timeout already
-    // fired, this still runs and replaces the icon with the real photo,
-    // so a slow category (Duplicates & Similar) never permanently gets
-    // stuck on the icon, it's just not held up waiting on first load.
-    const timeoutId = setTimeout(() => {
-      setPreviews((current) => ({ ...current, [strategy.meta.id]: null }));
-    }, PREVIEW_TIMEOUT_MS);
-    getPreviewUri(strategy, sourceAssets).then((uri) => {
-      clearTimeout(timeoutId);
-      setPreviews((current) => ({ ...current, [strategy.meta.id]: uri }));
+  // Each category resolves its own preview independently — no shared
+  // fetch for one category's slow or failed lookup to ever block or break
+  // another's (see CategoryStrategy.getPreview, which every strategy below
+  // implements its own fast, targeted version of — most a single native
+  // query, the few that genuinely need analysis bounded by their own
+  // timeout). Confirmed reachable: the previous shared-fetch design meant
+  // a single bad asset anywhere in one combined 150-item page silently
+  // broke every category's preview at once on a real device.
+  const refreshPreview = useCallback((strategy: CategoryStrategy) => {
+    resolvePreviewDisplay(strategy).then((display) => {
+      setPreviews((current) => ({ ...current, [strategy.meta.id]: display }));
     });
   }, []);
 
-  // One-time preview for every category once the library is loaded —
-  // after this, each interactive category's preview only refreshes when
-  // its own slider/picker actually changes (below), not on every render.
-  useEffect(() => {
-    if (!allPhotos) return;
-    const previewAnalysisSample = allPhotos.slice(0, PREVIEW_ANALYSIS_SAMPLE_SIZE);
-    refreshPreview(randomPhotosStrategy, allPhotos);
-    refreshPreview(screenshotStrategy, allPhotos);
-    refreshPreview(duplicatesAndSimilarStrategy, []);
-    refreshPreview(blurredImagesStrategy, previewAnalysisSample);
-    refreshPreview(allVideosStrategy, allVideos ?? []);
-    refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]), allVideos ?? []);
+  // Every category's preview, fired together but resolved independently
+  // (see refreshPreview above). Re-invoked both on first load and on every
+  // later focus (below) — confirmed reachable: previews that failed once
+  // (e.g. right after a large native deletion, while iOS's Photos index
+  // may still be settling) used to never get another chance until the
+  // whole app restarted, since this used to run only once per mount.
+  const refreshAllPreviews = useCallback(() => {
+    refreshPreview(randomPhotosStrategy);
+    refreshPreview(screenshotStrategy);
+    refreshPreview(duplicatesAndSimilarStrategy);
+    refreshPreview(blurredImagesStrategy);
+    refreshPreview(allVideosStrategy);
+    refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]));
     refreshPreview(
       new BigPicturesStrategy(
         bigPictureRangeMB[0] * 1024 * 1024,
         toBigPictureMaxBytes(bigPictureRangeMB[1])
-      ),
-      allPhotos
+      )
     );
     refreshPreview(
-      new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1])),
-      allVideos ?? []
+      new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1]))
     );
-    refreshPreview(
-      new BrightnessStrategy(brightnessRange[0], brightnessRange[1]),
-      previewAnalysisSample
-    );
-    refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month), allPhotos);
-    refreshPreview(
-      new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month),
-      allVideos ?? []
-    );
-    // Deliberately only depends on allPhotos, not allVideos — this is the
-    // one-time initial load, and both are set together from the same fetch
-    // (see the effect above), so allPhotos becoming non-null is a valid
-    // trigger for both. Re-runs for range/month changes happen at their own
-    // slider's onSlidingComplete/onChange instead, not by reacting to this
-    // state.
+    refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]));
+    refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month));
+    refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month));
+  }, [
+    refreshPreview,
+    shortVideoRange,
+    bigPictureRangeMB,
+    bigVideoRangeMB,
+    brightnessRange,
+    monthYear,
+    monthYearVideo,
+  ]);
+
+  useEffect(() => {
+    if (permissionGranted) refreshAllPreviews();
+    // Deliberately only depends on permissionGranted — this fires once
+    // permission first resolves true; every later refresh (range/month
+    // changes, regaining focus) is handled by its own trigger below, not
+    // by reacting to refreshAllPreviews identity changing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allPhotos]);
+  }, [permissionGranted]);
 
   const refreshTrashCount = useCallback(() => {
     TrashService.getTrash().then((trash) => setTrashCount(trash.length));
   }, []);
 
-  // Refresh every time this screen regains focus (e.g. coming back from a
-  // swipe session), not just on first mount.
+  // Refresh every time this screen regains focus — e.g. coming back from
+  // Trash after clearing it, or from a swipe session — not just on first
+  // mount. permissionGranted is checked rather than relied on implicitly:
+  // the very first focus event fires before permission has resolved, and
+  // the effect above already covers that first real load once it does.
   useFocusEffect(
     useCallback(() => {
       refreshTrashCount();
-    }, [refreshTrashCount])
+      if (permissionGranted) refreshAllPreviews();
+    }, [refreshTrashCount, permissionGranted, refreshAllPreviews])
   );
 
   const persistShortVideoRange = (low: number, high: number) => {
     AsyncStorage.setItem(SHORT_VIDEO_RANGE_KEY, `${low},${high}`);
-    if (allVideos) refreshPreview(new ShortVideosStrategy(low, high), allVideos);
+    refreshPreview(new ShortVideosStrategy(low, high));
   };
 
   const persistBigPictureRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_PICTURE_RANGE_KEY, `${low},${high}`);
-    if (allPhotos) {
-      refreshPreview(new BigPicturesStrategy(low * 1024 * 1024, toBigPictureMaxBytes(high)), allPhotos);
-    }
+    refreshPreview(new BigPicturesStrategy(low * 1024 * 1024, toBigPictureMaxBytes(high)));
   };
 
   const persistBigVideoRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_VIDEO_RANGE_KEY, `${low},${high}`);
-    if (allVideos) {
-      refreshPreview(new BigVideosStrategy(low * 1024 * 1024, toBigVideoMaxBytes(high)), allVideos);
-    }
+    refreshPreview(new BigVideosStrategy(low * 1024 * 1024, toBigVideoMaxBytes(high)));
   };
 
   const persistBrightnessRange = (low: number, high: number) => {
     AsyncStorage.setItem(BRIGHTNESS_RANGE_KEY, `${low},${high}`);
-    if (allPhotos) {
-      refreshPreview(new BrightnessStrategy(low, high), allPhotos.slice(0, PREVIEW_ANALYSIS_SAMPLE_SIZE));
-    }
+    refreshPreview(new BrightnessStrategy(low, high));
   };
 
   const handleMonthYearChange = (year: number, month: number) => {
     setMonthYear({ year, month });
     AsyncStorage.setItem(MONTH_YEAR_KEY, `${year},${month}`);
-    if (allPhotos) refreshPreview(new MonthYearStrategy(year, month), allPhotos);
+    refreshPreview(new MonthYearStrategy(year, month));
   };
 
   const handleMonthYearVideoChange = (year: number, month: number) => {
     setMonthYearVideo({ year, month });
     AsyncStorage.setItem(MONTH_YEAR_VIDEO_KEY, `${year},${month}`);
-    if (allVideos) refreshPreview(new MonthYearVideosStrategy(year, month), allVideos);
+    refreshPreview(new MonthYearVideosStrategy(year, month));
   };
 
   return (

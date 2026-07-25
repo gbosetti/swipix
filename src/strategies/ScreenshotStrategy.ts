@@ -1,4 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
@@ -18,5 +19,17 @@ export class ScreenshotStrategy extends CategoryStrategy {
       title: i18n.t('categories.screenshots'),
       icon: 'crop',
     };
+  }
+
+  // mediaSubtypes is a native filter (see PhotoLibraryService), so this
+  // asks the OS directly for the most recent screenshot instead of
+  // scanning a shared sample that might not contain one at all.
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: this.mediaTypes,
+      mediaSubtypes: ['screenshot'],
+    });
+    const undecided = await this.excludeDecided(candidates);
+    return undecided[0] ?? null;
   }
 }

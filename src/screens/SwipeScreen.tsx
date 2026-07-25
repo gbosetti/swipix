@@ -149,6 +149,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
         const page = await PhotoLibraryService.getMediaPage({
           mediaTypes: strategy.mediaTypes,
           first: windowSizeRef.current + PAGE_SIZE,
+          detailed: strategy.needsDetailedFetch,
         });
         if (token !== sessionTokenRef.current) return collected;
         const newAssets = page.assets.slice(windowSizeRef.current);

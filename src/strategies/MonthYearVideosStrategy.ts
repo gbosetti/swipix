@@ -1,4 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
 import i18n from '../i18n';
 
@@ -36,5 +37,16 @@ export class MonthYearVideosStrategy extends CategoryStrategy {
 
   get mediaTypes(): MediaTypeFilter[] {
     return ['video'];
+  }
+
+  // See MonthYearStrategy's identical override for the rationale.
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: this.mediaTypes,
+      createdAfter: new Date(this.year, this.month, 1),
+      createdBefore: new Date(this.year, this.month + 1, 1),
+    });
+    const undecided = await this.excludeDecided(candidates);
+    return undecided[0] ?? null;
   }
 }

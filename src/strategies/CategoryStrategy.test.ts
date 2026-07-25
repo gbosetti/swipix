@@ -41,6 +41,33 @@ class PassThroughStrategy extends CategoryStrategy {
   get meta(): CategoryMeta {
     return { id: 'test', title: 'Test', icon: 'copy' };
   }
+
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    return this.candidates[0] ?? null;
+  }
+}
+
+/** Exercises getPreview()'s template method itself — bounded wait,
+ * survives a strategy-specific error, excludes decided assets — using a
+ * subclass whose findPreviewAsset is fully controlled by the test. */
+class ControllablePreviewStrategy extends CategoryStrategy {
+  constructor(private readonly impl: () => Promise<Asset | null>) {
+    super();
+  }
+
+  protected async matchCandidates(): Promise<Asset[]> {
+    return [];
+  }
+
+  get meta(): CategoryMeta {
+    return { id: 'test-preview', title: 'Test Preview', icon: 'copy' };
+  }
+
+  protected previewTimeoutMs = 3000;
+
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    return this.impl();
+  }
 }
 
 describe('CategoryStrategy.match', () => {
@@ -79,5 +106,35 @@ describe('CategoryStrategy.match', () => {
     const strategy = new PassThroughStrategy(assets);
     const result = await strategy.match([]);
     expect(result.map((a) => a.id)).toEqual(['c']);
+  });
+});
+
+describe('CategoryStrategy.getPreview', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedTrashService.getTrash.mockResolvedValue([]);
+    mockedKeptService.getKept.mockResolvedValue([]);
+  });
+
+  it('resolves with whatever findPreviewAsset finds', async () => {
+    const asset = makeAsset('a');
+    const strategy = new ControllablePreviewStrategy(async () => asset);
+    await expect(strategy.getPreview()).resolves.toEqual(asset);
+  });
+
+  it('resolves to null (not rejects) when findPreviewAsset throws (regression: a bad native query for one category must never crash the Categories screen)', async () => {
+    const strategy = new ControllablePreviewStrategy(async () => {
+      throw new Error('native failure');
+    });
+    await expect(strategy.getPreview()).resolves.toBeNull();
+  });
+
+  it('falls back to null after the timeout if findPreviewAsset never resolves (regression: a slow category — e.g. Duplicates & Similar — must never block its own preview forever)', async () => {
+    jest.useFakeTimers();
+    const strategy = new ControllablePreviewStrategy(() => new Promise(() => {}));
+    const promise = strategy.getPreview();
+    jest.advanceTimersByTime(3000);
+    await expect(promise).resolves.toBeNull();
+    jest.useRealTimers();
   });
 });

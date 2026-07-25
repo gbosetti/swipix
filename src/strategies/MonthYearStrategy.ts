@@ -1,4 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
@@ -37,5 +38,20 @@ export class MonthYearStrategy extends CategoryStrategy {
       title: i18n.t('categories.month-year'),
       icon: 'calendar',
     };
+  }
+
+  // createdAfter/createdBefore are native filters (see
+  // PhotoLibraryService), so this asks the OS directly for the most
+  // recent photo IN that specific month instead of hoping one turns up in
+  // a shared "most recent overall" sample — a January 2020 selection
+  // would never find anything in a recency-sorted sample otherwise.
+  protected async findPreviewAsset(): Promise<Asset | null> {
+    const candidates = await PhotoLibraryService.getPreviewCandidates({
+      mediaTypes: this.mediaTypes,
+      createdAfter: new Date(this.year, this.month, 1),
+      createdBefore: new Date(this.year, this.month + 1, 1),
+    });
+    const undecided = await this.excludeDecided(candidates);
+    return undecided[0] ?? null;
   }
 }

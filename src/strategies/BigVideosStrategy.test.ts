@@ -1,8 +1,14 @@
 import { BigVideosStrategy } from './BigVideosStrategy';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset } from '../types';
 
 jest.mock('../services/TrashService', () => ({ TrashService: { getTrash: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/KeptService', () => ({ KeptService: { getKept: jest.fn().mockResolvedValue([]) } }));
+jest.mock('../services/PhotoLibraryService', () => ({
+  PhotoLibraryService: { getPreviewCandidates: jest.fn() },
+}));
+
+const mockedPhotoLibraryService = PhotoLibraryService as jest.Mocked<typeof PhotoLibraryService>;
 
 const fileSizes: Record<string, number> = {};
 jest.mock('expo-file-system', () => ({
@@ -54,5 +60,20 @@ describe('BigVideosStrategy', () => {
     const assets = [makeAsset('photo', 'photo', 500 * MB)];
     const strategy = new BigVideosStrategy();
     await expect(strategy.match(assets)).resolves.toEqual([]);
+  });
+
+  it('requests a detailed (resolved-file-path) fetch, not the fast ph:// path — see BigPicturesStrategy for the full rationale', () => {
+    const strategy = new BigVideosStrategy();
+    expect(strategy.needsDetailedFetch).toBe(true);
+  });
+
+  it('getPreview finds a big video among a small detailed preview sample', async () => {
+    mockedPhotoLibraryService.getPreviewCandidates.mockResolvedValue([
+      makeAsset('big', 'video', 500 * MB),
+      makeAsset('small', 'video', 10 * MB),
+    ]);
+    const strategy = new BigVideosStrategy();
+    const preview = await strategy.getPreview();
+    expect(preview?.id).toBe('big');
   });
 });
