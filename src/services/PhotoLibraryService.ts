@@ -6,7 +6,9 @@ type AssetFilters = {
   mediaSubtypes?: MediaLibrary.MediaSubtype[];
   createdAfter?: Date;
   createdBefore?: Date;
+  albumId?: string;
 };
+export type Album = { id: string; title: string; assetCount: number };
 
 // Single-flight de-dupe: CategoryPickerScreen mounts and immediately fires
 // several strategies' preview computation in a row, and multiple
@@ -143,6 +145,7 @@ export const PhotoLibraryService = {
     first,
     after,
     detailed = false,
+    albumId,
   }: {
     mediaTypes: MediaTypeFilter[];
     first: number;
@@ -151,9 +154,12 @@ export const PhotoLibraryService = {
     // strategy whose needsDetailedFetch is true (Big Pictures/Big Videos —
     // see CategoryStrategy.needsDetailedFetch for why).
     detailed?: boolean;
+    // Scopes the fetch to one native album — see CategoryStrategy.albumId
+    // and AlbumStrategy, the only strategy that sets this.
+    albumId?: string;
   }): Promise<AssetPage> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
-    return this._fetchAssets(type, first, after, detailed);
+    return this._fetchAssets(type, first, after, detailed, albumId ? { albumId } : undefined);
   },
 
   /** Small, targeted fetch for a single category's own preview lookup —
@@ -168,6 +174,7 @@ export const PhotoLibraryService = {
     mediaSubtypes,
     createdAfter,
     createdBefore,
+    albumId,
     first = 5,
     detailed = false,
   }: {
@@ -175,6 +182,7 @@ export const PhotoLibraryService = {
     mediaSubtypes?: MediaLibrary.MediaSubtype[];
     createdAfter?: Date;
     createdBefore?: Date;
+    albumId?: string;
     first?: number;
     detailed?: boolean;
   }): Promise<Asset[]> {
@@ -183,8 +191,35 @@ export const PhotoLibraryService = {
       mediaSubtypes,
       createdAfter,
       createdBefore,
+      albumId,
     });
     return page.assets;
+  },
+
+  /** User-created albums only (not iOS's auto-generated "Moments" or
+   * system smart albums like Favorites/Recents) that actually contain at
+   * least one asset of the requested `mediaType` — the actual folders
+   * someone organized themselves, which is what AlbumStrategy's picker
+   * lets you choose between. An album's own `assetCount` covers ALL media
+   * types combined, so a video-only album (e.g. a GoPro import folder)
+   * would otherwise show up in the photo picker with nothing for
+   * AlbumStrategy to ever find; querying each album's real `totalCount`
+   * for this specific mediaType is the only way to know which side of the
+   * split it actually belongs to. That per-album `totalCount` is also
+   * reused as the returned `assetCount`, so the picker shows a
+   * type-accurate number instead of the folder's combined total. Sorted
+   * by title for a stable, predictable picker order rather than whatever
+   * order the OS happens to return. */
+  async getAlbums(mediaType: MediaTypeFilter): Promise<Album[]> {
+    const albums = await MediaLibrary.getAlbumsAsync({ includeSmartAlbums: false });
+    const userAlbums = albums.filter((album) => (album.type ?? 'album') === 'album' && album.assetCount > 0);
+    const withTypeCounts = await mapWithConcurrency(userAlbums, async (album) => {
+      const page = await MediaLibrary.getAssetsAsync({ album: album.id, mediaType, first: 1 });
+      return { id: album.id, title: album.title, assetCount: page.totalCount };
+    });
+    return withTypeCounts
+      .filter((album) => album.assetCount > 0)
+      .sort((a, b) => a.title.localeCompare(b.title));
   },
 
   /** Same one combined `getMediaPage(['photo','video'])` fetch a caller
@@ -248,6 +283,7 @@ export const PhotoLibraryService = {
       ...(filters?.mediaSubtypes ? { mediaSubtypes: filters.mediaSubtypes } : {}),
       ...(filters?.createdAfter ? { createdAfter: filters.createdAfter } : {}),
       ...(filters?.createdBefore ? { createdBefore: filters.createdBefore } : {}),
+      ...(filters?.albumId ? { album: filters.albumId } : {}),
     });
 
     // Enrich with full info — normalize the shape here so the rest of the

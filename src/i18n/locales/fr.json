@@ -37,6 +37,9 @@
   },
   "categoryPicker": {
     "picturesSectionHeader": "Photos",
+    "chooseAlbum": "Choisir un album",
+    "loadingAlbums": "Chargement des albums…",
+    "noAlbums": "Aucun album trouvé",
     "videosSectionHeader": "Vidéos",
     "review": "Vérifier",
     "trashBanner_one": "{{count}} photo en attente de suppression",
@@ -149,6 +152,8 @@
     "blurred-images": "Photos floues",
     "dark-photos": "Photos sombres",
     "month-year": "Par mois",
+    "album": "Par album",
+    "album-videos": "Vidéos par album",
     "month-year-videos": "Vidéos par mois",
     "random": "Toutes les photos"
   }

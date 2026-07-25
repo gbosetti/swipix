@@ -2,6 +2,8 @@ import { createStrategy } from './strategyRegistry';
 import { RandomPhotosStrategy } from './RandomPhotosStrategy';
 import { MonthYearStrategy } from './MonthYearStrategy';
 import { ScreenshotStrategy } from './ScreenshotStrategy';
+import { AlbumStrategy } from './AlbumStrategy';
+import { AlbumVideosStrategy } from './AlbumVideosStrategy';
 import { DuplicatesAndSimilarStrategy } from './DuplicatesAndSimilarStrategy';
 import { BigPicturesStrategy } from './BigPicturesStrategy';
 import { BlurredImagesStrategy } from './BlurredImagesStrategy';
@@ -70,5 +72,15 @@ describe('createStrategy', () => {
     }) as ShortVideosStrategy;
     expect(shortVideos.minSeconds).toBe(1);
     expect(shortVideos.maxSeconds).toBe(4);
+  });
+
+  it('reconstructs AlbumStrategy/AlbumVideosStrategy with a string param, not a number (the one pair whose param is a native identifier, not a range/date value)', () => {
+    const album = createStrategy('album', { albumId: 'abc-123' }) as AlbumStrategy;
+    expect(album).toBeInstanceOf(AlbumStrategy);
+    expect(album.albumId).toBe('abc-123');
+
+    const albumVideos = createStrategy('album-videos', { albumId: 'abc-123' }) as AlbumVideosStrategy;
+    expect(albumVideos).toBeInstanceOf(AlbumVideosStrategy);
+    expect(albumVideos.albumId).toBe('abc-123');
   });
 });

@@ -11,8 +11,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import RangeSlider from '../components/RangeSlider';
 import MonthYearPicker from '../components/MonthYearPicker';
+import AlbumPicker from '../components/AlbumPicker';
 import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
+import { AlbumStrategy } from '../strategies/AlbumStrategy';
+import { AlbumVideosStrategy } from '../strategies/AlbumVideosStrategy';
 import { DuplicatesAndSimilarStrategy } from '../strategies/DuplicatesAndSimilarStrategy';
 import { AllVideosStrategy } from '../strategies/AllVideosStrategy';
 import { ShortVideosStrategy } from '../strategies/ShortVideosStrategy';
@@ -24,7 +27,7 @@ import { MonthYearStrategy } from '../strategies/MonthYearStrategy';
 import { MonthYearVideosStrategy } from '../strategies/MonthYearVideosStrategy';
 import { CategoryStrategy } from '../strategies/CategoryStrategy';
 import { TrashService } from '../services/TrashService';
-import { PhotoLibraryService } from '../services/PhotoLibraryService';
+import { PhotoLibraryService, Album } from '../services/PhotoLibraryService';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
@@ -83,6 +86,8 @@ const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 // manages a shared analysis budget across categories.
 const MONTH_YEAR_KEY = '@swipix/monthYear';
 const MONTH_YEAR_VIDEO_KEY = '@swipix/monthYearVideo';
+const ALBUM_ID_KEY = '@swipix/albumId';
+const ALBUM_VIDEO_ID_KEY = '@swipix/albumVideoId';
 
 // Sourceless fallback for when the specific categories below don't have
 // much to show (a light library, or one already mostly cleaned up) —
@@ -104,6 +109,11 @@ const blurredImagesStrategy = new BlurredImagesStrategy();
 const brightnessDefaults = new BrightnessStrategy();
 const monthYearDefaults = new MonthYearStrategy(0, 0);
 const monthYearVideosDefaults = new MonthYearVideosStrategy(0, 0);
+// meta.title/icon are constant regardless of which album is selected (see
+// AlbumStrategy.meta) — used only for the card header, same role as the
+// other *Defaults instances above.
+const albumDefaults = new AlbumStrategy('');
+const albumVideosDefaults = new AlbumVideosStrategy('');
 
 // Composite because this screen needs to navigate both within its own
 // stack (to Swipe) and across to a sibling tab (Trash) when the user
@@ -188,6 +198,10 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const [trashCount, setTrashCount] = useState(0);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [previews, setPreviews] = useState<Record<string, string | VideoThumbnail | null>>({});
+  const [photoAlbums, setPhotoAlbums] = useState<Album[] | null>(null);
+  const [videoAlbums, setVideoAlbums] = useState<Album[] | null>(null);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
+  const [selectedVideoAlbumId, setSelectedVideoAlbumId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadRange = (key: string, setter: (range: [number, number]) => void) => {
@@ -214,6 +228,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         setMonthYearVideo({ year, month });
       }
     });
+    AsyncStorage.getItem(ALBUM_ID_KEY).then((stored) => {
+      if (stored != null) setSelectedAlbumId(stored);
+    });
+    AsyncStorage.getItem(ALBUM_VIDEO_ID_KEY).then((stored) => {
+      if (stored != null) setSelectedVideoAlbumId(stored);
+    });
   }, []);
 
   useEffect(() => {
@@ -222,6 +242,30 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       setPermissionGranted(granted);
     });
   }, []);
+
+  // Loaded once permission is confirmed, alongside everything else — not
+  // gated behind the user ever opening either album picker, so both "By
+  // Album" cards already have something to preview/swipe the first time
+  // they're seen. Two independent lists, not one shared one: a folder
+  // like a GoPro import can be all-video, and showing it in the photo
+  // picker left AlbumStrategy with nothing to ever find there — each list
+  // is scoped to albums that actually contain that media type (see
+  // PhotoLibraryService.getAlbums). Two independent selections too, same
+  // as monthYear/monthYearVideo already are — you might want photos from
+  // one album and videos from a different one. Each defaults to its own
+  // list's first album (alphabetically) only if nothing was already
+  // persisted from a previous session.
+  useEffect(() => {
+    if (!permissionGranted) return;
+    PhotoLibraryService.getAlbums('photo').then((fetched) => {
+      setPhotoAlbums(fetched);
+      setSelectedAlbumId((current) => current ?? fetched[0]?.id ?? null);
+    });
+    PhotoLibraryService.getAlbums('video').then((fetched) => {
+      setVideoAlbums(fetched);
+      setSelectedVideoAlbumId((current) => current ?? fetched[0]?.id ?? null);
+    });
+  }, [permissionGranted]);
 
   // Each category resolves its own preview independently — no shared
   // fetch for one category's slow or failed lookup to ever block or break
@@ -262,6 +306,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]));
     refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month));
     refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month));
+    if (selectedAlbumId) refreshPreview(new AlbumStrategy(selectedAlbumId));
+    if (selectedVideoAlbumId) refreshPreview(new AlbumVideosStrategy(selectedVideoAlbumId));
   }, [
     refreshPreview,
     shortVideoRange,
@@ -270,6 +316,8 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     brightnessRange,
     monthYear,
     monthYearVideo,
+    selectedAlbumId,
+    selectedVideoAlbumId,
   ]);
 
   useEffect(() => {
@@ -280,6 +328,24 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     // by reacting to refreshAllPreviews identity changing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permissionGranted]);
+
+  // The album list resolves later than permissionGranted (its own async
+  // fetch — see the effect above), so the very first refreshAllPreviews()
+  // run above almost always fires before either selection exists yet and
+  // skips both album previews. Without this, "By Album"/"Videos by Album"
+  // would show nothing until the user happened to leave and return to
+  // this screen.
+  useEffect(() => {
+    if (!selectedAlbumId) return;
+    refreshPreview(new AlbumStrategy(selectedAlbumId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAlbumId]);
+
+  useEffect(() => {
+    if (!selectedVideoAlbumId) return;
+    refreshPreview(new AlbumVideosStrategy(selectedVideoAlbumId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVideoAlbumId]);
 
   const refreshTrashCount = useCallback(() => {
     TrashService.getTrash().then((trash) => setTrashCount(trash.length));
@@ -327,6 +393,18 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     setMonthYearVideo({ year, month });
     AsyncStorage.setItem(MONTH_YEAR_VIDEO_KEY, `${year},${month}`);
     refreshPreview(new MonthYearVideosStrategy(year, month));
+  };
+
+  const handleAlbumChange = (albumId: string) => {
+    setSelectedAlbumId(albumId);
+    AsyncStorage.setItem(ALBUM_ID_KEY, albumId);
+    refreshPreview(new AlbumStrategy(albumId));
+  };
+
+  const handleVideoAlbumChange = (albumId: string) => {
+    setSelectedVideoAlbumId(albumId);
+    AsyncStorage.setItem(ALBUM_VIDEO_ID_KEY, albumId);
+    refreshPreview(new AlbumVideosStrategy(albumId));
   };
 
   return (
@@ -377,6 +455,22 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           month={monthYear.month}
           onChange={handleMonthYearChange}
         />
+      </View>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            selectedAlbumId &&
+            navigation.navigate('Swipe', { strategyId: 'album', params: { albumId: selectedAlbumId } })
+          }
+        >
+          <TitleRow
+            title={albumDefaults.meta.title}
+            icon={albumDefaults.meta.icon}
+            previewUri={selectedAlbumId ? previews[`album-${selectedAlbumId}`] : null}
+          />
+        </Pressable>
+        <AlbumPicker albums={photoAlbums} selectedAlbumId={selectedAlbumId} onChange={handleAlbumChange} />
       </View>
 
       <Pressable
@@ -510,6 +604,29 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           year={monthYearVideo.year}
           month={monthYearVideo.month}
           onChange={handleMonthYearVideoChange}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Pressable
+          onPress={() =>
+            selectedVideoAlbumId &&
+            navigation.navigate('Swipe', {
+              strategyId: 'album-videos',
+              params: { albumId: selectedVideoAlbumId },
+            })
+          }
+        >
+          <TitleRow
+            title={albumVideosDefaults.meta.title}
+            icon={albumVideosDefaults.meta.icon}
+            previewUri={selectedVideoAlbumId ? previews[`album-videos-${selectedVideoAlbumId}`] : null}
+          />
+        </Pressable>
+        <AlbumPicker
+          albums={videoAlbums}
+          selectedAlbumId={selectedVideoAlbumId}
+          onChange={handleVideoAlbumChange}
         />
       </View>
 

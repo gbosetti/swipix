@@ -1,6 +1,8 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { RandomPhotosStrategy } from './RandomPhotosStrategy';
 import { ScreenshotStrategy } from './ScreenshotStrategy';
+import { AlbumStrategy } from './AlbumStrategy';
+import { AlbumVideosStrategy } from './AlbumVideosStrategy';
 import { DuplicatesAndSimilarStrategy } from './DuplicatesAndSimilarStrategy';
 import { AllVideosStrategy } from './AllVideosStrategy';
 import { ShortVideosStrategy } from './ShortVideosStrategy';
@@ -20,6 +22,8 @@ export type StrategyId =
   | 'random'
   | 'month-year'
   | 'screenshots'
+  | 'album'
+  | 'album-videos'
   | 'duplicates-similar'
   | 'big-pictures'
   | 'blurred-images'
@@ -39,29 +43,36 @@ export type StrategyId =
  * each strategy's constructor actually takes; strategies with no
  * constructor args ignore it entirely.
  */
-export function createStrategy(strategyId: StrategyId, params: Record<string, number> = {}): CategoryStrategy {
+export function createStrategy(
+  strategyId: StrategyId,
+  params: Record<string, number | string> = {}
+): CategoryStrategy {
   switch (strategyId) {
     case 'random':
       return new RandomPhotosStrategy();
     case 'month-year':
-      return new MonthYearStrategy(params.year, params.month);
+      return new MonthYearStrategy(params.year as number, params.month as number);
     case 'screenshots':
       return new ScreenshotStrategy();
+    case 'album':
+      return new AlbumStrategy((params.albumId as string) ?? '');
+    case 'album-videos':
+      return new AlbumVideosStrategy((params.albumId as string) ?? '');
     case 'duplicates-similar':
       return new DuplicatesAndSimilarStrategy();
     case 'big-pictures':
-      return new BigPicturesStrategy(params.minBytes, params.maxBytes);
+      return new BigPicturesStrategy(params.minBytes as number, params.maxBytes as number);
     case 'blurred-images':
       return new BlurredImagesStrategy();
     case 'dark-photos':
-      return new BrightnessStrategy(params.minBrightness, params.maxBrightness);
+      return new BrightnessStrategy(params.minBrightness as number, params.maxBrightness as number);
     case 'all-videos':
       return new AllVideosStrategy();
     case 'month-year-videos':
-      return new MonthYearVideosStrategy(params.year, params.month);
+      return new MonthYearVideosStrategy(params.year as number, params.month as number);
     case 'short-videos':
-      return new ShortVideosStrategy(params.minSeconds, params.maxSeconds);
+      return new ShortVideosStrategy(params.minSeconds as number, params.maxSeconds as number);
     case 'big-videos':
-      return new BigVideosStrategy(params.minBytes, params.maxBytes);
+      return new BigVideosStrategy(params.minBytes as number, params.maxBytes as number);
   }
 }

@@ -150,6 +150,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
           mediaTypes: strategy.mediaTypes,
           first: windowSizeRef.current + PAGE_SIZE,
           detailed: strategy.needsDetailedFetch,
+          albumId: strategy.albumId,
         });
         if (token !== sessionTokenRef.current) return collected;
         const newAssets = page.assets.slice(windowSizeRef.current);

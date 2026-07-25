@@ -69,6 +69,13 @@ export abstract class CategoryStrategy {
     return false;
   }
 
+  /** Scopes the paginated fetch to one native album — only AlbumStrategy
+   * sets this. Defaults to undefined (no album scoping) for every other
+   * strategy, which searches the whole library as normal. */
+  get albumId(): string | undefined {
+    return undefined;
+  }
+
   /** How long getPreview() below will wait for this category's own preview
    * lookup before giving up and falling back to the plain icon. Override
    * for a strategy whose findPreviewAsset() does real per-photo analysis

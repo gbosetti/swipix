@@ -4,11 +4,13 @@ import { PhotoLibraryService } from './PhotoLibraryService';
 jest.mock('expo-media-library', () => ({
   getAssetsAsync: jest.fn(),
   getAssetInfoAsync: jest.fn(),
+  getAlbumsAsync: jest.fn(),
   SortBy: { creationTime: 'creationTime' },
 }));
 
 const mockedGetAssetsAsync = MediaLibrary.getAssetsAsync as jest.Mock;
 const mockedGetAssetInfoAsync = MediaLibrary.getAssetInfoAsync as jest.Mock;
+const mockedGetAlbumsAsync = MediaLibrary.getAlbumsAsync as jest.Mock;
 
 function rawAsset(id: string, mediaType: 'photo' | 'video' = 'photo') {
   return {
@@ -366,5 +368,113 @@ describe('PhotoLibraryService cache eviction', () => {
     expect(recovered.map((a) => a.id)).toEqual(['a']);
     expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
     void stuckPromise; // never resolves; deliberately not awaited
+  });
+});
+
+describe('PhotoLibraryService.getAlbums', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('excludes moments and smart albums, keeping only real user-created albums', async () => {
+    mockedGetAlbumsAsync.mockResolvedValue([
+      { id: '1', title: 'Vacation', assetCount: 10, type: 'album' },
+      { id: '2', title: 'Today', assetCount: 5, type: 'moment' },
+      { id: '3', title: 'Favorites', assetCount: 3, type: 'smartAlbum' },
+    ]);
+    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 10 });
+
+    const albums = await PhotoLibraryService.getAlbums('photo');
+
+    expect(albums.map((a) => a.id)).toEqual(['1']);
+    expect(mockedGetAlbumsAsync).toHaveBeenCalledWith({ includeSmartAlbums: false });
+  });
+
+  it('sorts albums by title for a stable, predictable picker order', async () => {
+    mockedGetAlbumsAsync.mockResolvedValue([
+      { id: '1', title: 'Zoo', assetCount: 1, type: 'album' },
+      { id: '2', title: 'Animals', assetCount: 1, type: 'album' },
+    ]);
+    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 1 });
+
+    const albums = await PhotoLibraryService.getAlbums('photo');
+
+    expect(albums.map((a) => a.title)).toEqual(['Animals', 'Zoo']);
+  });
+
+  it('excludes empty albums — nothing to swipe, so the picker should never offer a dead end', async () => {
+    mockedGetAlbumsAsync.mockResolvedValue([
+      { id: '1', title: 'Has Photos', assetCount: 5, type: 'album' },
+      { id: '2', title: 'Empty', assetCount: 0, type: 'album' },
+    ]);
+    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 5 });
+
+    const albums = await PhotoLibraryService.getAlbums('photo');
+
+    expect(albums.map((a) => a.id)).toEqual(['1']);
+    // Empty album's combined assetCount is 0, so it's skipped before ever
+    // querying its type-specific count.
+    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('excludes an album that has assets but none of the requested media type — e.g. an all-video import folder should never appear in the photo picker', async () => {
+    mockedGetAlbumsAsync.mockResolvedValue([{ id: 'gopro', title: 'GoPro', assetCount: 40, type: 'album' }]);
+    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 0 });
+
+    const photoAlbums = await PhotoLibraryService.getAlbums('photo');
+
+    expect(photoAlbums).toEqual([]);
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ album: 'gopro', mediaType: 'photo', first: 1 })
+    );
+  });
+
+  it('includes that same all-video album in the video list', async () => {
+    mockedGetAlbumsAsync.mockResolvedValue([{ id: 'gopro', title: 'GoPro', assetCount: 40, type: 'album' }]);
+    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 40 });
+
+    const videoAlbums = await PhotoLibraryService.getAlbums('video');
+
+    expect(videoAlbums.map((a) => a.id)).toEqual(['gopro']);
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ album: 'gopro', mediaType: 'video', first: 1 })
+    );
+  });
+
+  it("reports the type-specific count, not the album's combined assetCount, so the picker shows an accurate number", async () => {
+    mockedGetAlbumsAsync.mockResolvedValue([{ id: 'mixed', title: 'Mixed', assetCount: 100, type: 'album' }]);
+    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 12 });
+
+    const photoAlbums = await PhotoLibraryService.getAlbums('photo');
+
+    expect(photoAlbums[0].assetCount).toBe(12);
+  });
+});
+
+describe('PhotoLibraryService album-scoped fetching (AlbumStrategy)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('passes albumId through getMediaPage as the native `album` filter', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+
+    await PhotoLibraryService.getMediaPage({ mediaTypes: ['photo', 'video'], first: 60, albumId: 'abc' });
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(expect.objectContaining({ album: 'abc' }));
+  });
+
+  it('passes albumId through getPreviewCandidates too', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+
+    await PhotoLibraryService.getPreviewCandidates({ mediaTypes: ['photo', 'video'], albumId: 'abc' });
+
+    expect(mockedGetAssetsAsync).toHaveBeenCalledWith(expect.objectContaining({ album: 'abc' }));
   });
 });
