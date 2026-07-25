@@ -123,22 +123,15 @@ export default function KeptScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
-          // Same guard TrashScreen uses — ph:// isn't renderable by
-          // <Image>, only info.localUri is.
-          const hasRenderableUri = !item.uri.startsWith('ph://');
+          // Same as TrashScreen — every item has a renderable uri by
+          // construction, ph:// included, since expo-image's <Image>
+          // (imported above) ships a native loader for it.
           const isVideo = item.mediaType === 'video';
           const videoThumbnail = videoThumbnails[item.id];
           return (
             <View style={styles.row}>
-              <Pressable
-                onPress={() => hasRenderableUri && setPreviewItem(item)}
-                disabled={!hasRenderableUri}
-              >
-                {!hasRenderableUri ? (
-                  <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-                    <Text style={styles.placeholderText}>?</Text>
-                  </View>
-                ) : isVideo ? (
+              <Pressable onPress={() => setPreviewItem(item)}>
+                {isVideo ? (
                   videoThumbnail ? (
                     <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
                   ) : (

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Asset } from '../types';
 import { ColorPalette } from '../theme/colors';
@@ -51,7 +52,12 @@ function PhotoCard({ asset, isTop = true }: PhotoCardProps) {
           </View>
         )
       ) : (
-        <Image source={{ uri: asset.uri }} style={styles.image} resizeMode="cover" />
+        // expo-image, not React Native's own <Image> — asset.uri from the
+        // live-browsing fetch path is often a raw ph:// Photos-library
+        // reference now (PhotoLibraryService skips resolving a real file
+        // path up front for speed); expo-image ships a native loader that
+        // renders ph:// directly, decoding lazily off the main thread.
+        <Image source={{ uri: asset.uri }} style={styles.image} contentFit="cover" />
       )}
     </View>
   );

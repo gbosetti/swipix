@@ -32,7 +32,6 @@ describe('PhotoLibraryService.getMediaPage', () => {
       hasNextPage: true,
       totalCount: 100,
     });
-    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
 
     const page = await PhotoLibraryService.getMediaPage({
       mediaTypes: ['photo'],
@@ -48,18 +47,51 @@ describe('PhotoLibraryService.getMediaPage', () => {
     expect(page.assets.map((a) => a.id)).toEqual(['a']);
   });
 
-  it('omits assets with no resolvable localUri rather than including an unusable ph:// uri', async () => {
+  it('returns the raw ph:// uri for photos without calling getAssetInfoAsync', async () => {
+    // The live-browsing fast path: resolving every page's photos' real file
+    // paths up front was confirmed on a real device to serialize on iOS's
+    // main thread and stall the first Swipe card by 7-10s. expo-image
+    // renders ph:// directly, so this path skips that resolution entirely.
     mockedGetAssetsAsync.mockResolvedValue({
-      assets: [rawAsset('good'), rawAsset('missing')],
+      assets: [rawAsset('a')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+
+    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['photo'], first: 60 });
+
+    expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
+    expect(page.assets).toEqual([expect.objectContaining({ id: 'a', uri: 'ph://a' })]);
+  });
+
+  it('still resolves videos through getAssetInfoAsync, since expo-video needs a real file path', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('v1', 'video')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///v1.mov', mediaSubtypes: [] });
+
+    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60 });
+
+    expect(mockedGetAssetInfoAsync).toHaveBeenCalledTimes(1);
+    expect(page.assets).toEqual([expect.objectContaining({ id: 'v1', uri: 'file:///v1.mov' })]);
+  });
+
+  it('omits video assets with no resolvable localUri rather than including an unusable ph:// uri', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('good', 'video'), rawAsset('missing', 'video')],
       endCursor: 'cursor-2',
       hasNextPage: false,
       totalCount: 2,
     });
     mockedGetAssetInfoAsync.mockImplementation(async (asset: { id: string }) =>
-      asset.id === 'good' ? { localUri: 'file:///good.jpg', mediaSubtypes: [] } : { localUri: null }
+      asset.id === 'good' ? { localUri: 'file:///good.mov', mediaSubtypes: [] } : { localUri: null }
     );
 
-    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['photo'], first: 60 });
+    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60 });
 
     expect(page.assets.map((a) => a.id)).toEqual(['good']);
     expect(page.hasNextPage).toBe(false);
@@ -72,13 +104,33 @@ describe('PhotoLibraryService.getMediaPage', () => {
       hasNextPage: false,
       totalCount: 1,
     });
-    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///a.jpg', mediaSubtypes: [] });
 
     await PhotoLibraryService.getMediaPage({ mediaTypes: ['photo', 'video'], first: 60 });
 
     expect(mockedGetAssetsAsync).toHaveBeenCalledWith(
       expect.objectContaining({ mediaType: ['photo', 'video'] })
     );
+  });
+});
+
+describe('PhotoLibraryService.getAllPhotos / getAllMedia (detailed fetch)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('resolves photos through getAssetInfoAsync too, for callers that need a real file path', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('good'), rawAsset('missing')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 2,
+    });
+    mockedGetAssetInfoAsync.mockImplementation(async (asset: { id: string }) =>
+      asset.id === 'good' ? { localUri: 'file:///good.jpg', mediaSubtypes: [] } : { localUri: null }
+    );
+
+    const assets = await PhotoLibraryService.getAllPhotos();
+
+    expect(mockedGetAssetInfoAsync).toHaveBeenCalledTimes(2);
+    expect(assets.map((a) => a.id)).toEqual(['good']);
   });
 });
 

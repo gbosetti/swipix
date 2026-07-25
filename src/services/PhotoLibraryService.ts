@@ -24,12 +24,14 @@ const inFlight = new Map<string, Promise<AssetPage>>();
 // crash report, since it's a watchdog kill, not a memory/segfault crash.
 // Bounding concurrency, the same way ImageAnalysisService already bounds
 // concurrent image decodes, keeps the main thread responsive regardless of
-// page size. 30 is a deliberate middle ground: SwipeScreen/CategoryPickerScreen
-// pages (60/150 assets) stay close to fully parallel — they were never the
-// crash trigger — while a 500-asset self-fetch (DuplicatesAndSimilarStrategy)
-// still gets spread over ~17 batches instead of flooding the main thread in
-// one shot. An earlier, more conservative value (12) fixed the crash but
-// made every page noticeably slower, including ones that were never at risk.
+// page size. Only matters for "detailed" fetches now (see `detailed` below)
+// — SwipeScreen/CategoryPickerScreen's own paginated pages skip
+// getAssetInfoAsync for photos entirely, so this mainly governs the
+// self-fetching strategies' 500-asset fetches (e.g.
+// DuplicatesAndSimilarStrategy), still spread over ~17 batches instead of
+// flooding the main thread in one shot. An earlier, more conservative value
+// (12) fixed the original crash but made every detailed fetch noticeably
+// slower than it needed to be.
 const ASSET_INFO_CONCURRENCY = 30;
 
 async function mapWithConcurrency<T, R>(
@@ -64,15 +66,20 @@ export const PhotoLibraryService = {
     return status === 'granted';
   },
 
+  /** "Detailed" (see `_fetchAssets`) — every asset's real file path is
+   * resolved up front, since callers of this method (self-fetching
+   * strategies like Big Pictures/Duplicates) read real file size or decode
+   * pixels off `asset.uri`, which needs a real file, not a ph:// reference. */
   async getAllPhotos({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
-    return (await this._fetchAssets('photo', first)).assets;
+    return (await this._fetchAssets('photo', first, undefined, true)).assets;
   },
 
   /** Photos and videos together — only categories that genuinely need
    * videos (e.g. Big Files) should use this; everything else stays on
-   * getAllPhotos so existing categories are unaffected. */
+   * getAllPhotos so existing categories are unaffected. Detailed, same as
+   * getAllPhotos above. */
   async getAllMedia({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
-    return (await this._fetchAssets(['photo', 'video'], first)).assets;
+    return (await this._fetchAssets(['photo', 'video'], first, undefined, true)).assets;
   },
 
   /** Cursor-paginated fetch — lets a caller load a small first page fast,
@@ -81,7 +88,9 @@ export const PhotoLibraryService = {
    * multi-second stall on large libraries). `after` is the previous page's
    * `endCursor`; omit it for the first page. `mediaTypes` mirrors
    * CategoryStrategy.mediaTypes, so a caller can ask for exactly what the
-   * active strategy needs. */
+   * active strategy needs. Not detailed (see `_fetchAssets`) — this is the
+   * live-browsing path (Swipe deck, Categories previews), which only needs
+   * something renderable, not a real file path. */
   async getMediaPage({
     mediaTypes,
     first,
@@ -92,7 +101,7 @@ export const PhotoLibraryService = {
     after?: string;
   }): Promise<AssetPage> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
-    return this._fetchAssets(type, first, after);
+    return this._fetchAssets(type, first, after, false);
   },
 
   /** Same one combined `getMediaPage(['photo','video'])` fetch a caller
@@ -118,12 +127,13 @@ export const PhotoLibraryService = {
   async _fetchAssets(
     mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
     first: number,
-    after?: string
+    after?: string,
+    detailed = true
   ): Promise<AssetPage> {
-    const key = JSON.stringify({ mediaType, first, after: after ?? null });
+    const key = JSON.stringify({ mediaType, first, after: after ?? null, detailed });
     const existing = inFlight.get(key);
     if (existing) return existing;
-    const promise = this._fetchAssetsUncached(mediaType, first, after).finally(() => {
+    const promise = this._fetchAssetsUncached(mediaType, first, after, detailed).finally(() => {
       inFlight.delete(key);
     });
     inFlight.set(key, promise);
@@ -133,7 +143,8 @@ export const PhotoLibraryService = {
   async _fetchAssetsUncached(
     mediaType: MediaLibrary.MediaTypeValue | MediaLibrary.MediaTypeValue[],
     first: number,
-    after?: string
+    after: string | undefined,
+    detailed: boolean
   ): Promise<AssetPage> {
     const page = await MediaLibrary.getAssetsAsync({
       mediaType,
@@ -147,16 +158,47 @@ export const PhotoLibraryService = {
     // not mapping info.location (GPS coordinates) onto Asset: nothing in
     // the app reads it, and capturing sensitive location data nothing
     // uses is exactly what data-minimization rules out.
-    const detailed: (Asset | null)[] = await mapWithConcurrency(
+    const detailedAssets: (Asset | null)[] = await mapWithConcurrency(
       page.assets,
       ASSET_INFO_CONCURRENCY,
       async (asset): Promise<Asset | null> => {
+        // Photos in the non-detailed (live-browsing) path skip
+        // getAssetInfoAsync entirely and hand back the raw ph:// URI
+        // as-is. Confirmed on a real device: resolving every page's
+        // photos' real file paths up front was the actual cause of a
+        // 7-10s wait before the first Swipe card appeared — each
+        // getAssetInfoAsync call resolves synchronously on iOS's MAIN
+        // THREAD when not prefetched ("Missing prefetched properties...
+        // Fetching on demand on the main queue"), so 60 of them serialize
+        // regardless of this file's own JS-side concurrency limit. This
+        // is safe because expo-image ships a native loader specifically
+        // for ph:// asset-library URIs (ios/Loaders/PhotoLibraryAssetLoader.swift,
+        // auto-registered, no config needed) that resolves and decodes
+        // each photo lazily, off the main thread, only for the card
+        // actually being rendered — so PhotoCard must use expo-image's
+        // <Image>, not React Native's, for this to render correctly.
+        // Videos always resolve regardless of `detailed`: expo-video needs
+        // a real playable file path, not a ph:// reference. Detailed
+        // fetches (getAllPhotos/getAllMedia, used by strategies that read
+        // real file size or decode pixels off asset.uri) always resolve too.
+        if (!detailed && asset.mediaType !== 'video') {
+          return {
+            id: asset.id,
+            uri: asset.uri,
+            mediaType: 'photo',
+            creationTime: asset.creationTime,
+            duration: asset.duration,
+            width: asset.width,
+            height: asset.height,
+            mediaSubtypes: asset.mediaSubtypes ?? [],
+          };
+        }
         const info = await MediaLibrary.getAssetInfoAsync(asset);
         // asset.uri is a ph:// reference on iOS, not directly renderable by
-        // <Image> — localUri is the actual displayable file URI. If it's
-        // unavailable (e.g. an iCloud asset that failed to download), skip
-        // the asset entirely rather than handing back an unusable ph:// URI
-        // that would crash the image loader downstream.
+        // React Native's own <Image> — localUri is the actual displayable
+        // file URI. If it's unavailable (e.g. an iCloud asset that failed
+        // to download), skip the asset entirely rather than handing back
+        // an unusable ph:// URI that would crash the image loader downstream.
         if (!info.localUri) return null;
         return {
           id: asset.id,
@@ -172,7 +214,7 @@ export const PhotoLibraryService = {
     );
 
     return {
-      assets: detailed.filter((asset): asset is Asset => asset !== null),
+      assets: detailedAssets.filter((asset): asset is Asset => asset !== null),
       endCursor: page.endCursor,
       hasNextPage: page.hasNextPage,
     };

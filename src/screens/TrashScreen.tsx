@@ -141,23 +141,18 @@ export default function TrashScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
-          // Guards against records saved before localUri resolution was
-          // added — ph:// isn't renderable by <Image> and would otherwise
-          // crash the native image loader.
-          const hasRenderableUri = !item.uri.startsWith('ph://');
+          // Every item has a renderable uri by construction — a ph:// asset-
+          // library reference (the live-browsing fetch path's fast path for
+          // photos, see PhotoLibraryService) or a resolved file path (video,
+          // or the detailed fetch path). expo-image's <Image> (imported
+          // above) ships a native loader specifically for ph:// URIs, unlike
+          // React Native's own <Image>, so both render correctly here.
           const isVideo = item.mediaType === 'video';
           const videoThumbnail = videoThumbnails[item.id];
           return (
             <View style={styles.row}>
-              <Pressable
-                onPress={() => hasRenderableUri && setPreviewItem(item)}
-                disabled={!hasRenderableUri}
-              >
-                {!hasRenderableUri ? (
-                  <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-                    <Text style={styles.placeholderText}>?</Text>
-                  </View>
-                ) : isVideo ? (
+              <Pressable onPress={() => setPreviewItem(item)}>
+                {isVideo ? (
                   videoThumbnail ? (
                     <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
                   ) : (
