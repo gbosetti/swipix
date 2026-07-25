@@ -91,6 +91,23 @@ describe('showInterstitialAd', () => {
     await expect(promise).resolves.toBeUndefined();
   });
 
+  it('resolves after the showing timeout if CLOSED never fires (regression: a stuck/unresponsive ad — real device report: the close (X) button did nothing — must not wedge the app state waiting on it forever)', async () => {
+    const promise = showInterstitialAd();
+    await Promise.resolve();
+    await Promise.resolve();
+    listeners.loaded();
+    await Promise.resolve();
+    let resolved = false;
+    promise.then(() => {
+      resolved = true;
+    });
+    jest.advanceTimersByTime(59000);
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+    jest.advanceTimersByTime(1000);
+    await expect(promise).resolves.toBeUndefined();
+  });
+
   it('requests non-personalized ads only', async () => {
     const promise = showInterstitialAd();
     await Promise.resolve();

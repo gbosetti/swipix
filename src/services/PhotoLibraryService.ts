@@ -82,11 +82,17 @@ export const PhotoLibraryService = {
     return (await this._fetchAssets(['photo', 'video'], first, undefined, true)).assets;
   },
 
-  /** Cursor-paginated fetch — lets a caller load a small first page fast,
-   * then fetch further pages on demand, instead of resolving hundreds of
+  /** Paginated fetch — lets a caller load a small first page fast, then
+   * fetch further pages on demand, instead of resolving hundreds of
    * assets' detail up front (see SwipeScreen, which uses this to avoid a
-   * multi-second stall on large libraries). `after` is the previous page's
-   * `endCursor`; omit it for the first page. `mediaTypes` mirrors
+   * multi-second stall on large libraries). `after` accepts a cursor
+   * (`endCursor` from a previous page) but SwipeScreen deliberately never
+   * passes one — expo-media-library's iOS cursor resolution
+   * (`fetchResult.index(of:)` against a freshly-built PHFetchResult each
+   * call) isn't reliable when assets tie on the sort key, so SwipeScreen
+   * instead grows `first` itself and slices off only the new tail. `after`
+   * remains supported here for a caller with a real single-pass-forward
+   * use case, just isn't one today. `mediaTypes` mirrors
    * CategoryStrategy.mediaTypes, so a caller can ask for exactly what the
    * active strategy needs. Not detailed (see `_fetchAssets`) — this is the
    * live-browsing path (Swipe deck, Categories previews), which only needs
@@ -193,7 +199,24 @@ export const PhotoLibraryService = {
             mediaSubtypes: asset.mediaSubtypes ?? [],
           };
         }
-        const info = await MediaLibrary.getAssetInfoAsync(asset);
+        // Wrapped in try/catch, not left to reject the whole page: a real
+        // library (thousands of photos/videos, some possibly iCloud-only
+        // or with unusual metadata) is far more likely than a small test
+        // library to have at least one asset where getAssetInfoAsync
+        // itself rejects, not just resolves with a missing localUri.
+        // Before this, a single bad asset anywhere in a page — even just
+        // one video mixed into CategoryPickerScreen's 150-item preview
+        // fetch — silently broke that page's ENTIRE fetch with no visible
+        // error, which meant every category's preview thumbnail (all
+        // sharing that one fetch) stayed stuck on the fallback icon
+        // forever. Treated exactly like an unresolvable localUri: skip
+        // this one asset, keep the rest of the page.
+        let info: MediaLibrary.AssetInfo;
+        try {
+          info = await MediaLibrary.getAssetInfoAsync(asset);
+        } catch {
+          return null;
+        }
         // asset.uri is a ph:// reference on iOS, not directly renderable by
         // React Native's own <Image> — localUri is the actual displayable
         // file URI. If it's unavailable (e.g. an iCloud asset that failed

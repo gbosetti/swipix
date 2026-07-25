@@ -79,7 +79,11 @@ const BIG_VIDEO_SLIDER_MAX_MB = 5000;
 function toBigVideoMaxBytes(highMB: number): number {
   return highMB >= BIG_VIDEO_SLIDER_MAX_MB ? Infinity : highMB * 1024 * 1024;
 }
-const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 40]; // matches BrightnessStrategy's own defaults
+// 70, not 40 — a narrower default range meant very few real-world photos
+// qualified as "dark," so a swipe session could take 20+ seconds just to
+// accumulate its first page of matches. Matches BrightnessStrategy's own
+// default.
+const DEFAULT_BRIGHTNESS_RANGE: [number, number] = [0, 70];
 const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 // Blurred Photos and Dark Photos are the only previews that trigger real
 // pixel analysis (full-resolution decode via ImageAnalysisService's pure-JS
@@ -89,6 +93,15 @@ const BRIGHTNESS_RANGE_KEY = '@swipix/brightnessRange';
 // pressure never exercised against the simulator's tiny seeded library.
 // A much smaller sample is enough to very likely surface one preview match.
 const PREVIEW_ANALYSIS_SAMPLE_SIZE = 25;
+// Caps how long a preview waits before falling back to the category's plain
+// icon — mainly for Duplicates & Similar, which (unlike every other
+// category here) self-fetches its own few-hundred-photo batch AND runs
+// full pixel-hash analysis on it, on every single visit to this screen, no
+// matter how small a sample the other previews use. Not a hard cutoff: if
+// the real match arrives after the timeout already showed the icon,
+// refreshPreview still swaps in the real photo once it's ready — this only
+// bounds the wait for the *first* impression, not the total work.
+const PREVIEW_TIMEOUT_MS = 5000;
 const MONTH_YEAR_KEY = '@swipix/monthYear';
 const MONTH_YEAR_VIDEO_KEY = '@swipix/monthYearVideo';
 
@@ -239,16 +252,37 @@ export default function CategoryPickerScreen({ navigation }: Props) {
         // photo+video window — getPreviewUri already treats a missing
         // preview as normal, not broken, and the actual swipe session
         // (SwipeScreen) always searches properly regardless.
-        PhotoLibraryService.getSplitMediaPage({ first: 150 }).then((page) => {
-          setAllPhotos(page.photos);
-          setAllVideos(page.videos);
-        });
+        PhotoLibraryService.getSplitMediaPage({ first: 150 })
+          .then((page) => {
+            setAllPhotos(page.photos);
+            setAllVideos(page.videos);
+          })
+          .catch((error) => {
+            // Every category's preview shares this one fetch — previously
+            // a rejection here left allPhotos/allVideos stuck at null
+            // forever with nothing surfaced anywhere, which looked
+            // identical to "every category legitimately has no matches."
+            // PhotoLibraryService now guards the per-asset case that
+            // actually caused this, but logging here too means a genuinely
+            // new failure is visible instead of silently indistinguishable
+            // from normal empty-preview behavior.
+            if (__DEV__) console.warn('Failed to load category previews:', error);
+          });
       }
     });
   }, []);
 
   const refreshPreview = useCallback((strategy: CategoryStrategy, sourceAssets: Asset[]) => {
+    // The timeout only shows the icon early — it doesn't cancel the real
+    // computation. If getPreviewUri resolves after the timeout already
+    // fired, this still runs and replaces the icon with the real photo,
+    // so a slow category (Duplicates & Similar) never permanently gets
+    // stuck on the icon, it's just not held up waiting on first load.
+    const timeoutId = setTimeout(() => {
+      setPreviews((current) => ({ ...current, [strategy.meta.id]: null }));
+    }, PREVIEW_TIMEOUT_MS);
     getPreviewUri(strategy, sourceAssets).then((uri) => {
+      clearTimeout(timeoutId);
       setPreviews((current) => ({ ...current, [strategy.meta.id]: uri }));
     });
   }, []);
@@ -601,7 +635,8 @@ function createStyles(colors: ColorPalette) {
     card: {
       backgroundColor: colors.card,
       borderRadius: 18,
-      padding: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
     },
     sectionHeader: {
       color: colors.textSecondary,

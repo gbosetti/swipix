@@ -24,7 +24,7 @@ function makeAsset(id: string): Asset {
 describe('BrightnessStrategy', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('matches photos within the default 0-40 brightness range', async () => {
+  it('matches photos within the default 0-70 brightness range', async () => {
     const dark = makeAsset('dark');
     const bright = makeAsset('bright');
     mockedAnalyzeImages.mockResolvedValue(

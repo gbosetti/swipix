@@ -22,6 +22,18 @@ const INTERSTITIAL_AD_UNIT_ID = __DEV__
 // going to succeed, short enough that "skip the ad" resolves before the
 // delete flow it's gating would feel broken.
 const LOAD_TIMEOUT_MS = 8000;
+// A second, much longer ceiling for the SHOWING phase, once the ad is
+// already on screen. Confirmed on a real device: an interstitial can get
+// stuck — its own close (X) button unresponsive, no CLOSED event ever
+// firing — and there is no API anywhere in this SDK to force it closed
+// from our side (only Apple/Google-owned native UI, same reason we can't
+// force-dismiss the Photos delete confirmation either). This can't make
+// the stuck ad's view disappear, but it stops our OWN app state from
+// waiting on it forever — without this, even a user who escapes by
+// backgrounding the app returns to a delete flow still wedged waiting on
+// a promise that was never going to resolve. 60s is far beyond any normal
+// interstitial's viewing time, so it only ever fires in this broken case.
+const MAX_SHOWING_MS = 60000;
 
 let initialization: Promise<void> | null = null;
 
@@ -60,10 +72,12 @@ export async function showInterstitialAd(): Promise<void> {
 
   return new Promise((resolve) => {
     let settled = false;
+    let showingTimeoutId: ReturnType<typeof setTimeout> | undefined;
     const finish = () => {
       if (settled) return;
       settled = true;
       clearTimeout(timeoutId);
+      clearTimeout(showingTimeoutId);
       unsubscribeLoaded();
       unsubscribeError();
       unsubscribeClosed();
@@ -87,6 +101,7 @@ export async function showInterstitialAd(): Promise<void> {
     const unsubscribeLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
       clearTimeout(timeoutId);
       interstitial.show().catch(finish);
+      showingTimeoutId = setTimeout(finish, MAX_SHOWING_MS);
     });
     const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, finish);
     const unsubscribeClosed = interstitial.addAdEventListener(AdEventType.CLOSED, finish);

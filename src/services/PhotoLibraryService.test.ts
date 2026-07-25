@@ -111,6 +111,23 @@ describe('PhotoLibraryService.getMediaPage', () => {
       expect.objectContaining({ mediaType: ['photo', 'video'] })
     );
   });
+
+  it('skips a video whose getAssetInfoAsync call rejects instead of failing the whole page (regression: a single bad asset in a real, large library used to silently break every category preview, since nothing caught the rejection)', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('good', 'video'), rawAsset('bad', 'video')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 2,
+    });
+    mockedGetAssetInfoAsync.mockImplementation(async (asset: { id: string }) => {
+      if (asset.id === 'bad') throw new Error('native failure');
+      return { localUri: 'file:///good.mov', mediaSubtypes: [] };
+    });
+
+    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60 });
+
+    expect(page.assets.map((a) => a.id)).toEqual(['good']);
+  });
 });
 
 describe('PhotoLibraryService.getAllPhotos / getAllMedia (detailed fetch)', () => {

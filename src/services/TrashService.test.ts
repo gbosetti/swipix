@@ -39,6 +39,28 @@ describe('TrashService', () => {
     expect(mockedPhotoLibraryService.deleteAssets).not.toHaveBeenCalled();
   });
 
+  it('moveToTrash upserts by id instead of duplicating an entry (regression: a self-fetching category strategy could hand the same photo to SwipeDeck twice, and trashing it both times used to create two entries with the same id, breaking list rendering)', async () => {
+    await TrashService.moveToTrash(makeAsset('a'));
+    await TrashService.moveToTrash(makeAsset('a'));
+    const trash = await TrashService.getTrash();
+    expect(trash).toHaveLength(1);
+    expect(trash.map((item) => item.id)).toEqual(['a']);
+  });
+
+  it('self-heals duplicate ids already sitting in storage from before moveToTrash upserted (regression: "two children with the same key" on Trash)', async () => {
+    await AsyncStorage.setItem(
+      '@swipix/trash',
+      JSON.stringify([
+        { ...makeAsset('a'), trashedAt: 1 },
+        { ...makeAsset('b'), trashedAt: 2 },
+        { ...makeAsset('a'), trashedAt: 3 },
+      ])
+    );
+    const trash = await TrashService.getTrash();
+    expect(trash).toHaveLength(2);
+    expect(new Set(trash.map((item) => item.id))).toEqual(new Set(['a', 'b']));
+  });
+
   it('restore removes a photo from the trash without deleting it from the device', async () => {
     await TrashService.moveToTrash(makeAsset('a'));
     await TrashService.restore('a');

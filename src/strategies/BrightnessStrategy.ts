@@ -12,7 +12,7 @@ export class BrightnessStrategy extends CategoryStrategy {
   minBrightness: number;
   maxBrightness: number;
 
-  constructor(minBrightness = 0, maxBrightness = 40) {
+  constructor(minBrightness = 0, maxBrightness = 70) {
     super();
     this.minBrightness = minBrightness; // 0-255 scale
     this.maxBrightness = maxBrightness;

@@ -31,8 +31,9 @@ interface SwipeHistoryEntry {
 const UNDO_NUDGE_THRESHOLD = 3;
 
 // Small enough to load fast (the whole reason this file paginates instead
-// of fetching everything up front — see PhotoLibraryService.getPhotosPage),
-// big enough to feel like a full deck.
+// of fetching everything up front — see PhotoLibraryService.getMediaPage),
+// big enough to feel like a full deck. Also how much the fetch window
+// (windowSizeRef) grows by each cycle — see its own comment above.
 const PAGE_SIZE = 60;
 // Both "top up now" trigger and the minimum number of NEW matches a fetch
 // cycle tries to accumulate before stopping.
@@ -84,7 +85,23 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // Pagination state — refs, not React state, since they're read/written
   // from inside async loops and swipe handlers without needing a re-render
   // of their own (only `candidates` changing triggers a re-render).
-  const cursorRef = useRef<string | undefined>(undefined);
+  //
+  // windowSizeRef, not a cursor: confirmed via reading expo-media-library's
+  // native iOS pagination (MediaLibraryUtilities.swift) that passing an
+  // `after` cursor resolves it via `fetchResult.index(of: cursor)` against
+  // a BRAND NEW PHFetchResult built fresh on every call. PHFetchResult's
+  // ordering for assets that tie on the sort key (creationDate — very
+  // common: bulk imports, WhatsApp/social-media saves, restored backups)
+  // isn't guaranteed stable across independently-built fetch results, so
+  // that index lookup can land far past where the previous page actually
+  // ended — flipping hasNextPage to false after only a few pages even
+  // though most of the library is unseen (reproduced: "All Photos" showing
+  // "finished" after swiping only a few). Every branch of the native code
+  // skips that lookup entirely when no cursor is passed, so instead of
+  // `after`, every fetch asks for the whole growing window from the start
+  // (first: windowSize, no after) and only the newly-appeared slice is
+  // matched — sidesteps the bug completely rather than working around it.
+  const windowSizeRef = useRef(0);
   const hasNextPageRef = useRef(true);
   const fetchingMoreRef = useRef(false);
   // Mirrors how many cards the user has swiped through this session —
@@ -97,6 +114,16 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // (possibly stale-by-then) `candidates` closure from whichever render
   // scheduled the fetch.
   const candidatesLengthRef = useRef(0);
+  // Every id ever added to `candidates` this session. Needed because
+  // "self-fetching" strategies (Duplicates & Similar is the one that
+  // matters here) ignore the page they're handed and re-scan their whole
+  // dataset from scratch on every call — so a background top-up can
+  // legitimately return almost the same match set as the one already on
+  // screen. Without this, the same photo lands at multiple positions in
+  // the deck, gets swiped (and trashed/kept) more than once with
+  // inconsistent decisions, and duplicate ids in Trash/Kept break their
+  // list rendering (confirmed: "two children with the same key").
+  const seenIdsRef = useRef<Set<string>>(new Set());
   // Bumped every time a fresh session starts (strategy or sessionKey
   // change) — every async continuation below checks this before touching
   // state, so a background fetch from a stale session can't leak into a
@@ -121,13 +148,17 @@ export default function SwipeScreen({ route, navigation }: Props) {
       ) {
         const page = await PhotoLibraryService.getMediaPage({
           mediaTypes: strategy.mediaTypes,
-          first: PAGE_SIZE,
-          after: cursorRef.current,
+          first: windowSizeRef.current + PAGE_SIZE,
         });
         if (token !== sessionTokenRef.current) return collected;
-        cursorRef.current = page.endCursor;
+        const newAssets = page.assets.slice(windowSizeRef.current);
+        windowSizeRef.current = page.assets.length;
         hasNextPageRef.current = page.hasNextPage;
-        collected.push(...(await strategy.match(page.assets)));
+        for (const asset of await strategy.match(newAssets)) {
+          if (seenIdsRef.current.has(asset.id)) continue;
+          seenIdsRef.current.add(asset.id);
+          collected.push(asset);
+        }
         if (token !== sessionTokenRef.current) return collected;
         attempts += 1;
       }
@@ -167,11 +198,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     const token = ++sessionTokenRef.current;
-    cursorRef.current = undefined;
+    windowSizeRef.current = 0;
     hasNextPageRef.current = true;
     fetchingMoreRef.current = false;
     swipedCountRef.current = 0;
     candidatesLengthRef.current = 0;
+    seenIdsRef.current = new Set();
     setCandidates(null);
     setFinished(false);
     setFreedCount(0);

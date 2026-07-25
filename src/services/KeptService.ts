@@ -47,7 +47,12 @@ export const KeptService = {
 
   async _load(): Promise<Asset[]> {
     const raw = await AsyncStorage.getItem(KEPT_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const kept: Asset[] = raw ? JSON.parse(raw) : [];
+    // Self-healing de-dupe — see TrashService._load()'s comment. addKept
+    // already guards against writing a new duplicate, but this cleans up
+    // anything already sitting in storage from before that guard existed.
+    const byId = new Map(kept.map((item) => [item.id, item]));
+    return Array.from(byId.values());
   },
 
   async _save(kept: Asset[]): Promise<void> {

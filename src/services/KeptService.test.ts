@@ -37,6 +37,16 @@ describe('KeptService', () => {
     expect(kept).toHaveLength(1);
   });
 
+  it('self-heals duplicate ids already sitting in storage from before addKept guarded against them (regression: "two children with the same key" on Kept)', async () => {
+    await AsyncStorage.setItem(
+      '@swipix/kept',
+      JSON.stringify([makeAsset('a'), makeAsset('b'), makeAsset('a')])
+    );
+    const kept = await KeptService.getKept();
+    expect(kept).toHaveLength(2);
+    expect(new Set(kept.map((item) => item.id))).toEqual(new Set(['a', 'b']));
+  });
+
   it('removeKept un-marks a photo without needing to know anything about trash', async () => {
     await KeptService.addKept(makeAsset('a'));
     await KeptService.removeKept('a');
