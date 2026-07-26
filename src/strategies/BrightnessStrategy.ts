@@ -1,7 +1,7 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { analyzeImages } from '../services/ImageAnalysisService';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, ScanProgressCallback } from '../types';
 import i18n from '../i18n';
 
 // See BlurredImagesStrategy's identical constants.
@@ -21,10 +21,10 @@ export class BrightnessStrategy extends CategoryStrategy {
     this.maxBrightness = maxBrightness;
   }
 
-  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
+  async matchCandidates(assets: Asset[], onScanProgress?: ScanProgressCallback): Promise<Asset[]> {
     // One bulk call, not one per photo — analyzeImages shares a decode
     // across brightness/blur/duplicate-hash and caches by asset id.
-    const analysis = await analyzeImages(assets);
+    const analysis = await analyzeImages(assets, onScanProgress);
     return assets.filter((asset) => {
       const brightness = analysis.get(asset.id)?.brightness;
       return (
@@ -41,6 +41,10 @@ export class BrightnessStrategy extends CategoryStrategy {
       title: i18n.t('categories.dark-photos'),
       icon: 'moon',
     };
+  }
+
+  get isSlowScan(): boolean {
+    return true;
   }
 
   protected previewTimeoutMs = 4000;

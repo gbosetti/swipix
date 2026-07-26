@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useHeaderHeight } from '@react-navigation/elements';
 import SwipeDeck from '../components/SwipeDeck';
@@ -11,7 +12,7 @@ import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
 import { createStrategy } from '../strategies/strategyRegistry';
 import { SwipeRouteParams } from '../navigation/types';
-import { Asset } from '../types';
+import { Asset, ScanProgressCallback } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
@@ -30,8 +31,15 @@ const UNDO_NUDGE_THRESHOLD = 3;
 // Small enough to load fast, big enough to feel like a full deck. Also how
 // much the fetch window (windowSizeRef) grows by each cycle.
 const PAGE_SIZE = 60;
-// Both the "top up now" trigger and the minimum new matches per fetch cycle.
+// Both the "top up now" trigger and the minimum a background top-up tries
+// to accumulate before stopping.
 const MIN_BUFFER = 15;
+// The initial load shows the deck as soon as a batch finds anything at
+// all, rather than silently scanning further batches to reach MIN_BUFFER
+// first — swiping should start as soon as there's something to swipe.
+// Background top-ups (already showing a deck, no loading UI to wait on)
+// keep using MIN_BUFFER.
+const INITIAL_REVEAL_THRESHOLD = 1;
 // Safety cap per fetch cycle so a sparse/empty category still resolves to
 // "empty" instead of paging through the whole library.
 const MAX_PAGE_ATTEMPTS_PER_CYCLE = 10;
@@ -56,6 +64,10 @@ export default function SwipeScreen({ route, navigation }: Props) {
   );
   const headerHeight = useHeaderHeight();
   const [candidates, setCandidates] = useState<Asset[] | null>(null);
+  // Only ever populated for a strategy that does real scanning (self-fetch,
+  // pixel analysis) — see CategoryStrategy.isSlowScan. Left null otherwise,
+  // so the loading state just shows the plain spinner.
+  const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [freedCount, setFreedCount] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -92,13 +104,17 @@ export default function SwipeScreen({ route, navigation }: Props) {
 
   /** Pages through the library via the strategy, accumulating matches
    * until there's enough to show, the library's exhausted, or the safety
-   * cap hits. Shared by the initial load and background top-ups. */
+   * cap hits. Shared by the initial load (minMatches=INITIAL_REVEAL_THRESHOLD,
+   * so it returns as soon as a batch finds anything) and background
+   * top-ups (minMatches=MIN_BUFFER) — only the initial load passes
+   * `onProgress`, since background top-ups have no visible loading state
+   * for it to update. */
   const fetchMoreMatches = useCallback(
-    async (token: number): Promise<Asset[]> => {
+    async (token: number, minMatches: number, onProgress?: ScanProgressCallback): Promise<Asset[]> => {
       const collected: Asset[] = [];
       let attempts = 0;
       while (
-        collected.length < MIN_BUFFER &&
+        collected.length < minMatches &&
         hasNextPageRef.current &&
         attempts < MAX_PAGE_ATTEMPTS_PER_CYCLE
       ) {
@@ -107,12 +123,18 @@ export default function SwipeScreen({ route, navigation }: Props) {
           first: windowSizeRef.current + PAGE_SIZE,
           detailed: strategy.needsDetailedFetch,
           albumId: strategy.albumId,
+          onProgress: strategy.isSlowScan ? onProgress : undefined,
+          // An active swipe session shouldn't queue behind CategoryPicker-
+          // Screen's own background preview fetches for the shared native
+          // call budget.
+          priority: 'high',
         });
         if (token !== sessionTokenRef.current) return collected;
         const newAssets = page.assets.slice(windowSizeRef.current);
         windowSizeRef.current = page.assets.length;
         hasNextPageRef.current = page.hasNextPage;
-        for (const asset of await strategy.match(newAssets)) {
+        const matched = await strategy.match(newAssets, strategy.isSlowScan ? onProgress : undefined);
+        for (const asset of matched) {
           if (seenIdsRef.current.has(asset.id)) continue;
           seenIdsRef.current.add(asset.id);
           collected.push(asset);
@@ -133,7 +155,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
       if (fetchingMoreRef.current || !hasNextPageRef.current) return;
       const token = sessionTokenRef.current;
       fetchingMoreRef.current = true;
-      fetchMoreMatches(token).then((more) => {
+      fetchMoreMatches(token, MIN_BUFFER).then((more) => {
         if (token !== sessionTokenRef.current) return;
         fetchingMoreRef.current = false;
         if (more.length > 0) {
@@ -159,6 +181,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     candidatesLengthRef.current = 0;
     seenIdsRef.current = new Set();
     setCandidates(null);
+    setScanProgress(null);
     setFinished(false);
     setFreedCount(0);
     setHistory([]);
@@ -169,13 +192,40 @@ export default function SwipeScreen({ route, navigation }: Props) {
         setPermissionDenied(true);
         return;
       }
-      const matches = await fetchMoreMatches(token);
+      const matches = await fetchMoreMatches(token, INITIAL_REVEAL_THRESHOLD, (done, total) => {
+        if (token === sessionTokenRef.current) setScanProgress({ done, total });
+      });
       if (token !== sessionTokenRef.current) return;
       candidatesLengthRef.current = matches.length;
+      setScanProgress(null);
       // Set even when empty, so the screen falls through to "empty" below.
       setCandidates(matches);
     })();
   }, [strategy, sessionKey, fetchMoreMatches]);
+
+  // A screen the user has navigated away from (back, tab switch) can stay
+  // mounted but unfocused — bottom-tab navigators don't unmount other
+  // tabs' stacks. Bumping the token on blur is what actually stops an
+  // abandoned scan: it can't cancel a native call already in flight (no
+  // cancellation API), but it stops fetchMoreMatches from launching any
+  // further ones once the user's left. If the scan hadn't finished yet
+  // (the standalone Swipe tab case — SwipeScreen stays mounted, so it
+  // won't get a fresh mount to retry with), abandonedMidScanRef flags it
+  // so returning to this same screen resumes instead of sitting on a
+  // spinner that nothing will ever resolve.
+  const abandonedMidScanRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (abandonedMidScanRef.current) {
+        abandonedMidScanRef.current = false;
+        setSessionKey((k) => k + 1);
+      }
+      return () => {
+        if (candidates === null) abandonedMidScanRef.current = true;
+        sessionTokenRef.current++;
+      };
+    }, [candidates])
+  );
 
   const handleSwipeLeft = async (asset: Asset) => {
     // Never permanent — TrashService only stages it.
@@ -255,6 +305,21 @@ export default function SwipeScreen({ route, navigation }: Props) {
     content = (
       <View style={[styles.center, { paddingTop: headerHeight }]}>
         <ActivityIndicator size="large" />
+        {scanProgress && (
+          <View style={styles.scanProgressWrap}>
+            <View style={styles.scanProgressTrack}>
+              <View
+                style={[
+                  styles.scanProgressFill,
+                  { width: `${Math.min(100, (scanProgress.done / scanProgress.total) * 100)}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.scanProgressText}>
+              {t('swipe.scanningProgress', scanProgress)}
+            </Text>
+          </View>
+        )}
       </View>
     );
   } else if (candidates.length === 0) {
@@ -353,6 +418,16 @@ function createStyles(colors: ColorPalette) {
       gap: 12,
     },
     statusText: { color: colors.textSecondary, fontSize: 14 },
+    scanProgressWrap: { width: '80%', gap: 8, alignItems: 'center' },
+    scanProgressTrack: {
+      width: '100%',
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.trackInactive,
+      overflow: 'hidden',
+    },
+    scanProgressFill: { height: '100%', backgroundColor: colors.accent, borderRadius: 3 },
+    scanProgressText: { color: colors.textSecondary, fontSize: 13 },
     emptyText: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
     subText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
     hintRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 24 },

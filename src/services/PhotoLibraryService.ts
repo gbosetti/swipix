@@ -1,5 +1,5 @@
 import * as MediaLibrary from 'expo-media-library';
-import { Asset, MediaTypeFilter } from '../types';
+import { Asset, MediaTypeFilter, ScanProgressCallback } from '../types';
 
 type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
 type AssetFilters = {
@@ -20,9 +20,46 @@ const inFlight = new Map<string, Promise<AssetPage>>();
 const CACHE_EVICTION_MS = 15000;
 
 // getAssetInfoAsync resolves synchronously on iOS's main thread when not
-// prefetched. Unbounded concurrency on a large page can trip iOS's hang
-// watchdog and silently kill the app. Only applies to "detailed" fetches.
-const ASSET_INFO_CONCURRENCY = 30;
+// prefetched, so raising this doesn't buy real parallelism — it just lets
+// more calls fight over the same thread. Kept low deliberately: at 30, a
+// ~25-item CategoryPickerScreen preview burst (Big Pictures + Big Videos +
+// Duplicates) never even fills the cap, so nothing waits in the priority
+// queue below for an active swipe session's 'high' request to jump ahead
+// of — confirmed on a real device, this alone caused an 11s wait for the
+// first progress-bar update. A lower cap throttles that burst into
+// smaller waves, leaving room for priority to actually matter.
+const ASSET_INFO_CONCURRENCY = 8;
+
+// A sandbox-denied asset can retry internally rather than rejecting
+// quickly — bounds one getAssetInfoAsync call, and skips a known-bad
+// asset entirely on later fetches instead of relaunching it fresh.
+const ASSET_INFO_TIMEOUT_MS = 4000;
+const knownFailedAssetIds = new Set<string>();
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('Native call timed out'));
+    }, ms);
+    promise.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+}
 
 // Global, not per-call — every getAssetInfoAsync lands on the same iOS main
 // thread regardless of which call issued it, so several independent
@@ -30,16 +67,27 @@ const ASSET_INFO_CONCURRENCY = 30;
 let activeNativeCalls = 0;
 const pendingNativeCalls: (() => void)[] = [];
 
-function acquireNativeCallSlot(): Promise<void> {
+type CallPriority = 'high' | 'low';
+
+// 'high' jumps the queue ahead of already-waiting 'low' requests — an
+// active swipe session's own fetch shouldn't queue behind CategoryPicker-
+// Screen's background preview work just because the preview requests
+// happened to arrive first.
+function acquireNativeCallSlot(priority: CallPriority): Promise<void> {
   if (activeNativeCalls < ASSET_INFO_CONCURRENCY) {
     activeNativeCalls++;
     return Promise.resolve();
   }
   return new Promise((resolve) => {
-    pendingNativeCalls.push(() => {
+    const job = () => {
       activeNativeCalls++;
       resolve();
-    });
+    };
+    if (priority === 'high') {
+      pendingNativeCalls.unshift(job);
+    } else {
+      pendingNativeCalls.push(job);
+    }
   });
 }
 
@@ -49,10 +97,14 @@ function releaseNativeCallSlot(): void {
   if (next) next();
 }
 
-async function mapWithConcurrency<T, R>(items: T[], fn: (item: T) => Promise<R>): Promise<R[]> {
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  priority: CallPriority = 'low'
+): Promise<R[]> {
   return Promise.all(
     items.map(async (item) => {
-      await acquireNativeCallSlot();
+      await acquireNativeCallSlot(priority);
       try {
         return await fn(item);
       } finally {
@@ -77,14 +129,34 @@ export const PhotoLibraryService = {
 
   /** Detailed fetch — resolves every asset's real file path up front, for
    * callers that read file size or decode pixels off `asset.uri`. */
-  async getAllPhotos({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
-    return (await this._fetchAssets('photo', first, undefined, true)).assets;
+  async getAllPhotos({
+    first = 500,
+    onProgress,
+    priority,
+  }: {
+    first?: number;
+    onProgress?: ScanProgressCallback;
+    /** 'high' for an active swipe session; defaults to 'low' (background
+     * preview work) — see {@link CallPriority}. */
+    priority?: CallPriority;
+  } = {}): Promise<Asset[]> {
+    return (await this._fetchAssets('photo', first, undefined, true, undefined, onProgress, priority)).assets;
   },
 
   /** Photos and videos together, detailed. Only for categories that
    * genuinely need videos — everything else stays on {@link getAllPhotos}. */
-  async getAllMedia({ first = 500 }: { first?: number } = {}): Promise<Asset[]> {
-    return (await this._fetchAssets(['photo', 'video'], first, undefined, true)).assets;
+  async getAllMedia({
+    first = 500,
+    onProgress,
+    priority,
+  }: {
+    first?: number;
+    onProgress?: ScanProgressCallback;
+    priority?: CallPriority;
+  } = {}): Promise<Asset[]> {
+    return (
+      await this._fetchAssets(['photo', 'video'], first, undefined, true, undefined, onProgress, priority)
+    ).assets;
   },
 
   /**
@@ -103,6 +175,8 @@ export const PhotoLibraryService = {
     after,
     detailed = false,
     albumId,
+    onProgress,
+    priority,
   }: {
     mediaTypes: MediaTypeFilter[];
     first: number;
@@ -111,9 +185,21 @@ export const PhotoLibraryService = {
     detailed?: boolean;
     /** Scopes the fetch to one native album — see `CategoryStrategy.albumId`. */
     albumId?: string;
+    /** Only meaningful when `detailed` — the light path resolves near-instantly. */
+    onProgress?: ScanProgressCallback;
+    /** 'high' for an active swipe session; defaults to 'low'. */
+    priority?: CallPriority;
   }): Promise<AssetPage> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
-    return this._fetchAssets(type, first, after, detailed, albumId ? { albumId } : undefined);
+    return this._fetchAssets(
+      type,
+      first,
+      after,
+      detailed,
+      albumId ? { albumId } : undefined,
+      onProgress,
+      priority
+    );
   },
 
   /** Small, targeted fetch for one category's own preview lookup — newest
@@ -192,13 +278,26 @@ export const PhotoLibraryService = {
     first: number,
     after?: string,
     detailed = true,
-    filters?: AssetFilters
+    filters?: AssetFilters,
+    onProgress?: ScanProgressCallback,
+    priority?: CallPriority
   ): Promise<AssetPage> {
     const key = JSON.stringify({ mediaType, first, after: after ?? null, detailed, filters: filters ?? null });
     const existing = inFlight.get(key);
+    // A second caller sharing this in-flight promise won't see its own
+    // onProgress fire — acceptable, since progress is a UI nicety, not
+    // something correctness depends on.
     if (existing) return existing;
     let evictionTimer: ReturnType<typeof setTimeout>;
-    const promise = this._fetchAssetsUncached(mediaType, first, after, detailed, filters).finally(() => {
+    const promise = this._fetchAssetsUncached(
+      mediaType,
+      first,
+      after,
+      detailed,
+      filters,
+      onProgress,
+      priority
+    ).finally(() => {
       clearTimeout(evictionTimer);
       inFlight.delete(key);
     });
@@ -214,7 +313,9 @@ export const PhotoLibraryService = {
     first: number,
     after: string | undefined,
     detailed: boolean,
-    filters?: AssetFilters
+    filters?: AssetFilters,
+    onProgress?: ScanProgressCallback,
+    priority: CallPriority = 'low'
   ): Promise<AssetPage> {
     const page = await MediaLibrary.getAssetsAsync({
       mediaType,
@@ -229,48 +330,65 @@ export const PhotoLibraryService = {
 
     // info.location (GPS) is deliberately never mapped onto Asset — nothing
     // in the app reads it, and data minimization rules out capturing it.
+    let doneCount = 0;
+    const total = page.assets.length;
+    // Fired before any item starts, not just as each one finishes — a
+    // 'high' request can still queue behind an already-saturated pool, so
+    // waiting for the first completion could show nothing for seconds.
+    if (total > 0) onProgress?.(0, total);
     const detailedAssets: (Asset | null)[] = await mapWithConcurrency(
       page.assets,
       async (asset): Promise<Asset | null> => {
-        // Light path: photos skip getAssetInfoAsync and hand back the raw
-        // ph:// URI — expo-image's native loader resolves those lazily,
-        // off the main thread. Videos always resolve regardless of
-        // `detailed`: expo-video needs a real playable file path.
-        if (!detailed && asset.mediaType !== 'video') {
+        try {
+          // Light path: photos skip getAssetInfoAsync and hand back the raw
+          // ph:// URI — expo-image's native loader resolves those lazily,
+          // off the main thread. Videos always resolve regardless of
+          // `detailed`: expo-video needs a real playable file path.
+          if (!detailed && asset.mediaType !== 'video') {
+            return {
+              id: asset.id,
+              uri: asset.uri,
+              mediaType: 'photo',
+              creationTime: asset.creationTime,
+              duration: asset.duration,
+              width: asset.width,
+              height: asset.height,
+              mediaSubtypes: asset.mediaSubtypes ?? [],
+            };
+          }
+          // Skip immediately for an asset already known to fail this
+          // session — see ASSET_INFO_TIMEOUT_MS's comment.
+          if (knownFailedAssetIds.has(asset.id)) return null;
+          // Skip this one asset rather than reject the whole page — a real
+          // library is likely to have at least one asset getAssetInfoAsync
+          // rejects on (iCloud-only, unusual metadata, etc.), or that hangs
+          // long enough to be worth bounding on its own.
+          let info: MediaLibrary.AssetInfo;
+          try {
+            info = await withTimeout(MediaLibrary.getAssetInfoAsync(asset), ASSET_INFO_TIMEOUT_MS);
+          } catch {
+            knownFailedAssetIds.add(asset.id);
+            return null;
+          }
+          // localUri can be missing (e.g. an iCloud asset that failed to
+          // download) — skip rather than hand back an unusable ph:// URI.
+          if (!info.localUri) return null;
           return {
             id: asset.id,
-            uri: asset.uri,
-            mediaType: 'photo',
+            uri: info.localUri,
+            mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
             creationTime: asset.creationTime,
             duration: asset.duration,
             width: asset.width,
             height: asset.height,
-            mediaSubtypes: asset.mediaSubtypes ?? [],
+            mediaSubtypes: info.mediaSubtypes ?? [],
           };
+        } finally {
+          doneCount++;
+          onProgress?.(doneCount, total);
         }
-        // Skip this one asset rather than reject the whole page — a real
-        // library is likely to have at least one asset getAssetInfoAsync
-        // rejects on (iCloud-only, unusual metadata, etc.).
-        let info: MediaLibrary.AssetInfo;
-        try {
-          info = await MediaLibrary.getAssetInfoAsync(asset);
-        } catch {
-          return null;
-        }
-        // localUri can be missing (e.g. an iCloud asset that failed to
-        // download) — skip rather than hand back an unusable ph:// URI.
-        if (!info.localUri) return null;
-        return {
-          id: asset.id,
-          uri: info.localUri,
-          mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
-          creationTime: asset.creationTime,
-          duration: asset.duration,
-          width: asset.width,
-          height: asset.height,
-          mediaSubtypes: info.mediaSubtypes ?? [],
-        };
-      }
+      },
+      priority
     );
 
     return {

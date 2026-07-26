@@ -2,7 +2,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { File } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as jpeg from 'jpeg-js';
-import { Asset } from '../types';
+import { Asset, ScanProgressCallback } from '../types';
 
 /**
  * Isolated image-analysis helpers, kept separate from strategies so those
@@ -84,7 +84,10 @@ async function flushCacheIfDirty(): Promise<void> {
  * Cache invalidation is id-only, not content-based — editing a photo in
  * Photos.app after it's cached here won't be detected.
  */
-export async function analyzeImages(assets: Asset[]): Promise<Map<string, ImageAnalysis>> {
+export async function analyzeImages(
+  assets: Asset[],
+  onProgress?: ScanProgressCallback
+): Promise<Map<string, ImageAnalysis>> {
   const cache = await ensureCacheLoaded();
   const photoAssets = assets.filter((asset) => asset.mediaType === 'photo');
   const misses = photoAssets.filter((asset) => !cache.has(asset.id));
@@ -97,12 +100,16 @@ export async function analyzeImages(assets: Asset[]): Promise<Map<string, ImageA
     if (existing) existing.lastSeenAt = now;
   }
 
+  let doneCount = 0;
+  const total = misses.length;
   await mapWithConcurrency(misses, CONCURRENCY, async (asset) => {
     const result = await analyzeOne(asset.uri);
     if (result) {
       cache.set(asset.id, { analysis: result, lastSeenAt: now });
       cacheDirty = true;
     }
+    doneCount++;
+    onProgress?.(doneCount, total);
   });
 
   evictLeastRecentlySeen(cache);

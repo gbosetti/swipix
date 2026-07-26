@@ -130,6 +130,68 @@ describe('PhotoLibraryService.getMediaPage', () => {
 
     expect(page.assets.map((a) => a.id)).toEqual(['good']);
   });
+
+  it('reports onProgress as each item in a detailed fetch resolves, with a fixed total known up front', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('v1', 'video'), rawAsset('v2', 'video'), rawAsset('v3', 'video')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 3,
+    });
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///v.mov', mediaSubtypes: [] });
+    const onProgress = jest.fn();
+
+    await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60, onProgress });
+
+    // 4, not 3: an immediate (0, total) fires before any item starts, so
+    // the progress bar has something to show even while every item is
+    // still queued for a concurrency slot.
+    expect(onProgress).toHaveBeenCalledTimes(4);
+    expect(onProgress).toHaveBeenNthCalledWith(1, 0, 3);
+    // total is fixed at 3 on every call; done increases monotonically.
+    for (const [done, total] of onProgress.mock.calls) {
+      expect(total).toBe(3);
+      expect(done).toBeGreaterThanOrEqual(0);
+      expect(done).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('negative-caches an asset whose getAssetInfoAsync call fails, skipping it entirely on a later fetch instead of retrying the same doomed native call again', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('persistently-bad', 'video')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockRejectedValue(new Error('sandbox denied'));
+
+    const firstPage = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 1 });
+    expect(firstPage.assets).toEqual([]);
+    expect(mockedGetAssetInfoAsync).toHaveBeenCalledTimes(1);
+
+    mockedGetAssetInfoAsync.mockClear();
+    const secondPage = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 1 });
+    expect(secondPage.assets).toEqual([]);
+    expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
+  });
+
+  it('times out and negative-caches an asset whose getAssetInfoAsync call never settles (confirmed on a real device: a sandbox-denied read can retry internally without ever rejecting)', async () => {
+    jest.useFakeTimers();
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('stuck-forever', 'video')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    mockedGetAssetInfoAsync.mockReturnValue(new Promise(() => {}));
+
+    const pagePromise = PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 1 });
+    await jest.advanceTimersByTimeAsync(4000);
+    const page = await pagePromise;
+
+    expect(page.assets).toEqual([]);
+    jest.useRealTimers();
+  });
 });
 
 describe('PhotoLibraryService.getAllPhotos / getAllMedia (detailed fetch)', () => {
@@ -189,7 +251,63 @@ describe('PhotoLibraryService native-call concurrency', () => {
       PhotoLibraryService.getAllMedia({ first: 25 }),
     ]);
 
-    expect(peak).toBeLessThanOrEqual(30);
+    expect(peak).toBeLessThanOrEqual(8);
+  });
+
+  it('lets a high-priority request jump ahead of already-queued low-priority ones once the cap is saturated', async () => {
+    let resolveGate!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resolveGate = resolve;
+    });
+    const callOrder: string[] = [];
+    mockedGetAssetInfoAsync.mockImplementation(async (asset: { id: string }) => {
+      if (asset.id.startsWith('filler')) {
+        // Holds its slot open until the gate releases, so every filler
+        // call is guaranteed active (not just dispatched) when the
+        // low/high requests below are issued.
+        await gate;
+      } else {
+        callOrder.push(asset.id);
+      }
+      return { localUri: 'file:///a.jpg', mediaSubtypes: [] };
+    });
+
+    // Saturates the (now much smaller) concurrency cap so anything else
+    // has to wait in the queue.
+    mockedGetAssetsAsync.mockResolvedValueOnce({
+      assets: Array.from({ length: 8 }, (_, i) => rawAsset(`filler${i}`)),
+      endCursor: 'a',
+      hasNextPage: false,
+      totalCount: 8,
+    });
+    const fillerPromise = PhotoLibraryService.getAllPhotos({ first: 8 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    mockedGetAssetsAsync
+      .mockResolvedValueOnce({
+        assets: [rawAsset('low')],
+        endCursor: 'b',
+        hasNextPage: false,
+        totalCount: 1,
+      })
+      .mockResolvedValueOnce({
+        assets: [rawAsset('high')],
+        endCursor: 'c',
+        hasNextPage: false,
+        totalCount: 1,
+      });
+    // Different `first` values so these two don't collide in the
+    // single-flight in-flight cache (keyed on the fetch params) — each
+    // needs to make its own real call for the priority ordering below to
+    // mean anything.
+    const lowPromise = PhotoLibraryService.getAllPhotos({ first: 1 });
+    const highPromise = PhotoLibraryService.getAllPhotos({ first: 2, priority: 'high' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    resolveGate();
+    await Promise.all([fillerPromise, lowPromise, highPromise]);
+
+    expect(callOrder).toEqual(['high', 'low']);
   });
 });
 

@@ -73,7 +73,8 @@
     "undoLast": "Annuler le dernier balayage",
     "undoLimitTitle": "Vous annulez beaucoup ?",
     "undoLimitBody": "Si vous voulez revoir plusieurs photos, consultez la corbeille pour voir tout ce que vous avez supprimé jusqu'ici.",
-    "videoUnavailable": "Cette vidéo n'a pas pu être chargée"
+    "videoUnavailable": "Cette vidéo n'a pas pu être chargée",
+    "scanningProgress": "Analyse de {{done}} sur {{total}}…"
   },
   "trash": {
     "emptyTitle": "La corbeille est vide 🎉",

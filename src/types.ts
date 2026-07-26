@@ -23,3 +23,7 @@ export interface CategoryMeta {
 }
 
 export type MediaTypeFilter = 'photo' | 'video';
+
+/** Fires as a scan progresses — `total` is fixed once known for that
+ * particular scan (a fetch batch, or an analysis pass). */
+export type ScanProgressCallback = (done: number, total: number) => void;

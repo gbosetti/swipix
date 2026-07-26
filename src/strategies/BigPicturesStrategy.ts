@@ -52,6 +52,10 @@ export class BigPicturesStrategy extends CategoryStrategy {
     return true;
   }
 
+  get isSlowScan(): boolean {
+    return true;
+  }
+
   // 3s (the default) wasn't enough for even 20 detailed fetches.
   protected previewTimeoutMs = 6000;
 

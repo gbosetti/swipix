@@ -50,6 +50,10 @@ export class BigVideosStrategy extends CategoryStrategy {
     return true;
   }
 
+  get isSlowScan(): boolean {
+    return true;
+  }
+
   // See BigPicturesStrategy's identical override.
   protected previewTimeoutMs = 6000;
 

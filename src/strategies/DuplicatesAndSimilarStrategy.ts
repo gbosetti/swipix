@@ -2,7 +2,7 @@ import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { analyzeImages, hammingDistance, HAMMING_THRESHOLD } from '../services/ImageAnalysisService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, ScanProgressCallback } from '../types';
 import i18n from '../i18n';
 
 // Photos this close together are probably a burst.
@@ -38,14 +38,20 @@ const PREVIEW_TIMEOUT_MS = 5000;
  * detection needs videos too.
  */
 export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
-  async matchCandidates(_assets: Asset[]): Promise<Asset[]> {
-    const media = await PhotoLibraryService.getAllMedia({ first: FETCH_LIMIT });
-    return this.findDuplicates(media);
+  async matchCandidates(_assets: Asset[], onScanProgress?: ScanProgressCallback): Promise<Asset[]> {
+    // 'high' — only ever called from an active swipe session (match()),
+    // never from the Categories preview path (findPreviewAsset below).
+    const media = await PhotoLibraryService.getAllMedia({
+      first: FETCH_LIMIT,
+      onProgress: onScanProgress,
+      priority: 'high',
+    });
+    return this.findDuplicates(media, onScanProgress);
   }
 
   /** Shared by matchCandidates and findPreviewAsset so both run the same
    * detection, just on differently-sized samples. */
-  private async findDuplicates(media: Asset[]): Promise<Asset[]> {
+  private async findDuplicates(media: Asset[], onScanProgress?: ScanProgressCallback): Promise<Asset[]> {
     const bySizeAndDimensions = new Map<string, Asset[]>();
     for (const asset of media) {
       const size = new File(asset.uri).size;
@@ -83,7 +89,7 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
     );
 
     const photos = media.filter((asset) => asset.mediaType === 'photo');
-    const analysis = await analyzeImages(photos);
+    const analysis = await analyzeImages(photos, onScanProgress);
     const hashed = photos
       .map((asset) => ({ asset, hash: analysis.get(asset.id)?.dHash }))
       .filter((entry): entry is { asset: Asset; hash: string } => entry.hash !== undefined);
@@ -110,6 +116,10 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
       title: i18n.t('categories.duplicates-similar'),
       icon: 'copy',
     };
+  }
+
+  get isSlowScan(): boolean {
+    return true;
   }
 
   protected previewTimeoutMs = PREVIEW_TIMEOUT_MS;

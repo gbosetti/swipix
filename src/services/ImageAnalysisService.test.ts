@@ -187,6 +187,33 @@ describe('analyzeImages cache eviction', () => {
   });
 });
 
+describe('analyzeImages progress reporting', () => {
+  function uncachedAsset(id: string): Asset {
+    return {
+      id,
+      uri: `ph://${id}`,
+      mediaType: 'photo',
+      creationTime: 0,
+      duration: 0,
+      width: 10,
+      height: 10,
+      mediaSubtypes: [],
+    };
+  }
+
+  it('reports onProgress once per cache miss, with total fixed at the miss count', async () => {
+    const onProgress = jest.fn();
+
+    await analyzeImages(
+      [uncachedAsset('scan-progress-a'), uncachedAsset('scan-progress-b')],
+      onProgress
+    );
+
+    expect(onProgress).toHaveBeenCalledTimes(2);
+    expect(onProgress).toHaveBeenLastCalledWith(2, 2);
+  });
+});
+
 describe('popcount32', () => {
   it('counts zero bits for 0', () => {
     expect(popcount32(0)).toBe(0);

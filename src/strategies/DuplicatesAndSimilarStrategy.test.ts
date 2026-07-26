@@ -144,7 +144,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
     // Matched via exact-duplicate (size+dimensions), not via the hash
     // signal, which only ever runs against mediaType 'photo' entries.
     expect(result.map((asset) => asset.id).sort()).toEqual(['videoA', 'videoB']);
-    expect(mockedAnalyzeImages).toHaveBeenCalledWith([]);
+    expect(mockedAnalyzeImages).toHaveBeenCalledWith([], undefined);
   });
 
   it('does not match photos that share none of the three signals', async () => {
@@ -167,5 +167,22 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const preview = await strategy.getPreview();
     expect(['a', 'b']).toContain(preview?.id);
     expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({ first: 15 });
+  });
+
+  it('flags itself as a slow scan and threads onScanProgress into both the self-fetch and the analysis pass', async () => {
+    const a = makeAsset('a', { width: 200, height: 200 });
+    fileSizes[a.uri] = 5000;
+    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a]);
+    const strategy = new DuplicatesAndSimilarStrategy();
+    expect(strategy.isSlowScan).toBe(true);
+
+    const onScanProgress = jest.fn();
+    await strategy.match([], onScanProgress);
+    expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({
+      first: 200,
+      onProgress: onScanProgress,
+      priority: 'high',
+    });
+    expect(mockedAnalyzeImages).toHaveBeenCalledWith([a], onScanProgress);
   });
 });

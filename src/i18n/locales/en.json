@@ -73,7 +73,8 @@
     "undoLast": "Undo last swipe",
     "undoLimitTitle": "Undoing a lot?",
     "undoLimitBody": "If you're trying to review several photos, check your Trash to see everything you've deleted so far.",
-    "videoUnavailable": "This video couldn't be loaded"
+    "videoUnavailable": "This video couldn't be loaded",
+    "scanningProgress": "Scanning {{done}} of {{total}}…"
   },
   "trash": {
     "emptyTitle": "Trash is empty 🎉",

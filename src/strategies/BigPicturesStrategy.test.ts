@@ -64,6 +64,10 @@ describe('BigPicturesStrategy', () => {
     await expect(strategy.match(assets)).resolves.toEqual([]);
   });
 
+  it('flags itself as a slow scan, so SwipeScreen shows scan progress instead of a plain spinner', () => {
+    expect(new BigPicturesStrategy().isSlowScan).toBe(true);
+  });
+
   it('requests a detailed (resolved-file-path) fetch, not the fast ph:// path (regression: a ph:// reference has no real bytes for `new File(...).size` to read — this strategy silently broke on real devices once the default fetch switched to ph:// for speed)', () => {
     const strategy = new BigPicturesStrategy();
     expect(strategy.needsDetailedFetch).toBe(true);

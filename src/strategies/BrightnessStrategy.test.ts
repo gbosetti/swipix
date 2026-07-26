@@ -51,4 +51,15 @@ describe('BrightnessStrategy', () => {
     const strategy = new BrightnessStrategy();
     await expect(strategy.match([asset])).resolves.toEqual([]);
   });
+
+  it('flags itself as a slow scan and threads onScanProgress through to analyzeImages', async () => {
+    const asset = makeAsset('a');
+    mockedAnalyzeImages.mockResolvedValue(new Map());
+    const strategy = new BrightnessStrategy();
+    expect(strategy.isSlowScan).toBe(true);
+
+    const onScanProgress = jest.fn();
+    await strategy.match([asset], onScanProgress);
+    expect(mockedAnalyzeImages).toHaveBeenCalledWith([asset], onScanProgress);
+  });
 });

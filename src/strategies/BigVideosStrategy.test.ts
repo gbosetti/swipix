@@ -67,6 +67,10 @@ describe('BigVideosStrategy', () => {
     expect(strategy.needsDetailedFetch).toBe(true);
   });
 
+  it('flags itself as a slow scan, so SwipeScreen shows scan progress instead of a plain spinner', () => {
+    expect(new BigVideosStrategy().isSlowScan).toBe(true);
+  });
+
   it('getPreview finds a big video among a small detailed preview sample', async () => {
     mockedPhotoLibraryService.getPreviewCandidates.mockResolvedValue([
       makeAsset('big', 'video', 500 * MB),

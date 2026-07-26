@@ -1,4 +1,4 @@
-import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter, ScanProgressCallback } from '../types';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
 
@@ -21,9 +21,13 @@ export abstract class CategoryStrategy {
   /** Public entry point every screen calls, not overridden by subclasses.
    * Always excludes anything already decided (trashed or kept) — the one
    * place that guarantee lives, whether a strategy filters the assets
-   * it's handed or self-fetches its own dataset. */
-  async match(assets: Asset[]): Promise<Asset[]> {
-    const candidates = await this.matchCandidates(assets);
+   * it's handed or self-fetches its own dataset.
+   *
+   * @param onScanProgress Optional progress callback for a strategy whose
+   * matching does real scanning (self-fetch, pixel analysis) — ignored by
+   * strategies that don't. */
+  async match(assets: Asset[], onScanProgress?: ScanProgressCallback): Promise<Asset[]> {
+    const candidates = await this.matchCandidates(assets, onScanProgress);
     return this.excludeDecided(candidates);
   }
 
@@ -35,7 +39,10 @@ export abstract class CategoryStrategy {
     return assets.filter((asset) => !decided.has(asset.id));
   }
 
-  protected abstract matchCandidates(assets: Asset[]): Promise<Asset[]>;
+  protected abstract matchCandidates(
+    assets: Asset[],
+    onScanProgress?: ScanProgressCallback
+  ): Promise<Asset[]>;
   abstract get meta(): CategoryMeta;
 
   /** Media types this strategy needs from a paginated fetch. Defaults to
@@ -55,6 +62,15 @@ export abstract class CategoryStrategy {
    * sets this; every other strategy searches the whole library. */
   get albumId(): string | undefined {
     return undefined;
+  }
+
+  /** Whether this strategy does real, visibly-slow scanning (a detailed
+   * native fetch or pixel analysis) worth showing scan progress for, as
+   * opposed to a fast metadata filter. Defaults to false; SwipeScreen only
+   * wires up {@link ScanProgressCallback} — and shows a progress bar
+   * instead of a plain spinner — for a strategy that overrides this true. */
+  get isSlowScan(): boolean {
+    return false;
   }
 
   /** How long {@link getPreview} waits before giving up and falling back

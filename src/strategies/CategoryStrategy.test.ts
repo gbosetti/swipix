@@ -1,7 +1,7 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
-import { Asset, CategoryMeta, TrashedAsset } from '../types';
+import { Asset, CategoryMeta, ScanProgressCallback, TrashedAsset } from '../types';
 
 jest.mock('../services/TrashService');
 jest.mock('../services/KeptService');
@@ -30,11 +30,17 @@ function makeTrashedAsset(id: string): TrashedAsset {
  * `match()`'s trash/kept exclusion is the thing under test here, not any
  * particular category's own matching logic. */
 class PassThroughStrategy extends CategoryStrategy {
+  lastOnScanProgress: ScanProgressCallback | undefined;
+
   constructor(private readonly candidates: Asset[]) {
     super();
   }
 
-  protected async matchCandidates(): Promise<Asset[]> {
+  protected async matchCandidates(
+    _assets: Asset[],
+    onScanProgress?: ScanProgressCallback
+  ): Promise<Asset[]> {
+    this.lastOnScanProgress = onScanProgress;
     return this.candidates;
   }
 
@@ -106,6 +112,15 @@ describe('CategoryStrategy.match', () => {
     const strategy = new PassThroughStrategy(assets);
     const result = await strategy.match([]);
     expect(result.map((a) => a.id)).toEqual(['c']);
+  });
+
+  it('defaults isSlowScan to false and forwards onScanProgress through to matchCandidates', async () => {
+    const strategy = new PassThroughStrategy([]);
+    expect(strategy.isSlowScan).toBe(false);
+
+    const onScanProgress = jest.fn();
+    await strategy.match([], onScanProgress);
+    expect(strategy.lastOnScanProgress).toBe(onScanProgress);
   });
 });
 

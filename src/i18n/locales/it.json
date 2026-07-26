@@ -73,7 +73,8 @@
     "undoLast": "Annulla l'ultimo swipe",
     "undoLimitTitle": "Stai annullando molto?",
     "undoLimitBody": "Se vuoi rivedere più foto, controlla il cestino per vedere tutto ciò che hai eliminato finora.",
-    "videoUnavailable": "Impossibile caricare questo video"
+    "videoUnavailable": "Impossibile caricare questo video",
+    "scanningProgress": "Analisi di {{done}} su {{total}}…"
   },
   "trash": {
     "emptyTitle": "Il cestino è vuoto 🎉",
