@@ -27,8 +27,11 @@ export class BigVideosStrategy extends CategoryStrategy {
   async matchCandidates(assets: Asset[], context?: ScanContext): Promise<Asset[]> {
     const videos = assets.filter((asset) => asset.mediaType === 'video');
     const sizes = await Promise.all(
+      // localUri, not uri — a video's uri is always the raw ph:// playback
+      // reference now (see the Asset type); only the resolved local path
+      // can actually be read for its byte size.
       videos.map((asset) =>
-        PhotoLibraryService.getFileSize(asset.uri, {
+        PhotoLibraryService.getFileSize(asset.localUri ?? asset.uri, {
           priority: context?.priority,
           isCancelled: context?.isCancelled,
         })
@@ -49,7 +52,7 @@ export class BigVideosStrategy extends CategoryStrategy {
     return ['video'];
   }
 
-  // Reads real file bytes off asset.uri — needs a resolved file path.
+  // Reads real file bytes off asset.localUri — needs a resolved file path.
   get needsDetailedFetch(): boolean {
     return true;
   }

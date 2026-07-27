@@ -53,8 +53,12 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
    * detection, just on differently-sized samples. */
   private async findDuplicates(media: Asset[], context?: ScanContext): Promise<Asset[]> {
     const sizes = await Promise.all(
+      // localUri, not uri — a video's uri is always the raw ph:// playback
+      // reference now (see the Asset type); only the resolved local path
+      // can actually be read for its byte size. Photos have no localUri,
+      // so this falls back to their already-resolved uri.
       media.map((asset) =>
-        PhotoLibraryService.getFileSize(asset.uri, {
+        PhotoLibraryService.getFileSize(asset.localUri ?? asset.uri, {
           priority: context?.priority,
           isCancelled: context?.isCancelled,
         })

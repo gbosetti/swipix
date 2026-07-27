@@ -26,6 +26,11 @@ function rawAsset(id: string, mediaType: 'photo' | 'video' = 'photo') {
 
 describe('PhotoLibraryService.getMediaPage', () => {
   beforeEach(() => jest.clearAllMocks());
+  // A failed assertion inside a fake-timers test would otherwise skip its
+  // own jest.useRealTimers() call, leaving fake timers stuck for every
+  // later test in the file (confirmed: this exact thing cascaded into 24
+  // unrelated failures elsewhere once one test's premise went stale).
+  afterEach(() => jest.useRealTimers());
 
   it('passes the cursor through to getAssetsAsync and returns endCursor/hasNextPage', async () => {
     mockedGetAssetsAsync.mockResolvedValue({
@@ -67,7 +72,22 @@ describe('PhotoLibraryService.getMediaPage', () => {
     expect(page.assets).toEqual([expect.objectContaining({ id: 'a', uri: 'ph://a' })]);
   });
 
-  it('still resolves videos through getAssetInfoAsync, since expo-video needs a real file path', async () => {
+  it('returns the raw ph:// uri for videos too, without calling getAssetInfoAsync (regression: getAssetInfoAsync\'s localUri is a known expo-media-library/expo-video incompatibility — iOS denies mediaserverd read access to it for many ordinary videos, confirmed on a real device)', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('v1', 'video')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+
+    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60 });
+
+    expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
+    expect(page.assets).toEqual([expect.objectContaining({ id: 'v1', uri: 'ph://v1' })]);
+    expect(page.assets[0].localUri).toBeUndefined();
+  });
+
+  it('resolves a video through getAssetInfoAsync only when detailed is requested, keeping uri as the ph:// reference and carrying the resolved path separately as localUri', async () => {
     mockedGetAssetsAsync.mockResolvedValue({
       assets: [rawAsset('v1', 'video')],
       endCursor: 'cursor-2',
@@ -76,13 +96,19 @@ describe('PhotoLibraryService.getMediaPage', () => {
     });
     mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///v1.mov', mediaSubtypes: [] });
 
-    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60 });
+    const page = await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 60,
+      detailed: true,
+    });
 
     expect(mockedGetAssetInfoAsync).toHaveBeenCalledTimes(1);
-    expect(page.assets).toEqual([expect.objectContaining({ id: 'v1', uri: 'file:///v1.mov' })]);
+    expect(page.assets).toEqual([
+      expect.objectContaining({ id: 'v1', uri: 'ph://v1', localUri: 'file:///v1.mov' }),
+    ]);
   });
 
-  it('omits video assets with no resolvable localUri rather than including an unusable ph:// uri', async () => {
+  it('omits a detailed video fetch\'s assets with no resolvable localUri rather than including an unusable reference', async () => {
     mockedGetAssetsAsync.mockResolvedValue({
       assets: [rawAsset('good', 'video'), rawAsset('missing', 'video')],
       endCursor: 'cursor-2',
@@ -93,7 +119,11 @@ describe('PhotoLibraryService.getMediaPage', () => {
       asset.id === 'good' ? { localUri: 'file:///good.mov', mediaSubtypes: [] } : { localUri: null }
     );
 
-    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60 });
+    const page = await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 60,
+      detailed: true,
+    });
 
     expect(page.assets.map((a) => a.id)).toEqual(['good']);
     expect(page.hasNextPage).toBe(false);
@@ -126,7 +156,11 @@ describe('PhotoLibraryService.getMediaPage', () => {
       return { localUri: 'file:///good.mov', mediaSubtypes: [] };
     });
 
-    const page = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60 });
+    const page = await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 60,
+      detailed: true,
+    });
 
     expect(page.assets.map((a) => a.id)).toEqual(['good']);
   });
@@ -141,7 +175,12 @@ describe('PhotoLibraryService.getMediaPage', () => {
     mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///v.mov', mediaSubtypes: [] });
     const onProgress = jest.fn();
 
-    await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 60, onProgress });
+    await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 60,
+      detailed: true,
+      onProgress,
+    });
 
     // 4, not 3: an immediate (0, total) fires before any item starts, so
     // the progress bar has something to show even while every item is
@@ -165,12 +204,20 @@ describe('PhotoLibraryService.getMediaPage', () => {
     });
     mockedGetAssetInfoAsync.mockRejectedValue(new Error('sandbox denied'));
 
-    const firstPage = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 1 });
+    const firstPage = await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 1,
+      detailed: true,
+    });
     expect(firstPage.assets).toEqual([]);
     expect(mockedGetAssetInfoAsync).toHaveBeenCalledTimes(1);
 
     mockedGetAssetInfoAsync.mockClear();
-    const secondPage = await PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 1 });
+    const secondPage = await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 1,
+      detailed: true,
+    });
     expect(secondPage.assets).toEqual([]);
     expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
   });
@@ -185,7 +232,11 @@ describe('PhotoLibraryService.getMediaPage', () => {
     });
     mockedGetAssetInfoAsync.mockReturnValue(new Promise(() => {}));
 
-    const pagePromise = PhotoLibraryService.getMediaPage({ mediaTypes: ['video'], first: 1 });
+    const pagePromise = PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 1,
+      detailed: true,
+    });
     await jest.advanceTimersByTimeAsync(4000);
     const page = await pagePromise;
 

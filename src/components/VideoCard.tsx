@@ -11,6 +11,10 @@ interface VideoCardProps {
   /** Only the top card actually plays — the stacked cards behind it stay
    * paused. */
   isTop: boolean;
+  /** Fired once if the video fails to load. Mirrors PhotoCard's
+   * onLoadError — never swipeable on a video the user can't actually see;
+   * the caller is expected to silently drop this asset from the deck. */
+  onLoadError?: () => void;
 }
 
 const SCRUB_TRACK_HEIGHT = 24;
@@ -28,7 +32,7 @@ const LOAD_TIMEOUT_MS = 8000;
  * Scrub position tracks the raw touch's locationX within the track, not
  * gesture.dx deltas — only one thumb, so an absolute mapping is simpler.
  */
-function VideoCard({ asset, isTop }: VideoCardProps) {
+function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
   const { t } = useTranslation();
   const [muted, setMuted] = useState(true);
   const [scrubbing, setScrubbing] = useState(false);
@@ -61,6 +65,23 @@ function VideoCard({ asset, isTop }: VideoCardProps) {
     return () => clearTimeout(timeoutId);
   }, [status]);
   const failed = status === 'error' || timedOut;
+
+  // Never swipeable on a video the user can't see — a left/right decision
+  // would trash or keep something never actually watched. Latest-ref for
+  // onLoadError, same pattern as PhotoCard: it's a fresh closure every
+  // render, but this should only fire once per asset, not on every render
+  // where it happens to be a new function.
+  const onLoadErrorRef = useRef(onLoadError);
+  onLoadErrorRef.current = onLoadError;
+  const settledRef = useRef(false);
+  useEffect(() => {
+    settledRef.current = false;
+  }, [asset.id]);
+  useEffect(() => {
+    if (!failed || settledRef.current) return;
+    settledRef.current = true;
+    onLoadErrorRef.current?.();
+  }, [failed]);
 
   useEffect(() => {
     player.muted = muted;

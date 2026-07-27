@@ -16,9 +16,9 @@ interface PhotoCardProps {
   asset: Asset;
   /** True only for the frontmost, interactive card. */
   isTop?: boolean;
-  /** Fired if the photo fails to load. Never swipeable on a photo the
-   * user can't see — the caller is expected to silently drop this asset
-   * from the deck. No error UI here. */
+  /** Fired if the asset (photo or video) fails to load. Never swipeable
+   * on something the user can't see — the caller is expected to silently
+   * drop this asset from the deck. */
   onLoadError?: () => void;
 }
 
@@ -67,7 +67,7 @@ function PhotoCard({ asset, isTop = true, onLoadError }: PhotoCardProps) {
     <View style={styles.card}>
       {asset.mediaType === 'video' ? (
         isTop ? (
-          <VideoCard asset={asset} isTop={isTop} />
+          <VideoCard asset={asset} isTop={isTop} onLoadError={onLoadError} />
         ) : (
           // Background cards never mount a real player — useVideoPlayer
           // decodes/buffers immediately, wasting memory for what's unseen.

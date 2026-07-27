@@ -397,15 +397,21 @@ export const PhotoLibraryService = {
           // priority only reorders the wait queue, it can't preempt slots
           // already held by unrelated, uncancellable in-flight work.
           if (isCancelled?.()) return null;
-          // Light path: photos skip getAssetInfoAsync and hand back the raw
-          // ph:// URI — expo-image's native loader resolves those lazily,
-          // off the main thread. Videos always resolve regardless of
-          // `detailed`: expo-video needs a real playable file path.
-          if (!detailed && asset.mediaType !== 'video') {
+          const isVideo = asset.mediaType === 'video';
+          // Light path: skip getAssetInfoAsync and hand back the raw ph://
+          // URI. For photos this is just the fast path — expo-image
+          // resolves ph:// lazily, off the main thread. For videos it's
+          // not optional: expo-video's own docs say never to use
+          // getAssetInfoAsync's localUri for playback — on a real device,
+          // iOS's sandbox denied mediaserverd read access to it for a
+          // large fraction of ordinary, non-broken videos (a known
+          // expo-media-library issue, not specific to any one file).
+          // ph:// is the URI expo-video actually supports.
+          if (!detailed) {
             return {
               id: asset.id,
               uri: asset.uri,
-              mediaType: 'photo',
+              mediaType: isVideo ? 'video' : 'photo',
               creationTime: asset.creationTime,
               duration: asset.duration,
               width: asset.width,
@@ -428,12 +434,16 @@ export const PhotoLibraryService = {
             return null;
           }
           // localUri can be missing (e.g. an iCloud asset that failed to
-          // download) — skip rather than hand back an unusable ph:// URI.
+          // download) — skip rather than hand back an unusable reference.
           if (!info.localUri) return null;
           return {
             id: asset.id,
-            uri: info.localUri,
-            mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
+            // Still the raw ph:// reference for a video's playback uri —
+            // only file-size-reading callers need the resolved path,
+            // carried separately in localUri (see the Asset type).
+            uri: isVideo ? asset.uri : info.localUri,
+            localUri: isVideo ? info.localUri : undefined,
+            mediaType: isVideo ? 'video' : 'photo',
             creationTime: asset.creationTime,
             duration: asset.duration,
             width: asset.width,
