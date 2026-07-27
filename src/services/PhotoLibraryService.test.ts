@@ -440,6 +440,46 @@ describe('PhotoLibraryService.getSplitMediaPage', () => {
   });
 });
 
+describe('PhotoLibraryService.getShareableUri', () => {
+  beforeEach(() => jest.clearAllMocks());
+  afterEach(() => jest.useRealTimers());
+
+  it('resolves a real local path by asset id, regardless of what uri a swipe session already carries', async () => {
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: 'file:///v1.mov', mediaSubtypes: [] });
+
+    const uri = await PhotoLibraryService.getShareableUri('v1');
+
+    expect(mockedGetAssetInfoAsync).toHaveBeenCalledWith('v1');
+    expect(uri).toBe('file:///v1.mov');
+  });
+
+  it('resolves to null rather than throwing when the asset has no resolvable local path', async () => {
+    mockedGetAssetInfoAsync.mockResolvedValue({ localUri: null });
+
+    const uri = await PhotoLibraryService.getShareableUri('missing');
+
+    expect(uri).toBeNull();
+  });
+
+  it('resolves to null rather than throwing when getAssetInfoAsync rejects', async () => {
+    mockedGetAssetInfoAsync.mockRejectedValue(new Error('native failure'));
+
+    const uri = await PhotoLibraryService.getShareableUri('bad');
+
+    expect(uri).toBeNull();
+  });
+
+  it('resolves to null rather than hanging forever when getAssetInfoAsync never settles', async () => {
+    jest.useFakeTimers();
+    mockedGetAssetInfoAsync.mockReturnValue(new Promise(() => {}));
+
+    const uriPromise = PhotoLibraryService.getShareableUri('stuck');
+    await jest.advanceTimersByTimeAsync(4000);
+
+    expect(await uriPromise).toBeNull();
+  });
+});
+
 describe('PhotoLibraryService request coalescing', () => {
   beforeEach(() => jest.clearAllMocks());
 

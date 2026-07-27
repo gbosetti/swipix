@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Asset } from '../types';
@@ -20,6 +20,10 @@ interface PhotoCardProps {
    * on something the user can't see — the caller is expected to silently
    * drop this asset from the deck. */
   onLoadError?: () => void;
+  /** Opens the OS share sheet for this asset. Awaited only to drive the
+   * button's own brief loading spinner — sharing is never a swipe
+   * decision, so this never advances or otherwise touches the deck. */
+  onShare?: (asset: Asset) => Promise<void>;
 }
 
 /**
@@ -30,9 +34,20 @@ interface PhotoCardProps {
  * Asset objects keep their own identity, so this only re-renders when its
  * own asset/isTop genuinely change.
  */
-function PhotoCard({ asset, isTop = true, onLoadError }: PhotoCardProps) {
+function PhotoCard({ asset, isTop = true, onLoadError, onShare }: PhotoCardProps) {
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = async () => {
+    if (sharing || !onShare) return;
+    setSharing(true);
+    try {
+      await onShare(asset);
+    } finally {
+      setSharing(false);
+    }
+  };
 
   // Latest-ref: onLoadError is a fresh closure every render, but this
   // effect should only reset its timer when the asset itself changes.
@@ -86,6 +101,15 @@ function PhotoCard({ asset, isTop = true, onLoadError }: PhotoCardProps) {
           onError={handleError}
         />
       )}
+      {isTop && onShare && (
+        <Pressable style={styles.shareButton} onPress={handleShare} disabled={sharing} hitSlop={10}>
+          {sharing ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Ionicons name="share-outline" size={18} color="#ffffff" />
+          )}
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -108,6 +132,20 @@ function createStyles(colors: ColorPalette) {
     image: { width: '100%', height: '100%' },
     videoPlaceholder: {
       backgroundColor: colors.cardDark,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    // Mirrors VideoCard's mute button, opposite corner — same treatment
+    // for a photo or a video, so it doesn't collide with the mute button
+    // VideoCard already renders on its own top-right.
+    shareButton: {
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'center',
       alignItems: 'center',
     },

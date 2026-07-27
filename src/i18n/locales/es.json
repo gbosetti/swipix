@@ -77,7 +77,9 @@
     "scanningProgress": "Analizando {{done}} de {{total}}…",
     "pausedTitle": "No se encontró nada más cerca",
     "pausedBody": "Puede que haya más fotos más adentro en tu biblioteca — sigue buscando o vuelve más tarde.",
-    "searchMore": "Buscar más"
+    "searchMore": "Buscar más",
+    "shareFailedTitle": "No se pudo compartir",
+    "shareFailedBody": "Algo salió mal al abrir el menú de compartir. Inténtalo de nuevo."
   },
   "trash": {
     "emptyTitle": "La papelera está vacía 🎉",

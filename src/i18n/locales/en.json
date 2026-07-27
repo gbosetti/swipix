@@ -77,7 +77,9 @@
     "scanningProgress": "Scanning {{done}} of {{total}}…",
     "pausedTitle": "No more found nearby",
     "pausedBody": "There may be more further into your library — keep searching, or come back later.",
-    "searchMore": "Search for more"
+    "searchMore": "Search for more",
+    "shareFailedTitle": "Couldn't share this",
+    "shareFailedBody": "Something went wrong opening the share sheet. Please try again."
   },
   "trash": {
     "emptyTitle": "Trash is empty 🎉",

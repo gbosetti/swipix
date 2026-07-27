@@ -500,6 +500,33 @@ export const PhotoLibraryService = {
     }
   },
 
+  /**
+   * A real local `file://` path for handing this one asset to the OS
+   * share sheet — resolved on demand (never pre-fetched or cached), since
+   * sharing is a rare, one-off user action, not something worth resolving
+   * for every card in a deck.
+   *
+   * @remarks
+   * Deliberately not the same field a swipe session already has on
+   * `Asset.uri` for a video: that's kept as the raw `ph://` reference
+   * because expo-video's own docs say never to hand `localUri` to a
+   * player (see the Asset type). The OS share sheet has the opposite
+   * requirement — it needs real file bytes, not a Photos-library
+   * reference — so this resolves fresh via getAssetInfoAsync regardless
+   * of what `uri` already holds.
+   */
+  async getShareableUri(assetId: string): Promise<string | null> {
+    await acquireNativeCallSlot('high');
+    try {
+      const info = await withTimeout(MediaLibrary.getAssetInfoAsync(assetId), ASSET_INFO_TIMEOUT_MS);
+      return info.localUri ?? null;
+    } catch {
+      return null;
+    } finally {
+      releaseNativeCallSlot();
+    }
+  },
+
   /** Permanently deletes assets. The OS shows its own confirmation dialog
    * first; throws if the user cancels, so callers never mistake a
    * cancelled deletion for a successful one. */

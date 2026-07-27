@@ -1,10 +1,36 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { View, Text, StyleSheet, PanResponder, LayoutChangeEvent, Pressable, GestureResponderEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useEvent } from 'expo';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Asset } from '../types';
+
+// A new VideoCard instance mounts for every card (SwipeDeck keys by asset
+// id), so plain component state would reset the mute choice on every
+// single video — confirmed annoying on a real device: unmuting one video
+// only to have the very next one silently muted again. Module-level, not
+// per-card state, so the choice carries across the whole session — every
+// mounted (and future) VideoCard reads and writes the same preference.
+let mutedPreference = true;
+const muteListeners = new Set<() => void>();
+
+function setMutedPreference(next: boolean) {
+  if (mutedPreference === next) return;
+  mutedPreference = next;
+  muteListeners.forEach((listener) => listener());
+}
+
+function useMutedPreference(): [boolean, (next: boolean) => void] {
+  const muted = useSyncExternalStore(
+    (onStoreChange) => {
+      muteListeners.add(onStoreChange);
+      return () => muteListeners.delete(onStoreChange);
+    },
+    () => mutedPreference
+  );
+  return [muted, setMutedPreference];
+}
 
 interface VideoCardProps {
   asset: Asset;
@@ -34,7 +60,7 @@ const LOAD_TIMEOUT_MS = 8000;
  */
 function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
   const { t } = useTranslation();
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useMutedPreference();
   const [scrubbing, setScrubbing] = useState(false);
   const [scrubFraction, setScrubFraction] = useState(0);
   const [trackWidth, setTrackWidth] = useState(0);
@@ -44,7 +70,9 @@ function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
 
   const player = useVideoPlayer(asset.uri, (p) => {
     p.loop = true;
-    p.muted = true;
+    // The current shared preference, not a hardcoded true — avoids a
+    // flash of audio before the effect below has a chance to sync it.
+    p.muted = mutedPreference;
     p.timeUpdateEventInterval = 0.25;
   });
 
@@ -56,6 +84,14 @@ function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
   });
 
   const { status } = useEvent(player, 'statusChange', { status: player.status });
+  // Backgrounding the app, or handing off to the share sheet, can pause
+  // playback without ever changing `isTop`/`failed` — the effect below
+  // has no reason to fire again, so nothing resumes it automatically.
+  // Confirmed on a real device: returning from Share left the video
+  // stuck paused with no way to resume short of swiping away and back.
+  // Tracked reactively (not just read once) so the resume button shows
+  // up the moment that happens, not just after some other re-render.
+  const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const [timedOut, setTimedOut] = useState(false);
   // A broken/sandboxed file may never emit 'error', just stay 'loading' —
   // the timeout is what actually catches that case.
@@ -154,9 +190,19 @@ function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
         nativeControls={false}
         allowsPictureInPicture={false}
       />
-      <Pressable style={styles.muteButton} onPress={() => setMuted((m) => !m)} hitSlop={10}>
+      <Pressable
+        testID="video-mute-button"
+        style={styles.muteButton}
+        onPress={() => setMuted(!muted)}
+        hitSlop={10}
+      >
         <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#ffffff" />
       </Pressable>
+      {!isPlaying && !scrubbing && (
+        <Pressable testID="video-play-button" style={styles.playButton} onPress={() => player.play()} hitSlop={10}>
+          <Ionicons name="play" size={28} color="#ffffff" />
+        </Pressable>
+      )}
       <View style={styles.scrubArea} onLayout={handleTrackLayout} {...panResponder.panHandlers}>
         <View style={styles.scrubTrack}>
           <View style={[styles.scrubFill, { width: `${progressFraction * 100}%` }]} />
@@ -173,6 +219,10 @@ function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
 }
 
 export default React.memo(VideoCard);
+
+// Exported for tests only, to reset the shared preference between cases —
+// not part of VideoCard's own consumer-facing API.
+export { setMutedPreference };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -196,6 +246,20 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -28,
+    marginLeft: -26, // optically centered — a play glyph's own visual
+    // weight leans right, so a couple px less on the left reads centered.
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',

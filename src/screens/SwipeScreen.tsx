@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useHeaderHeight } from '@react-navigation/elements';
+import * as Sharing from 'expo-sharing';
 import SwipeDeck from '../components/SwipeDeck';
 import PhotoCard from '../components/PhotoCard';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
@@ -411,6 +412,22 @@ export default function SwipeScreen({ route, navigation }: Props) {
     maybeTopUp((candidates?.length ?? 1) - 1 - swipedCountRef.current);
   };
 
+  /** Never a swipe decision — opens the OS share sheet for whatever's
+   * currently shown, leaving the card and deck untouched either way. */
+  const handleShare = async (asset: Asset) => {
+    try {
+      const uri = await PhotoLibraryService.getShareableUri(asset.id);
+      if (!uri || !(await Sharing.isAvailableAsync())) {
+        Alert.alert(t('swipe.shareFailedTitle'), t('swipe.shareFailedBody'));
+        return;
+      }
+      await Sharing.shareAsync(uri);
+    } catch (error) {
+      if (__DEV__) console.warn('Share failed:', error);
+      Alert.alert(t('swipe.shareFailedTitle'), t('swipe.shareFailedBody'));
+    }
+  };
+
   const handleUndo = async () => {
     const last = history[history.length - 1];
     if (!last) return;
@@ -501,7 +518,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
         <SwipeDeck
           data={candidates}
           renderCard={(asset, isTop) => (
-            <PhotoCard asset={asset} isTop={isTop} onLoadError={() => handleCardLoadError(asset)} />
+            <PhotoCard
+              asset={asset}
+              isTop={isTop}
+              onLoadError={() => handleCardLoadError(asset)}
+              onShare={handleShare}
+            />
           )}
           onSwipeLeft={handleSwipeLeft}
           onSwipeRight={handleSwipeRight}

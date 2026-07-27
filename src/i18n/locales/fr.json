@@ -77,7 +77,9 @@
     "scanningProgress": "Analyse de {{done}} sur {{total}}…",
     "pausedTitle": "Rien trouvé de plus à proximité",
     "pausedBody": "Il pourrait y en avoir plus loin dans votre photothèque — continuez à chercher ou revenez plus tard.",
-    "searchMore": "Chercher plus de photos"
+    "searchMore": "Chercher plus de photos",
+    "shareFailedTitle": "Impossible de partager",
+    "shareFailedBody": "Un problème est survenu lors de l'ouverture du partage. Veuillez réessayer."
   },
   "trash": {
     "emptyTitle": "La corbeille est vide 🎉",
