@@ -74,7 +74,10 @@
     "undoLimitTitle": "Stai annullando molto?",
     "undoLimitBody": "Se vuoi rivedere più foto, controlla il cestino per vedere tutto ciò che hai eliminato finora.",
     "videoUnavailable": "Impossibile caricare questo video",
-    "scanningProgress": "Analisi di {{done}} su {{total}}…"
+    "scanningProgress": "Analisi di {{done}} su {{total}}…",
+    "pausedTitle": "Nessun altro trovato nelle vicinanze",
+    "pausedBody": "Potrebbero essercene altri più avanti nella libreria — continua a cercare o torna più tardi.",
+    "searchMore": "Cerca altre foto"
   },
   "trash": {
     "emptyTitle": "Il cestino è vuoto 🎉",

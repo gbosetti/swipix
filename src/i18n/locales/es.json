@@ -74,7 +74,10 @@
     "undoLimitTitle": "¿Deshaciendo mucho?",
     "undoLimitBody": "Si quieres revisar varias fotos, consulta la papelera para ver todo lo que has eliminado hasta ahora.",
     "videoUnavailable": "No se pudo cargar este video",
-    "scanningProgress": "Analizando {{done}} de {{total}}…"
+    "scanningProgress": "Analizando {{done}} de {{total}}…",
+    "pausedTitle": "No se encontró nada más cerca",
+    "pausedBody": "Puede que haya más fotos más adentro en tu biblioteca — sigue buscando o vuelve más tarde.",
+    "searchMore": "Buscar más"
   },
   "trash": {
     "emptyTitle": "La papelera está vacía 🎉",

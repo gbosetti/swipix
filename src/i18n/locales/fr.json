@@ -74,7 +74,10 @@
     "undoLimitTitle": "Vous annulez beaucoup ?",
     "undoLimitBody": "Si vous voulez revoir plusieurs photos, consultez la corbeille pour voir tout ce que vous avez supprimé jusqu'ici.",
     "videoUnavailable": "Cette vidéo n'a pas pu être chargée",
-    "scanningProgress": "Analyse de {{done}} sur {{total}}…"
+    "scanningProgress": "Analyse de {{done}} sur {{total}}…",
+    "pausedTitle": "Rien trouvé de plus à proximité",
+    "pausedBody": "Il pourrait y en avoir plus loin dans votre photothèque — continuez à chercher ou revenez plus tard.",
+    "searchMore": "Chercher plus de photos"
   },
   "trash": {
     "emptyTitle": "La corbeille est vide 🎉",

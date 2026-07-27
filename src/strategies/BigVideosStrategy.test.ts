@@ -5,19 +5,12 @@ import { Asset } from '../types';
 jest.mock('../services/TrashService', () => ({ TrashService: { getTrash: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/KeptService', () => ({ KeptService: { getKept: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/PhotoLibraryService', () => ({
-  PhotoLibraryService: { getPreviewCandidates: jest.fn() },
+  PhotoLibraryService: { getPreviewCandidates: jest.fn(), getFileSize: jest.fn() },
 }));
 
 const mockedPhotoLibraryService = PhotoLibraryService as jest.Mocked<typeof PhotoLibraryService>;
 
 const fileSizes: Record<string, number> = {};
-jest.mock('expo-file-system', () => ({
-  File: jest.fn().mockImplementation((uri: string) => ({
-    get size() {
-      return fileSizes[uri];
-    },
-  })),
-}));
 
 function makeAsset(id: string, mediaType: 'photo' | 'video', sizeBytes: number): Asset {
   const uri = `file:///${id}`;
@@ -40,6 +33,7 @@ const GB = 1024 * MB;
 describe('BigVideosStrategy', () => {
   beforeEach(() => {
     Object.keys(fileSizes).forEach((key) => delete fileSizes[key]);
+    mockedPhotoLibraryService.getFileSize.mockImplementation(async (uri) => fileSizes[uri] ?? 0);
   });
 
   it('matches videos within the default 100MB-2GB range', async () => {
@@ -67,9 +61,6 @@ describe('BigVideosStrategy', () => {
     expect(strategy.needsDetailedFetch).toBe(true);
   });
 
-  it('flags itself as a slow scan, so SwipeScreen shows scan progress instead of a plain spinner', () => {
-    expect(new BigVideosStrategy().isSlowScan).toBe(true);
-  });
 
   it('getPreview finds a big video among a small detailed preview sample', async () => {
     mockedPhotoLibraryService.getPreviewCandidates.mockResolvedValue([

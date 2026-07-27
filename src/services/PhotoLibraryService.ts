@@ -1,4 +1,5 @@
 import * as MediaLibrary from 'expo-media-library';
+import { getInfoAsync } from 'expo-file-system/legacy';
 import { Asset, MediaTypeFilter, ScanProgressCallback } from '../types';
 
 type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
@@ -34,6 +35,15 @@ const ASSET_INFO_CONCURRENCY = 8;
 // quickly — bounds one getAssetInfoAsync call, and skips a known-bad
 // asset entirely on later fetches instead of relaunching it fresh.
 const ASSET_INFO_TIMEOUT_MS = 4000;
+// The page-level query itself, not any one asset — a real, if rare,
+// native hang here previously had no bound at all, and unlike a single
+// asset's lookup, this one blocks the *entire* fetch (nothing to skip and
+// move past). Confirmed as a real cause of a swipe session getting stuck
+// with no error and no recovery: the caller's own promise chain simply
+// never resolved, so nothing downstream (retry, "finished", anything)
+// ever ran. More generous than ASSET_INFO_TIMEOUT_MS since it covers a
+// whole page, not one item.
+const PAGE_FETCH_TIMEOUT_MS = 8000;
 const knownFailedAssetIds = new Set<string>();
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -149,13 +159,24 @@ export const PhotoLibraryService = {
     first = 500,
     onProgress,
     priority,
+    isCancelled,
   }: {
     first?: number;
     onProgress?: ScanProgressCallback;
     priority?: CallPriority;
+    isCancelled?: () => boolean;
   } = {}): Promise<Asset[]> {
     return (
-      await this._fetchAssets(['photo', 'video'], first, undefined, true, undefined, onProgress, priority)
+      await this._fetchAssets(
+        ['photo', 'video'],
+        first,
+        undefined,
+        true,
+        undefined,
+        onProgress,
+        priority,
+        isCancelled
+      )
     ).assets;
   },
 
@@ -177,6 +198,7 @@ export const PhotoLibraryService = {
     albumId,
     onProgress,
     priority,
+    isCancelled,
   }: {
     mediaTypes: MediaTypeFilter[];
     first: number;
@@ -189,6 +211,11 @@ export const PhotoLibraryService = {
     onProgress?: ScanProgressCallback;
     /** 'high' for an active swipe session; defaults to 'low'. */
     priority?: CallPriority;
+    /** Checked before each item still waiting for a concurrency slot —
+     * an item that hasn't started yet skips its native call entirely once
+     * this returns true, instead of occupying a slot a still-active
+     * caller needs. Can't stop an item's call that's already dispatched. */
+    isCancelled?: () => boolean;
   }): Promise<AssetPage> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
     return this._fetchAssets(
@@ -198,7 +225,8 @@ export const PhotoLibraryService = {
       detailed,
       albumId ? { albumId } : undefined,
       onProgress,
-      priority
+      priority,
+      isCancelled
     );
   },
 
@@ -214,6 +242,8 @@ export const PhotoLibraryService = {
     albumId,
     first = 5,
     detailed = false,
+    priority,
+    isCancelled,
   }: {
     mediaTypes: MediaTypeFilter[];
     mediaSubtypes?: MediaLibrary.MediaSubtype[];
@@ -222,14 +252,22 @@ export const PhotoLibraryService = {
     albumId?: string;
     first?: number;
     detailed?: boolean;
+    /** 'high' for an active swipe session; defaults to 'low' — see
+     * {@link CallPriority}. */
+    priority?: CallPriority;
+    isCancelled?: () => boolean;
   }): Promise<Asset[]> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
-    const page = await this._fetchAssets(type, first, undefined, detailed, {
-      mediaSubtypes,
-      createdAfter,
-      createdBefore,
-      albumId,
-    });
+    const page = await this._fetchAssets(
+      type,
+      first,
+      undefined,
+      detailed,
+      { mediaSubtypes, createdAfter, createdBefore, albumId },
+      undefined,
+      priority,
+      isCancelled
+    );
     return page.assets;
   },
 
@@ -280,12 +318,14 @@ export const PhotoLibraryService = {
     detailed = true,
     filters?: AssetFilters,
     onProgress?: ScanProgressCallback,
-    priority?: CallPriority
+    priority?: CallPriority,
+    isCancelled?: () => boolean
   ): Promise<AssetPage> {
     const key = JSON.stringify({ mediaType, first, after: after ?? null, detailed, filters: filters ?? null });
     const existing = inFlight.get(key);
     // A second caller sharing this in-flight promise won't see its own
-    // onProgress fire — acceptable, since progress is a UI nicety, not
+    // onProgress fire, and its isCancelled won't be checked either —
+    // acceptable, same as onProgress: a UI/resource-hygiene nicety, not
     // something correctness depends on.
     if (existing) return existing;
     let evictionTimer: ReturnType<typeof setTimeout>;
@@ -296,7 +336,8 @@ export const PhotoLibraryService = {
       detailed,
       filters,
       onProgress,
-      priority
+      priority,
+      isCancelled
     ).finally(() => {
       clearTimeout(evictionTimer);
       inFlight.delete(key);
@@ -315,18 +356,22 @@ export const PhotoLibraryService = {
     detailed: boolean,
     filters?: AssetFilters,
     onProgress?: ScanProgressCallback,
-    priority: CallPriority = 'low'
+    priority: CallPriority = 'low',
+    isCancelled?: () => boolean
   ): Promise<AssetPage> {
-    const page = await MediaLibrary.getAssetsAsync({
-      mediaType,
-      first,
-      after,
-      sortBy: [MediaLibrary.SortBy.creationTime],
-      ...(filters?.mediaSubtypes ? { mediaSubtypes: filters.mediaSubtypes } : {}),
-      ...(filters?.createdAfter ? { createdAfter: filters.createdAfter } : {}),
-      ...(filters?.createdBefore ? { createdBefore: filters.createdBefore } : {}),
-      ...(filters?.albumId ? { album: filters.albumId } : {}),
-    });
+    const page = await withTimeout(
+      MediaLibrary.getAssetsAsync({
+        mediaType,
+        first,
+        after,
+        sortBy: [MediaLibrary.SortBy.creationTime],
+        ...(filters?.mediaSubtypes ? { mediaSubtypes: filters.mediaSubtypes } : {}),
+        ...(filters?.createdAfter ? { createdAfter: filters.createdAfter } : {}),
+        ...(filters?.createdBefore ? { createdBefore: filters.createdBefore } : {}),
+        ...(filters?.albumId ? { album: filters.albumId } : {}),
+      }),
+      PAGE_FETCH_TIMEOUT_MS
+    );
 
     // info.location (GPS) is deliberately never mapped onto Asset — nothing
     // in the app reads it, and data minimization rules out capturing it.
@@ -340,6 +385,18 @@ export const PhotoLibraryService = {
       page.assets,
       async (asset): Promise<Asset | null> => {
         try {
+          // Checked after acquiring a slot, not just once up front — an
+          // abandoned page fetch (user left mid-scan) still has to let
+          // items already dispatched finish, but one not yet started has
+          // no reason to make its own real native call and occupy a slot
+          // a newly-active session actually needs. Confirmed on a real
+          // device: without this, leaving a slow scan mid-flight (Big
+          // Pictures) could hold the whole concurrency pool hostage for
+          // as long as its abandoned page took to fully drain, starving a
+          // freshly-opened swipe session even with 'high' priority —
+          // priority only reorders the wait queue, it can't preempt slots
+          // already held by unrelated, uncancellable in-flight work.
+          if (isCancelled?.()) return null;
           // Light path: photos skip getAssetInfoAsync and hand back the raw
           // ph:// URI — expo-image's native loader resolves those lazily,
           // off the main thread. Videos always resolve regardless of
@@ -396,6 +453,41 @@ export const PhotoLibraryService = {
       endCursor: page.endCursor,
       hasNextPage: page.hasNextPage,
     };
+  },
+
+  /**
+   * File size in bytes for a resolved local `uri` — never `new
+   * File(uri).size`, which is a synchronous native call that blocks the
+   * JS thread on real disk I/O.
+   *
+   * @remarks
+   * Confirmed on a real device: Big Pictures/Videos and Duplicates &
+   * Similar doing that synchronously over dozens of items froze the
+   * whole UI, including touch handling, for as long as the loop ran.
+   * Shares the same concurrency/priority pool as the detailed asset
+   * fetch above so it doesn't introduce a second, uncoordinated source
+   * of native contention. Bounded by the same timeout as
+   * getAssetInfoAsync — without it, one stuck filesystem call (an
+   * iCloud-only asset, a sandbox hiccup) holds its concurrency slot
+   * forever; confirmed on a real device that a handful of these stuck
+   * calls, accumulated while paging through a sparse category like Big
+   * Pictures, was enough to starve the whole pool for minutes, including
+   * unrelated work queued behind it (e.g. Categories' own video previews).
+   */
+  async getFileSize(
+    uri: string,
+    { priority, isCancelled }: { priority?: CallPriority; isCancelled?: () => boolean } = {}
+  ): Promise<number> {
+    await acquireNativeCallSlot(priority ?? 'low');
+    try {
+      if (isCancelled?.()) return 0;
+      const info = await withTimeout(getInfoAsync(uri), ASSET_INFO_TIMEOUT_MS);
+      return info.exists ? info.size : 0;
+    } catch {
+      return 0;
+    } finally {
+      releaseNativeCallSlot();
+    }
   },
 
   /** Permanently deletes assets. The OS shows its own confirmation dialog

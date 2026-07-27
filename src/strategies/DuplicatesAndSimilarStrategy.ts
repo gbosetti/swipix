@@ -1,8 +1,7 @@
-import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { analyzeImages, hammingDistance, HAMMING_THRESHOLD } from '../services/ImageAnalysisService';
-import { Asset, CategoryMeta, ScanProgressCallback } from '../types';
+import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
 // Photos this close together are probably a burst.
@@ -38,31 +37,39 @@ const PREVIEW_TIMEOUT_MS = 5000;
  * detection needs videos too.
  */
 export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
-  async matchCandidates(_assets: Asset[], onScanProgress?: ScanProgressCallback): Promise<Asset[]> {
+  async matchCandidates(_assets: Asset[], context?: ScanContext): Promise<Asset[]> {
     // 'high' — only ever called from an active swipe session (match()),
     // never from the Categories preview path (findPreviewAsset below).
     const media = await PhotoLibraryService.getAllMedia({
       first: FETCH_LIMIT,
-      onProgress: onScanProgress,
+      onProgress: context?.onProgress,
       priority: 'high',
+      isCancelled: context?.isCancelled,
     });
-    return this.findDuplicates(media, onScanProgress);
+    return this.findDuplicates(media, context);
   }
 
   /** Shared by matchCandidates and findPreviewAsset so both run the same
    * detection, just on differently-sized samples. */
-  private async findDuplicates(media: Asset[], onScanProgress?: ScanProgressCallback): Promise<Asset[]> {
+  private async findDuplicates(media: Asset[], context?: ScanContext): Promise<Asset[]> {
+    const sizes = await Promise.all(
+      media.map((asset) =>
+        PhotoLibraryService.getFileSize(asset.uri, {
+          priority: context?.priority,
+          isCancelled: context?.isCancelled,
+        })
+      )
+    );
     const bySizeAndDimensions = new Map<string, Asset[]>();
-    for (const asset of media) {
-      const size = new File(asset.uri).size;
-      const key = `${size}-${asset.width}-${asset.height}`;
+    media.forEach((asset, i) => {
+      const key = `${sizes[i]}-${asset.width}-${asset.height}`;
       const group = bySizeAndDimensions.get(key);
       if (group) {
         group.push(asset);
       } else {
         bySizeAndDimensions.set(key, [asset]);
       }
-    }
+    });
     const exactDuplicateIds = new Set(
       Array.from(bySizeAndDimensions.values())
         .filter((group) => group.length >= 2)
@@ -89,7 +96,7 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
     );
 
     const photos = media.filter((asset) => asset.mediaType === 'photo');
-    const analysis = await analyzeImages(photos, onScanProgress);
+    const analysis = await analyzeImages(photos, context?.onProgress);
     const hashed = photos
       .map((asset) => ({ asset, hash: analysis.get(asset.id)?.dHash }))
       .filter((entry): entry is { asset: Asset; hash: string } => entry.hash !== undefined);
@@ -118,15 +125,15 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
     };
   }
 
-  get isSlowScan(): boolean {
-    return true;
-  }
-
   protected previewTimeoutMs = PREVIEW_TIMEOUT_MS;
 
-  protected async findPreviewAsset(): Promise<Asset | null> {
-    const media = await PhotoLibraryService.getAllMedia({ first: PREVIEW_FETCH_LIMIT });
-    const matched = await this.findDuplicates(media);
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
+    const media = await PhotoLibraryService.getAllMedia({
+      first: PREVIEW_FETCH_LIMIT,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
+    });
+    const matched = await this.findDuplicates(media, context);
     const undecided = await this.excludeDecided(matched);
     return undecided[0] ?? null;
   }

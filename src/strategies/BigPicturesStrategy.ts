@@ -1,7 +1,6 @@
-import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
 // `detailed: true` below means each of these costs a real getAssetInfoAsync
@@ -30,12 +29,17 @@ export class BigPicturesStrategy extends CategoryStrategy {
     this.maxBytes = maxBytes;
   }
 
-  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
-    return assets.filter((asset) => {
-      if (asset.mediaType !== 'photo') return false;
-      const size = new File(asset.uri).size;
-      return size >= this.minBytes && size <= this.maxBytes;
-    });
+  async matchCandidates(assets: Asset[], context?: ScanContext): Promise<Asset[]> {
+    const photos = assets.filter((asset) => asset.mediaType === 'photo');
+    const sizes = await Promise.all(
+      photos.map((asset) =>
+        PhotoLibraryService.getFileSize(asset.uri, {
+          priority: context?.priority,
+          isCancelled: context?.isCancelled,
+        })
+      )
+    );
+    return photos.filter((_, i) => sizes[i] >= this.minBytes && sizes[i] <= this.maxBytes);
   }
 
   get meta(): CategoryMeta {
@@ -52,20 +56,18 @@ export class BigPicturesStrategy extends CategoryStrategy {
     return true;
   }
 
-  get isSlowScan(): boolean {
-    return true;
-  }
-
   // 3s (the default) wasn't enough for even 20 detailed fetches.
   protected previewTimeoutMs = 6000;
 
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       first: PREVIEW_SAMPLE_SIZE,
       detailed: true,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
-    const matched = await this.matchCandidates(candidates);
+    const matched = await this.matchCandidates(candidates, context);
     const undecided = await this.excludeDecided(matched);
     return undecided[0] ?? null;
   }

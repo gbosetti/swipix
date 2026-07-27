@@ -10,6 +10,7 @@ import PhotoCard from '../components/PhotoCard';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
+import { beginForegroundSession, ForegroundSession } from '../services/ForegroundSession';
 import { createStrategy } from '../strategies/strategyRegistry';
 import { SwipeRouteParams } from '../navigation/types';
 import { Asset, ScanProgressCallback } from '../types';
@@ -43,6 +44,15 @@ const INITIAL_REVEAL_THRESHOLD = 1;
 // Safety cap per fetch cycle so a sparse/empty category still resolves to
 // "empty" instead of paging through the whole library.
 const MAX_PAGE_ATTEMPTS_PER_CYCLE = 10;
+// A top-up retries automatically while the deck's run dry (see
+// runTopUpCycle) — bounded across the whole retry chain, not just one
+// cycle, so a genuinely rare category (Big Pictures in a huge library)
+// can't monopolize the shared native-call pool indefinitely at 'high'
+// priority, starving unrelated background work (e.g. Categories' own
+// video previews). 10 cycles × MAX_PAGE_ATTEMPTS_PER_CYCLE × PAGE_SIZE is
+// a generous search before pausing to let the user decide whether to
+// keep going.
+const MAX_TOPUP_RETRY_CYCLES = 10;
 
 // Loosely typed against just the route shape — this screen mounts from two
 // different stacks and only needs goBack/canGoBack.
@@ -64,10 +74,23 @@ export default function SwipeScreen({ route, navigation }: Props) {
   );
   const headerHeight = useHeaderHeight();
   const [candidates, setCandidates] = useState<Asset[] | null>(null);
-  // Only ever populated for a strategy that does real scanning (self-fetch,
-  // pixel analysis) — see CategoryStrategy.isSlowScan. Left null otherwise,
-  // so the loading state just shows the plain spinner.
+  // Populated during the initial load for any strategy — a sparse filter
+  // (e.g. Screenshots in a huge library) can page through several fetches
+  // before finding even one match, which is exactly the kind of loading
+  // delay a bare spinner hides. Left null between updates, so a fetch that
+  // never reports (nothing to report — e.g. permission still resolving)
+  // just shows the plain spinner instead of a stuck bar.
   const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
+  // True only once the deck has actually run dry (not just "running low")
+  // and a top-up is searching for more — see maybeTopUp. Distinct from
+  // `finished`: the library isn't known to be exhausted yet.
+  const [waitingForMore, setWaitingForMore] = useState(false);
+  // True once the automatic retry budget (MAX_TOPUP_RETRY_CYCLES) runs out
+  // without either finding more or exhausting the library — deliberately
+  // NOT the same as `finished`: we genuinely don't know whether more
+  // matches exist further in, so it'd be dishonest to claim "all done".
+  // Offers a manual "search more" action instead of silently stopping.
+  const [searchPaused, setSearchPaused] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [freedCount, setFreedCount] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -98,9 +121,11 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // call, so a top-up can return matches already on screen — without this,
   // the same photo could land at two deck positions and get decided twice.
   const seenIdsRef = useRef<Set<string>>(new Set());
-  // Bumped on every fresh session (strategy or sessionKey change) so a
-  // stale background fetch can't leak state into a newer session.
-  const sessionTokenRef = useRef(0);
+  // Renewed on every fresh session (strategy or sessionKey change) and on
+  // every focus — shared across screens via ForegroundSession, so opening
+  // a category correctly supersedes CategoryPickerScreen's own background
+  // preview work, and leaving this screen supersedes this scan in turn.
+  const sessionRef = useRef<ForegroundSession | null>(null);
 
   /** Pages through the library via the strategy, accumulating matches
    * until there's enough to show, the library's exhausted, or the safety
@@ -110,7 +135,19 @@ export default function SwipeScreen({ route, navigation }: Props) {
    * `onProgress`, since background top-ups have no visible loading state
    * for it to update. */
   const fetchMoreMatches = useCallback(
-    async (token: number, minMatches: number, onProgress?: ScanProgressCallback): Promise<Asset[]> => {
+    async (
+      session: ForegroundSession,
+      minMatches: number,
+      onProgress?: ScanProgressCallback
+    ): Promise<Asset[]> => {
+      // Passed all the way down to PhotoLibraryService so an item that
+      // hasn't started its own native call yet can skip it once this
+      // session is abandoned — the outer checks below only stop this loop
+      // from launching the NEXT page fetch, they don't stop one already
+      // in flight from making every one of its own native calls
+      // regardless (see PhotoLibraryService.getMediaPage's `isCancelled`
+      // for why that matters).
+      const isCancelled = () => !session.isCurrent();
       const collected: Asset[] = [];
       let attempts = 0;
       while (
@@ -123,28 +160,112 @@ export default function SwipeScreen({ route, navigation }: Props) {
           first: windowSizeRef.current + PAGE_SIZE,
           detailed: strategy.needsDetailedFetch,
           albumId: strategy.albumId,
-          onProgress: strategy.isSlowScan ? onProgress : undefined,
+          onProgress,
           // An active swipe session shouldn't queue behind CategoryPicker-
           // Screen's own background preview fetches for the shared native
           // call budget.
           priority: 'high',
+          isCancelled,
         });
-        if (token !== sessionTokenRef.current) return collected;
+        if (isCancelled()) return collected;
         const newAssets = page.assets.slice(windowSizeRef.current);
         windowSizeRef.current = page.assets.length;
         hasNextPageRef.current = page.hasNextPage;
-        const matched = await strategy.match(newAssets, strategy.isSlowScan ? onProgress : undefined);
+        const matched = await strategy.match(newAssets, {
+          onProgress,
+          priority: 'high',
+          isCancelled,
+        });
         for (const asset of matched) {
           if (seenIdsRef.current.has(asset.id)) continue;
           seenIdsRef.current.add(asset.id);
           collected.push(asset);
         }
-        if (token !== sessionTokenRef.current) return collected;
+        if (isCancelled()) return collected;
         attempts += 1;
       }
       return collected;
     },
     [strategy]
+  );
+
+  /** One fetch cycle of a (possibly multi-cycle) top-up, always re-checking
+   * "is the deck actually empty right now" from live refs rather than a
+   * snapshot — a retry chain can outlive several more swipes, so a
+   * `remaining` value captured when it started can go stale by the time
+   * it resolves. Recurses while `fetchMoreMatches`'s own per-call safety
+   * cap (MAX_PAGE_ATTEMPTS_PER_CYCLE) is hit without the library actually
+   * being exhausted — that cap isn't proof there's nothing left, just
+   * that this batch didn't have it. Confirmed on a real device: reusing
+   * the original snapshot here left a sparse category (Big Pictures) with
+   * a blank screen — no spinner, no "finished" — once the user swiped
+   * through everything while a stale-remaining retry loop kept churning
+   * in the background without ever noticing the deck had gone empty.
+   *
+   * Bounded by `cycle`/MAX_TOPUP_RETRY_CYCLES, not just recursing forever:
+   * a genuinely rare category could otherwise keep this chain running at
+   * 'high' priority for as long as the library has assets left, starving
+   * unrelated background work (confirmed on a real device: Categories'
+   * own video-preview fetches for other cards were left queued behind an
+   * open-ended Big Pictures search). Once the budget runs out with
+   * `hasNextPage` still true, this pauses rather than claiming "finished"
+   * — the library isn't actually known to be exhausted, just not fully
+   * searched yet — and hands control to the manual "search more" action. */
+  const runTopUpCycle = useCallback(
+    (session: ForegroundSession, cycle = 0) => {
+      const deckIsEmpty = swipedCountRef.current >= candidatesLengthRef.current;
+      if (deckIsEmpty) {
+        setWaitingForMore(true);
+        setSearchPaused(false);
+      }
+      fetchMoreMatches(
+        session,
+        MIN_BUFFER,
+        deckIsEmpty ? (done, total) => { if (session.isCurrent()) setScanProgress({ done, total }); } : undefined
+      )
+        .then((more) => {
+          if (!session.isCurrent()) return;
+          if (more.length > 0) {
+            fetchingMoreRef.current = false;
+            candidatesLengthRef.current += more.length;
+            setCandidates((prev) => (prev ? [...prev, ...more] : more));
+            setWaitingForMore(false);
+            setScanProgress(null);
+          } else if (hasNextPageRef.current && cycle < MAX_TOPUP_RETRY_CYCLES) {
+            // This cycle's cap was hit, not the library — keep searching.
+            runTopUpCycle(session, cycle + 1);
+          } else {
+            fetchingMoreRef.current = false;
+            setWaitingForMore(false);
+            setScanProgress(null);
+            if (swipedCountRef.current >= candidatesLengthRef.current) {
+              if (!hasNextPageRef.current) {
+                // Truly exhausted and no further swipe will happen to
+                // re-trigger SwipeDeck's own onEmpty — this is the last
+                // place left to surface "finished".
+                setFinished(true);
+              } else {
+                // Retry budget spent, library not exhausted — pause and
+                // let the user decide whether it's worth searching further.
+                setSearchPaused(true);
+              }
+            }
+          }
+        })
+        .catch((error) => {
+          // A rejection here (e.g. a page-level native call timing out)
+          // must never just vanish — that's exactly what left a swipe
+          // session permanently stuck before: fetchingMoreRef never reset,
+          // so neither a retry nor "finished" could ever fire again.
+          if (__DEV__) console.warn('runTopUpCycle failed:', error);
+          if (!session.isCurrent()) return;
+          fetchingMoreRef.current = false;
+          setWaitingForMore(false);
+          setScanProgress(null);
+          if (swipedCountRef.current >= candidatesLengthRef.current) setSearchPaused(true);
+        });
+    },
+    [fetchMoreMatches]
   );
 
   /** Kicks off a background fetch once the deck is running low. No-op
@@ -153,27 +274,30 @@ export default function SwipeScreen({ route, navigation }: Props) {
     (remaining: number) => {
       if (remaining > MIN_BUFFER) return;
       if (fetchingMoreRef.current || !hasNextPageRef.current) return;
-      const token = sessionTokenRef.current;
+      const session = sessionRef.current;
+      if (!session) return;
       fetchingMoreRef.current = true;
-      fetchMoreMatches(token, MIN_BUFFER).then((more) => {
-        if (token !== sessionTokenRef.current) return;
-        fetchingMoreRef.current = false;
-        if (more.length > 0) {
-          candidatesLengthRef.current += more.length;
-          setCandidates((prev) => (prev ? [...prev, ...more] : more));
-        } else if (!hasNextPageRef.current && swipedCountRef.current >= candidatesLengthRef.current) {
-          // Truly exhausted and no further swipe will happen to re-trigger
-          // SwipeDeck's own onEmpty — this is the last place left to
-          // surface "finished".
-          setFinished(true);
-        }
-      });
+      runTopUpCycle(session);
     },
-    [fetchMoreMatches]
+    [runTopUpCycle]
   );
 
+  /** Manual fallback for when the automatic retry budget ran out without
+   * an answer either way — re-enters the same bounded retry chain with a
+   * fresh budget, rather than searching unboundedly even on an explicit
+   * user request. */
+  const handleSearchMore = useCallback(() => {
+    if (fetchingMoreRef.current) return;
+    const session = sessionRef.current;
+    if (!session) return;
+    setSearchPaused(false);
+    fetchingMoreRef.current = true;
+    runTopUpCycle(session);
+  }, [runTopUpCycle]);
+
   useEffect(() => {
-    const token = ++sessionTokenRef.current;
+    const session = beginForegroundSession();
+    sessionRef.current = session;
     windowSizeRef.current = 0;
     hasNextPageRef.current = true;
     fetchingMoreRef.current = false;
@@ -182,6 +306,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
     seenIdsRef.current = new Set();
     setCandidates(null);
     setScanProgress(null);
+    setWaitingForMore(false);
+    setSearchPaused(false);
     setFinished(false);
     setFreedCount(0);
     setHistory([]);
@@ -192,10 +318,19 @@ export default function SwipeScreen({ route, navigation }: Props) {
         setPermissionDenied(true);
         return;
       }
-      const matches = await fetchMoreMatches(token, INITIAL_REVEAL_THRESHOLD, (done, total) => {
-        if (token === sessionTokenRef.current) setScanProgress({ done, total });
-      });
-      if (token !== sessionTokenRef.current) return;
+      let matches: Asset[] = [];
+      try {
+        matches = await fetchMoreMatches(session, INITIAL_REVEAL_THRESHOLD, (done, total) => {
+          if (session.isCurrent()) setScanProgress({ done, total });
+        });
+      } catch (error) {
+        // A rejection (e.g. a page-level native call timing out) must
+        // never leave the initial spinner stuck forever with nothing to
+        // recover to — falls through to "empty" below, same as a
+        // genuinely empty category, rather than hanging indefinitely.
+        if (__DEV__) console.warn('Initial load failed:', error);
+      }
+      if (!session.isCurrent()) return;
       candidatesLengthRef.current = matches.length;
       setScanProgress(null);
       // Set even when empty, so the screen falls through to "empty" below.
@@ -205,14 +340,32 @@ export default function SwipeScreen({ route, navigation }: Props) {
 
   // A screen the user has navigated away from (back, tab switch) can stay
   // mounted but unfocused — bottom-tab navigators don't unmount other
-  // tabs' stacks. Bumping the token on blur is what actually stops an
+  // tabs' stacks. Ending the session on blur is what actually stops an
   // abandoned scan: it can't cancel a native call already in flight (no
   // cancellation API), but it stops fetchMoreMatches from launching any
-  // further ones once the user's left. If the scan hadn't finished yet
-  // (the standalone Swipe tab case — SwipeScreen stays mounted, so it
-  // won't get a fresh mount to retry with), abandonedMidScanRef flags it
-  // so returning to this same screen resumes instead of sitting on a
-  // spinner that nothing will ever resolve.
+  // further ones once the user's left, and — since sessions are shared
+  // across screens — clears the way for CategoryPickerScreen's own
+  // preview work to matter again the moment the user's back on it. If the
+  // scan hadn't finished yet (the standalone Swipe tab case — SwipeScreen
+  // stays mounted, so it won't get a fresh mount to retry with),
+  // abandonedMidScanRef flags it so returning to this same screen resumes
+  // instead of sitting on a spinner that nothing will ever resolve.
+  //
+  // Reads candidatesRef, not candidates directly, and keeps the callback
+  // passed to useFocusEffect referentially stable ([] deps): React
+  // Navigation's useFocusEffect re-subscribes (running this cleanup, then
+  // immediately re-invoking the effect) whenever the callback's identity
+  // changes, not just on a real focus/blur — with `candidates` in the dep
+  // array, every setCandidates call (initial load, every top-up) looked
+  // exactly like "blurred while candidates was still null" to the stale
+  // per-render closure, tripped abandonedMidScanRef, and immediately
+  // resumed via a sessionKey bump — an infinite reset loop that never let
+  // the screen settle (confirmed on a real device: Swipe never finished
+  // loading).
+  const candidatesRef = useRef<Asset[] | null>(null);
+  useEffect(() => {
+    candidatesRef.current = candidates;
+  });
   const abandonedMidScanRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
@@ -221,10 +374,10 @@ export default function SwipeScreen({ route, navigation }: Props) {
         setSessionKey((k) => k + 1);
       }
       return () => {
-        if (candidates === null) abandonedMidScanRef.current = true;
-        sessionTokenRef.current++;
+        if (candidatesRef.current === null) abandonedMidScanRef.current = true;
+        sessionRef.current?.end();
       };
-    }, [candidates])
+    }, [])
   );
 
   const handleSwipeLeft = async (asset: Asset) => {
@@ -293,6 +446,22 @@ export default function SwipeScreen({ route, navigation }: Props) {
     }
   }, [navigation]);
 
+  // Shared by the initial load and the "deck ran dry, still searching"
+  // overlay below — same honest, chunk-by-chunk progress either way.
+  const scanProgressBar = scanProgress && (
+    <View style={styles.scanProgressWrap}>
+      <View style={styles.scanProgressTrack}>
+        <View
+          style={[
+            styles.scanProgressFill,
+            { width: `${Math.min(100, (scanProgress.done / scanProgress.total) * 100)}%` },
+          ]}
+        />
+      </View>
+      <Text style={styles.scanProgressText}>{t('swipe.scanningProgress', scanProgress)}</Text>
+    </View>
+  );
+
   let content;
   if (permissionDenied) {
     content = (
@@ -305,21 +474,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     content = (
       <View style={[styles.center, { paddingTop: headerHeight }]}>
         <ActivityIndicator size="large" />
-        {scanProgress && (
-          <View style={styles.scanProgressWrap}>
-            <View style={styles.scanProgressTrack}>
-              <View
-                style={[
-                  styles.scanProgressFill,
-                  { width: `${Math.min(100, (scanProgress.done / scanProgress.total) * 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.scanProgressText}>
-              {t('swipe.scanningProgress', scanProgress)}
-            </Text>
-          </View>
-        )}
+        {scanProgressBar}
       </View>
     );
   } else if (candidates.length === 0) {
@@ -364,6 +519,26 @@ export default function SwipeScreen({ route, navigation }: Props) {
           <Text style={styles.hint}>{t('swipe.deleteHint')}</Text>
           <Text style={styles.hint}>{t('swipe.keepHint')}</Text>
         </View>
+        {waitingForMore && !finished && (
+          <View style={[styles.finishedOverlay, { paddingTop: headerHeight }]}>
+            <ActivityIndicator size="large" />
+            {scanProgressBar}
+          </View>
+        )}
+        {searchPaused && !finished && !waitingForMore && (
+          <View style={[styles.finishedOverlay, { paddingTop: headerHeight }]}>
+            <Text style={styles.emptyText}>{t('swipe.pausedTitle')}</Text>
+            <Text style={styles.subText}>{t('swipe.pausedBody')}</Text>
+            <Pressable style={styles.doneButton} onPress={handleSearchMore}>
+              <Text style={styles.doneButtonText}>{t('swipe.searchMore')}</Text>
+            </Pressable>
+            <Pressable style={styles.undoLastButton} onPress={handleDoneAction}>
+              <Text style={styles.undoLastButtonText}>
+                {navigation.canGoBack() ? t('swipe.backToCategories') : t('swipe.swipeAgain')}
+              </Text>
+            </Pressable>
+          </View>
+        )}
         {finished && (
           <View style={[styles.finishedOverlay, { paddingTop: headerHeight }]}>
             <Text style={styles.emptyText}>{t('swipe.finishedTitle')}</Text>

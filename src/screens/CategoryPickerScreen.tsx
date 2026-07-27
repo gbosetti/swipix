@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, Pressable, StyleSheet, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { VideoThumbnail } from 'expo-video';
@@ -28,6 +28,7 @@ import { MonthYearVideosStrategy } from '../strategies/MonthYearVideosStrategy';
 import { CategoryStrategy } from '../strategies/CategoryStrategy';
 import { TrashService } from '../services/TrashService';
 import { PhotoLibraryService, Album } from '../services/PhotoLibraryService';
+import { beginForegroundSession, ForegroundSession } from '../services/ForegroundSession';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
@@ -218,11 +219,22 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     });
   }, [permissionGranted]);
 
+  // Shared with SwipeScreen via ForegroundSession — begun on focus below,
+  // so opening a category to swipe correctly supersedes this screen's own
+  // preview work: a result that resolves after that happens gets dropped
+  // instead of applying (native work already in flight still finishes and
+  // updates PhotoLibraryService's own cache, it just no longer bothers
+  // updating this screen's state — the very next focus re-requests it
+  // anyway, and reuses that in-flight fetch if it's still running).
+  const sessionRef = useRef<ForegroundSession | null>(null);
+
   // Each category resolves its own preview independently, via its own
   // CategoryStrategy.getPreview — one slow/failed lookup can't block or
   // break another's.
   const refreshPreview = useCallback((strategy: CategoryStrategy) => {
+    const session = sessionRef.current;
     resolvePreviewDisplay(strategy).then((display) => {
+      if (session && !session.isCurrent()) return;
       setPreviews((current) => ({ ...current, [strategy.meta.id]: display }));
     });
   }, []);
@@ -291,11 +303,15 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   // Refresh on every focus (e.g. back from Trash or a swipe session), not
   // just on mount — the first focus fires before permission resolves, so
-  // permissionGranted is checked rather than assumed.
+  // permissionGranted is checked rather than assumed. Also where this
+  // screen claims the shared ForegroundSession as the current foreground
+  // activity — see refreshPreview's use of it above.
   useFocusEffect(
     useCallback(() => {
+      sessionRef.current = beginForegroundSession();
       refreshTrashCount();
       if (permissionGranted) refreshAllPreviews();
+      return () => sessionRef.current?.end();
     }, [refreshTrashCount, permissionGranted, refreshAllPreviews])
   );
 

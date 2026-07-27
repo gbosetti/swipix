@@ -3,6 +3,11 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
+// See RandomPhotosStrategy's identical constant and rationale — no
+// per-item cost, so it's cheap to sample deep enough that a fast swiping
+// session through this exact category can't decide every candidate.
+const PREVIEW_SAMPLE_SIZE = 50;
+
 /**
  * iOS tags screenshots with a specific mediaSubtype / albumId in the
  * photo library metadata — no image analysis needed at all. This is
@@ -21,11 +26,12 @@ export class ScreenshotStrategy extends CategoryStrategy {
     };
   }
 
-  // Native filter — asks the OS directly for the most recent screenshot.
+  // Native filter — asks the OS directly for the most recent screenshots.
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       mediaSubtypes: ['screenshot'],
+      first: PREVIEW_SAMPLE_SIZE,
     });
     const undecided = await this.excludeDecided(candidates);
     return undecided[0] ?? null;

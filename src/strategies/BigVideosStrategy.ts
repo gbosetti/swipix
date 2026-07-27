@@ -1,7 +1,6 @@
-import { File } from 'expo-file-system';
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter, ScanContext } from '../types';
 import i18n from '../i18n';
 
 // See BigPicturesStrategy's identical constant.
@@ -25,12 +24,17 @@ export class BigVideosStrategy extends CategoryStrategy {
     this.maxBytes = maxBytes;
   }
 
-  async matchCandidates(assets: Asset[]): Promise<Asset[]> {
-    return assets.filter((asset) => {
-      if (asset.mediaType !== 'video') return false;
-      const size = new File(asset.uri).size;
-      return size >= this.minBytes && size <= this.maxBytes;
-    });
+  async matchCandidates(assets: Asset[], context?: ScanContext): Promise<Asset[]> {
+    const videos = assets.filter((asset) => asset.mediaType === 'video');
+    const sizes = await Promise.all(
+      videos.map((asset) =>
+        PhotoLibraryService.getFileSize(asset.uri, {
+          priority: context?.priority,
+          isCancelled: context?.isCancelled,
+        })
+      )
+    );
+    return videos.filter((_, i) => sizes[i] >= this.minBytes && sizes[i] <= this.maxBytes);
   }
 
   get meta(): CategoryMeta {
@@ -50,20 +54,18 @@ export class BigVideosStrategy extends CategoryStrategy {
     return true;
   }
 
-  get isSlowScan(): boolean {
-    return true;
-  }
-
   // See BigPicturesStrategy's identical override.
   protected previewTimeoutMs = 6000;
 
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       first: PREVIEW_SAMPLE_SIZE,
       detailed: true,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
-    const matched = await this.matchCandidates(candidates);
+    const matched = await this.matchCandidates(candidates, context);
     const undecided = await this.excludeDecided(matched);
     return undecided[0] ?? null;
   }

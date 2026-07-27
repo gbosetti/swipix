@@ -7,17 +7,10 @@ jest.mock('../services/PhotoLibraryService');
 jest.mock('../services/TrashService', () => ({ TrashService: { getTrash: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/KeptService', () => ({ KeptService: { getKept: jest.fn().mockResolvedValue([]) } }));
 
-// The exact-duplicate signal reads real file size off disk via
-// expo-file-system's File — faked per-uri instead of touching the
+// The exact-duplicate signal reads real file size via
+// PhotoLibraryService.getFileSize — faked per-uri instead of touching the
 // filesystem, same approach as BigPicturesStrategy.test.ts.
 const fileSizes: Record<string, number> = {};
-jest.mock('expo-file-system', () => ({
-  File: jest.fn().mockImplementation((uri: string) => ({
-    get size() {
-      return fileSizes[uri];
-    },
-  })),
-}));
 
 // hammingDistance's own math is already covered by
 // ImageAnalysisService.test.ts — mocked here so this file's tests stay
@@ -66,6 +59,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
     Object.keys(fileSizes).forEach((key) => delete fileSizes[key]);
     mockedAnalyzeImages.mockResolvedValue(new Map());
     mockedHammingDistance.mockReturnValue(64); // "completely different" by default
+    mockedPhotoLibraryService.getFileSize.mockImplementation(async (uri) => fileSizes[uri] ?? 0);
   });
 
   it('matches exact duplicates by identical file size and dimensions', async () => {
@@ -169,15 +163,14 @@ describe('DuplicatesAndSimilarStrategy', () => {
     expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({ first: 15 });
   });
 
-  it('flags itself as a slow scan and threads onScanProgress into both the self-fetch and the analysis pass', async () => {
+  it('threads onScanProgress into both the self-fetch and the analysis pass', async () => {
     const a = makeAsset('a', { width: 200, height: 200 });
     fileSizes[a.uri] = 5000;
     mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a]);
     const strategy = new DuplicatesAndSimilarStrategy();
-    expect(strategy.isSlowScan).toBe(true);
 
     const onScanProgress = jest.fn();
-    await strategy.match([], onScanProgress);
+    await strategy.match([], { onProgress: onScanProgress });
     expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({
       first: 200,
       onProgress: onScanProgress,

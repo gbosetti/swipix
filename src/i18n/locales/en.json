@@ -74,7 +74,10 @@
     "undoLimitTitle": "Undoing a lot?",
     "undoLimitBody": "If you're trying to review several photos, check your Trash to see everything you've deleted so far.",
     "videoUnavailable": "This video couldn't be loaded",
-    "scanningProgress": "Scanning {{done}} of {{total}}…"
+    "scanningProgress": "Scanning {{done}} of {{total}}…",
+    "pausedTitle": "No more found nearby",
+    "pausedBody": "There may be more further into your library — keep searching, or come back later.",
+    "searchMore": "Search for more"
   },
   "trash": {
     "emptyTitle": "Trash is empty 🎉",

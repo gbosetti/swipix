@@ -1,7 +1,7 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
-import { Asset, CategoryMeta, ScanProgressCallback, TrashedAsset } from '../types';
+import { Asset, CategoryMeta, ScanContext, ScanProgressCallback, TrashedAsset } from '../types';
 
 jest.mock('../services/TrashService');
 jest.mock('../services/KeptService');
@@ -36,11 +36,8 @@ class PassThroughStrategy extends CategoryStrategy {
     super();
   }
 
-  protected async matchCandidates(
-    _assets: Asset[],
-    onScanProgress?: ScanProgressCallback
-  ): Promise<Asset[]> {
-    this.lastOnScanProgress = onScanProgress;
+  protected async matchCandidates(_assets: Asset[], context?: ScanContext): Promise<Asset[]> {
+    this.lastOnScanProgress = context?.onProgress;
     return this.candidates;
   }
 
@@ -114,12 +111,11 @@ describe('CategoryStrategy.match', () => {
     expect(result.map((a) => a.id)).toEqual(['c']);
   });
 
-  it('defaults isSlowScan to false and forwards onScanProgress through to matchCandidates', async () => {
+  it('forwards onScanProgress through to matchCandidates', async () => {
     const strategy = new PassThroughStrategy([]);
-    expect(strategy.isSlowScan).toBe(false);
 
     const onScanProgress = jest.fn();
-    await strategy.match([], onScanProgress);
+    await strategy.match([], { onProgress: onScanProgress });
     expect(strategy.lastOnScanProgress).toBe(onScanProgress);
   });
 });

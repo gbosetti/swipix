@@ -1,4 +1,4 @@
-import { Asset, CategoryMeta, MediaTypeFilter, ScanProgressCallback } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter, ScanContext } from '../types';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
 
@@ -23,11 +23,11 @@ export abstract class CategoryStrategy {
    * place that guarantee lives, whether a strategy filters the assets
    * it's handed or self-fetches its own dataset.
    *
-   * @param onScanProgress Optional progress callback for a strategy whose
-   * matching does real scanning (self-fetch, pixel analysis) — ignored by
-   * strategies that don't. */
-  async match(assets: Asset[], onScanProgress?: ScanProgressCallback): Promise<Asset[]> {
-    const candidates = await this.matchCandidates(assets, onScanProgress);
+   * @param context Optional progress/priority/cancellation for a strategy
+   * whose matching does real scanning (self-fetch, pixel analysis) —
+   * ignored by strategies that don't. */
+  async match(assets: Asset[], context?: ScanContext): Promise<Asset[]> {
+    const candidates = await this.matchCandidates(assets, context);
     return this.excludeDecided(candidates);
   }
 
@@ -39,10 +39,7 @@ export abstract class CategoryStrategy {
     return assets.filter((asset) => !decided.has(asset.id));
   }
 
-  protected abstract matchCandidates(
-    assets: Asset[],
-    onScanProgress?: ScanProgressCallback
-  ): Promise<Asset[]>;
+  protected abstract matchCandidates(assets: Asset[], context?: ScanContext): Promise<Asset[]>;
   abstract get meta(): CategoryMeta;
 
   /** Media types this strategy needs from a paginated fetch. Defaults to
@@ -64,15 +61,6 @@ export abstract class CategoryStrategy {
     return undefined;
   }
 
-  /** Whether this strategy does real, visibly-slow scanning (a detailed
-   * native fetch or pixel analysis) worth showing scan progress for, as
-   * opposed to a fast metadata filter. Defaults to false; SwipeScreen only
-   * wires up {@link ScanProgressCallback} — and shows a progress bar
-   * instead of a plain spinner — for a strategy that overrides this true. */
-  get isSlowScan(): boolean {
-    return false;
-  }
-
   /** How long {@link getPreview} waits before giving up and falling back
    * to the plain icon. Override for a strategy whose `findPreviewAsset`
    * does real per-photo analysis instead of a fast native query. */
@@ -87,7 +75,7 @@ export abstract class CategoryStrategy {
    * normal fast resolution would still leave the timeout scheduled for
    * the full duration.
    */
-  async getPreview(): Promise<Asset | null> {
+  async getPreview(context?: ScanContext): Promise<Asset | null> {
     return new Promise((resolve) => {
       let settled = false;
       const timeoutId = setTimeout(() => {
@@ -97,7 +85,7 @@ export abstract class CategoryStrategy {
         resolve(null);
       }, this.previewTimeoutMs);
 
-      this.findPreviewAsset()
+      this.findPreviewAsset(context)
         .catch((error) => {
           if (__DEV__) console.warn(`getPreview failed for ${this.meta.id}:`, error);
           return null;
@@ -113,6 +101,9 @@ export abstract class CategoryStrategy {
 
   /** Finds one representative asset for the preview thumbnail — a fast,
    * targeted lookup, not a full {@link matchCandidates} scan. Excludes
-   * already-decided assets, same as {@link match}. */
-  protected abstract findPreviewAsset(): Promise<Asset | null>;
+   * already-decided assets, same as {@link match}. `context` only matters
+   * to a strategy whose preview lookup does real native/detailed work
+   * (Big Pictures/Videos, Duplicates & Similar) — every other strategy's
+   * preview is a single fast query and can ignore it. */
+  protected abstract findPreviewAsset(context?: ScanContext): Promise<Asset | null>;
 }

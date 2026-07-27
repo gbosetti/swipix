@@ -309,6 +309,59 @@ describe('PhotoLibraryService native-call concurrency', () => {
 
     expect(callOrder).toEqual(['high', 'low']);
   });
+
+  it('skips an item that has not started its own native call once isCancelled becomes true, instead of occupying a slot for an abandoned session (regression: leaving a slow scan mid-flight could hold the whole concurrency pool hostage until its abandoned page fully drained, starving a freshly-opened swipe session even with high priority)', async () => {
+    let resolveGate!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resolveGate = resolve;
+    });
+    let cancelled = false;
+    const infoCalls: string[] = [];
+    mockedGetAssetInfoAsync.mockImplementation(async (asset: { id: string }) => {
+      infoCalls.push(asset.id);
+      if (asset.id.startsWith('filler')) {
+        await gate;
+      }
+      return { localUri: 'file:///a.jpg', mediaSubtypes: [] };
+    });
+
+    // Saturates the cap with 8 filler items that hold their slots open.
+    mockedGetAssetsAsync.mockResolvedValueOnce({
+      assets: Array.from({ length: 8 }, (_, i) => rawAsset(`filler${i}`, 'video')),
+      endCursor: 'a',
+      hasNextPage: false,
+      totalCount: 8,
+    });
+    const fillerPromise = PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 8,
+      detailed: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Queued behind the saturated cap — never gets a chance to dispatch
+    // its own native call before the caller abandons it.
+    mockedGetAssetsAsync.mockResolvedValueOnce({
+      assets: [rawAsset('queued', 'video')],
+      endCursor: 'b',
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    const queuedPromise = PhotoLibraryService.getMediaPage({
+      mediaTypes: ['video'],
+      first: 1,
+      detailed: true,
+      isCancelled: () => cancelled,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    cancelled = true;
+    resolveGate();
+    const [, queuedPage] = await Promise.all([fillerPromise, queuedPromise]);
+
+    expect(queuedPage.assets).toEqual([]);
+    expect(infoCalls).not.toContain('queued');
+  });
 });
 
 describe('PhotoLibraryService.getSplitMediaPage', () => {
@@ -466,15 +519,18 @@ describe('PhotoLibraryService cache eviction', () => {
     jest.useRealTimers();
   });
 
-  it('evicts a request that never settles, so a later identical request can retry instead of hanging on the same dead promise forever (regression: a real device report — thumbnails loaded once, then never again, even after restarting the app)', async () => {
+  it('the page-level native call times out and evicts itself from the fetch cache, so a later identical request gets a fresh fetch instead of hanging on the same dead promise forever (regression: a real device report — thumbnails loaded once, then never again, even after restarting the app)', async () => {
     // First call's underlying native fetch never resolves.
     mockedGetAssetsAsync.mockReturnValueOnce(new Promise(() => {}));
     const stuckPromise = PhotoLibraryService.getPreviewCandidates({ mediaTypes: ['photo'] });
-    // Move past the 15s eviction window.
-    jest.advanceTimersByTime(15000);
+    const rejection = expect(stuckPromise).rejects.toThrow('Native call timed out');
+    // Bounded by the page-fetch timeout itself now, not the (much longer)
+    // cache-eviction window — the underlying call settles on its own.
+    await jest.advanceTimersByTimeAsync(8000);
+    await rejection;
 
-    // A later, identical request should get a fresh fetch, not the same
-    // still-pending promise.
+    // A later, identical request should get a fresh fetch, not reuse the
+    // same now-settled (rejected) promise.
     mockedGetAssetsAsync.mockResolvedValueOnce({
       assets: [rawAsset('a')],
       endCursor: 'cursor-2',
@@ -485,7 +541,6 @@ describe('PhotoLibraryService cache eviction', () => {
 
     expect(recovered.map((a) => a.id)).toEqual(['a']);
     expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
-    void stuckPromise; // never resolves; deliberately not awaited
   });
 });
 
