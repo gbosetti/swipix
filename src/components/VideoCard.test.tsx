@@ -116,4 +116,26 @@ describe('VideoCard', () => {
 
     expect(screen.queryByTestId('video-play-button')).toBeNull();
   });
+
+  // Confirmed on a real device: bottom-tab siblings stay mounted when you
+  // switch tabs away from them, so a video kept playing (with sound) in
+  // a screen the user could no longer even see — isTop alone never
+  // changes just because the whole screen lost focus.
+  it('pauses the moment the screen loses focus, even though it is still the top card of its own deck', async () => {
+    const view = await render(<VideoCard asset={makeAsset('a')} isTop screenFocused />);
+    mockedPlayer.pause.mockClear();
+
+    await view.rerender(<VideoCard asset={makeAsset('a')} isTop screenFocused={false} />);
+
+    expect(mockedPlayer.pause).toHaveBeenCalled();
+  });
+
+  it('resumes automatically once the screen regains focus', async () => {
+    const view = await render(<VideoCard asset={makeAsset('a')} isTop screenFocused={false} />);
+    mockedPlayer.play.mockClear();
+
+    await view.rerender(<VideoCard asset={makeAsset('a')} isTop screenFocused />);
+
+    expect(mockedPlayer.play).toHaveBeenCalled();
+  });
 });

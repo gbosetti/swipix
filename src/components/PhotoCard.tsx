@@ -24,6 +24,13 @@ interface PhotoCardProps {
    * button's own brief loading spinner — sharing is never a swipe
    * decision, so this never advances or otherwise touches the deck. */
   onShare?: (asset: Asset) => Promise<void>;
+  /** Whether the screen showing this card currently has navigation focus.
+   * `isTop` alone can't tell a playing video to stop making sound —
+   * bottom-tab siblings stay mounted (just unfocused) when the user
+   * switches tabs, so a card can still be "the top card of its own deck"
+   * long after the whole screen isn't visible anymore. Defaults to true
+   * so a caller that doesn't track focus doesn't need to pass it. */
+  screenFocused?: boolean;
 }
 
 /**
@@ -34,7 +41,7 @@ interface PhotoCardProps {
  * Asset objects keep their own identity, so this only re-renders when its
  * own asset/isTop genuinely change.
  */
-function PhotoCard({ asset, isTop = true, onLoadError, onShare }: PhotoCardProps) {
+function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = true }: PhotoCardProps) {
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [sharing, setSharing] = useState(false);
@@ -82,7 +89,12 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare }: PhotoCardProps
     <View style={styles.card}>
       {asset.mediaType === 'video' ? (
         isTop ? (
-          <VideoCard asset={asset} isTop={isTop} onLoadError={onLoadError} />
+          <VideoCard
+            asset={asset}
+            isTop={isTop}
+            onLoadError={onLoadError}
+            screenFocused={screenFocused}
+          />
         ) : (
           // Background cards never mount a real player — useVideoPlayer
           // decodes/buffers immediately, wasting memory for what's unseen.

@@ -41,6 +41,13 @@ interface VideoCardProps {
    * onLoadError — never swipeable on a video the user can't actually see;
    * the caller is expected to silently drop this asset from the deck. */
   onLoadError?: () => void;
+  /** Whether the screen this card lives on currently has navigation
+   * focus. `isTop` alone isn't enough to know whether this should be
+   * playing — a bottom-tab sibling screen stays mounted (and its top
+   * card stays "the top card") even after the user switches tabs away
+   * from it. Confirmed on a real device: without this, switching tabs
+   * left a video's audio playing invisibly in the background. */
+  screenFocused?: boolean;
 }
 
 const SCRUB_TRACK_HEIGHT = 24;
@@ -58,7 +65,7 @@ const LOAD_TIMEOUT_MS = 8000;
  * Scrub position tracks the raw touch's locationX within the track, not
  * gesture.dx deltas — only one thumb, so an absolute mapping is simpler.
  */
-function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
+function VideoCard({ asset, isTop, onLoadError, screenFocused = true }: VideoCardProps) {
   const { t } = useTranslation();
   const [muted, setMuted] = useMutedPreference();
   const [scrubbing, setScrubbing] = useState(false);
@@ -124,13 +131,15 @@ function VideoCard({ asset, isTop, onLoadError }: VideoCardProps) {
   }, [muted, player]);
 
   useEffect(() => {
-    if (isTop && !failed) {
+    if (isTop && !failed && screenFocused) {
       player.play();
     } else {
-      // Stops retrying a confirmed-broken file in the background.
+      // Stops retrying a confirmed-broken file in the background, and —
+      // via screenFocused — stops it from playing on into a tab the user
+      // has already navigated away from.
       player.pause();
     }
-  }, [isTop, player, failed]);
+  }, [isTop, player, failed, screenFocused]);
 
   const progressFraction = scrubbing
     ? scrubFraction

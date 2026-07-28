@@ -100,6 +100,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const [consecutiveUndos, setConsecutiveUndos] = useState(0);
   // Bumped by "Swipe again" when there's no previous screen to go back to.
   const [sessionKey, setSessionKey] = useState(0);
+  // A playing video needs to know this too, not just whether it's the top
+  // card of its own deck — see the useFocusEffect below.
+  const [screenFocused, setScreenFocused] = useState(true);
 
   // Refs, not state — read/written from async loops and swipe handlers
   // without needing their own re-render.
@@ -370,11 +373,19 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const abandonedMidScanRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
+      setScreenFocused(true);
       if (abandonedMidScanRef.current) {
         abandonedMidScanRef.current = false;
         setSessionKey((k) => k + 1);
       }
       return () => {
+        // A playing video must stop making sound the instant this screen
+        // loses focus — confirmed on a real device: switching to another
+        // tab left a video's audio running in the background, since
+        // VideoCard's own play/pause logic only knows "am I the top card
+        // of my own deck" (isTop), which never changes just because the
+        // whole screen (a bottom-tab sibling) went out of focus.
+        setScreenFocused(false);
         if (candidatesRef.current === null) abandonedMidScanRef.current = true;
         sessionRef.current?.end();
       };
@@ -523,6 +534,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
               isTop={isTop}
               onLoadError={() => handleCardLoadError(asset)}
               onShare={handleShare}
+              screenFocused={screenFocused}
             />
           )}
           onSwipeLeft={handleSwipeLeft}

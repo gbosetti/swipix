@@ -44,6 +44,18 @@ export default function TrashScreen() {
 
   useFocusEffect(refresh);
 
+  // The preview modal below can mount a real, playing VideoCard — without
+  // this, switching tabs while a preview video is open would leave it
+  // playing (with sound) on a screen the user can no longer even see,
+  // same root cause as the identical SwipeScreen bug.
+  const [screenFocused, setScreenFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setScreenFocused(true);
+      return () => setScreenFocused(false);
+    }, [])
+  );
+
   // Extracts one frame per video item once, caching it here — only for
   // items not already generated.
   useEffect(() => {
@@ -212,7 +224,7 @@ export default function TrashScreen() {
             <>
               {previewItem.mediaType === 'video' ? (
                 <View style={styles.previewImage}>
-                  <VideoCard asset={previewItem} isTop />
+                  <VideoCard asset={previewItem} isTop screenFocused={screenFocused} />
                 </View>
               ) : (
                 <Image
