@@ -4,10 +4,12 @@ import { Asset, TrashedAsset } from '../types';
 
 const TRASH_KEY = '@swipix/trash';
 
-// A single deleteAssetsAsync call carrying hundreds of ids risks Android's
-// ~1MB Binder IPC ceiling and a sluggish native confirmation UI (issue
-// #11). Chunking sidesteps both and limits a failed batch's blast radius.
-// Exported so TrashScreen can warn about multiple confirmations up front.
+/**
+ * A single deleteAssetsAsync call carrying hundreds of ids risks Android's
+ * ~1MB Binder IPC ceiling and a sluggish native confirmation UI (issue
+ * #11). Chunking sidesteps both and limits a failed batch's blast radius.
+ * Exported so TrashScreen can warn about multiple confirmations up front.
+ */
 export const DELETE_BATCH_SIZE = 50;
 
 /**

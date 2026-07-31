@@ -24,8 +24,10 @@ function isSupportedLanguage(tag: string): tag is SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(tag);
 }
 
-/** First device locale (in preference order) that we actually ship a
- * translation for, or the fallback if none match. */
+/**
+ * First device locale (in preference order) that we actually ship a
+ * translation for, or the fallback if none match.
+ */
 function detectDeviceLanguage(): SupportedLanguage {
   const match = Localization.getLocales().find((locale) =>
     isSupportedLanguage(locale.languageCode ?? '')
@@ -57,8 +59,10 @@ export async function initI18n(): Promise<void> {
   });
 }
 
-/** Changes the active language immediately (no restart needed) and
- * persists the choice so it's used again on next launch. */
+/**
+ * Changes the active language immediately (no restart needed) and
+ * persists the choice so it's used again on next launch.
+ */
 export async function setLanguage(language: SupportedLanguage): Promise<void> {
   await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   await i18next.changeLanguage(language);

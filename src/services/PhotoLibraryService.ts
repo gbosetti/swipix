@@ -8,6 +8,9 @@ type AssetFilters = {
   createdAfter?: Date;
   createdBefore?: Date;
   albumId?: string;
+  /** Oldest-first instead of the app-wide default (newest-first) — only
+   * for finding the library's oldest asset (see getDateRange). */
+  ascending?: boolean;
 };
 export type Album = { id: string; title: string; assetCount: number };
 
@@ -137,8 +140,10 @@ export const PhotoLibraryService = {
     return status === 'granted';
   },
 
-  /** Detailed fetch — resolves every asset's real file path up front, for
-   * callers that read file size or decode pixels off `asset.uri`. */
+  /**
+   * Detailed fetch — resolves every asset's real file path up front, for
+   * callers that read file size or decode pixels off `asset.uri`.
+   */
   async getAllPhotos({
     first = 500,
     onProgress,
@@ -146,15 +151,19 @@ export const PhotoLibraryService = {
   }: {
     first?: number;
     onProgress?: ScanProgressCallback;
-    /** 'high' for an active swipe session; defaults to 'low' (background
-     * preview work) — see {@link CallPriority}. */
+    /**
+     * 'high' for an active swipe session; defaults to 'low' (background
+     * preview work) — see {@link CallPriority}.
+     */
     priority?: CallPriority;
   } = {}): Promise<Asset[]> {
     return (await this._fetchAssets('photo', first, undefined, true, undefined, onProgress, priority)).assets;
   },
 
-  /** Photos and videos together, detailed. Only for categories that
-   * genuinely need videos — everything else stays on {@link getAllPhotos}. */
+  /**
+   * Photos and videos together, detailed. Only for categories that
+   * genuinely need videos — everything else stays on {@link getAllPhotos}.
+   */
   async getAllMedia({
     first = 500,
     onProgress,
@@ -211,10 +220,12 @@ export const PhotoLibraryService = {
     onProgress?: ScanProgressCallback;
     /** 'high' for an active swipe session; defaults to 'low'. */
     priority?: CallPriority;
-    /** Checked before each item still waiting for a concurrency slot —
+    /**
+     * Checked before each item still waiting for a concurrency slot —
      * an item that hasn't started yet skips its native call entirely once
      * this returns true, instead of occupying a slot a still-active
-     * caller needs. Can't stop an item's call that's already dispatched. */
+     * caller needs. Can't stop an item's call that's already dispatched.
+     */
     isCancelled?: () => boolean;
   }): Promise<AssetPage> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
@@ -230,10 +241,12 @@ export const PhotoLibraryService = {
     );
   },
 
-  /** Small, targeted fetch for one category's own preview lookup — newest
+  /**
+   * Small, targeted fetch for one category's own preview lookup — newest
    * first, with optional native filters so a strategy can ask the OS
    * directly instead of scanning a shared sample. `first` defaults to a
-   * handful so already-decided assets can be skipped locally. */
+   * handful so already-decided assets can be skipped locally.
+   */
   async getPreviewCandidates({
     mediaTypes,
     mediaSubtypes,
@@ -252,8 +265,10 @@ export const PhotoLibraryService = {
     albumId?: string;
     first?: number;
     detailed?: boolean;
-    /** 'high' for an active swipe session; defaults to 'low' — see
-     * {@link CallPriority}. */
+    /**
+     * 'high' for an active swipe session; defaults to 'low' — see
+     * {@link CallPriority}.
+     */
     priority?: CallPriority;
     isCancelled?: () => boolean;
   }): Promise<Asset[]> {
@@ -269,6 +284,29 @@ export const PhotoLibraryService = {
       isCancelled
     );
     return page.assets;
+  },
+
+  /**
+   * The library's oldest and newest creation dates for `mediaTypes`, from
+   * two cheap `first: 1` queries — not a full scan. Used to pick a
+   * genuinely random point across the *whole* library's timespan (see
+   * RandomShuffleStrategy): the OS's pagination is cursor-based, not
+   * index-based, so there's no direct way to "jump to a random position"
+   * without knowing the real span to sample within first.
+   */
+  async getDateRange(
+    mediaTypes: MediaTypeFilter[],
+    { priority, isCancelled }: { priority?: CallPriority; isCancelled?: () => boolean } = {}
+  ): Promise<{ oldest: Date; newest: Date } | null> {
+    const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
+    const [newestPage, oldestPage] = await Promise.all([
+      this._fetchAssets(type, 1, undefined, false, undefined, undefined, priority, isCancelled),
+      this._fetchAssets(type, 1, undefined, false, { ascending: true }, undefined, priority, isCancelled),
+    ]);
+    const newest = newestPage.assets[0];
+    const oldest = oldestPage.assets[0];
+    if (!newest || !oldest) return null;
+    return { oldest: new Date(oldest.creationTime), newest: new Date(newest.creationTime) };
   },
 
   /**
@@ -293,8 +331,10 @@ export const PhotoLibraryService = {
       .sort((a, b) => a.title.localeCompare(b.title));
   },
 
-  /** One combined photo+video fetch, pre-split by media type — avoids
-   * duplicating that split logic at every caller that needs both. */
+  /**
+   * One combined photo+video fetch, pre-split by media type — avoids
+   * duplicating that split logic at every caller that needs both.
+   */
   async getSplitMediaPage({
     first,
     after,
@@ -364,7 +404,10 @@ export const PhotoLibraryService = {
         mediaType,
         first,
         after,
-        sortBy: [MediaLibrary.SortBy.creationTime],
+        // Only deviates from the app-wide newest-first default when a
+        // caller explicitly asks for ascending (see getDateRange) —
+        // every existing caller keeps its current behavior untouched.
+        sortBy: filters?.ascending ? [['creationTime', true]] : [MediaLibrary.SortBy.creationTime],
         ...(filters?.mediaSubtypes ? { mediaSubtypes: filters.mediaSubtypes } : {}),
         ...(filters?.createdAfter ? { createdAfter: filters.createdAfter } : {}),
         ...(filters?.createdBefore ? { createdBefore: filters.createdBefore } : {}),
@@ -527,9 +570,11 @@ export const PhotoLibraryService = {
     }
   },
 
-  /** Permanently deletes assets. The OS shows its own confirmation dialog
+  /**
+   * Permanently deletes assets. The OS shows its own confirmation dialog
    * first; throws if the user cancels, so callers never mistake a
-   * cancelled deletion for a successful one. */
+   * cancelled deletion for a successful one.
+   */
   async deleteAssets(assetIds: string[]): Promise<void> {
     const success = await MediaLibrary.deleteAssetsAsync(assetIds);
     if (!success) {

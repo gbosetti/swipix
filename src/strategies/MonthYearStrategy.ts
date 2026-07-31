@@ -35,8 +35,10 @@ export class MonthYearStrategy extends CategoryStrategy {
     };
   }
 
-  // Native date filters ask the OS directly for a photo IN that month,
-  // rather than hoping one turns up in a "most recent overall" sample.
+  /**
+   * Native date filters ask the OS directly for a photo IN that month,
+   * rather than hoping one turns up in a "most recent overall" sample.
+   */
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,

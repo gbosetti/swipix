@@ -68,9 +68,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** generateThumbnailsAsync needs the asset's metadata loaded first —
+/**
+ * generateThumbnailsAsync needs the asset's metadata loaded first —
  * without this, it's called against a player that hasn't opened the
- * file yet and just fails. */
+ * file yet and just fails.
+ */
 function waitUntilReady(player: VideoPlayer): Promise<void> {
   return new Promise((resolve, reject) => {
     if (player.status === 'readyToPlay') {

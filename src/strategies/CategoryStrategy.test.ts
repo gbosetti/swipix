@@ -26,9 +26,11 @@ function makeTrashedAsset(id: string): TrashedAsset {
   return { ...makeAsset(id), trashedAt: Date.now() };
 }
 
-/** A trivial concrete subclass — CategoryStrategy itself is abstract, and
+/**
+ * A trivial concrete subclass — CategoryStrategy itself is abstract, and
  * `match()`'s trash/kept exclusion is the thing under test here, not any
- * particular category's own matching logic. */
+ * particular category's own matching logic.
+ */
 class PassThroughStrategy extends CategoryStrategy {
   lastOnScanProgress: ScanProgressCallback | undefined;
 
@@ -50,9 +52,11 @@ class PassThroughStrategy extends CategoryStrategy {
   }
 }
 
-/** Exercises getPreview()'s template method itself — bounded wait,
+/**
+ * Exercises getPreview()'s template method itself — bounded wait,
  * survives a strategy-specific error, excludes decided assets — using a
- * subclass whose findPreviewAsset is fully controlled by the test. */
+ * subclass whose findPreviewAsset is fully controlled by the test.
+ */
 class ControllablePreviewStrategy extends CategoryStrategy {
   constructor(private readonly impl: () => Promise<Asset | null>) {
     super();

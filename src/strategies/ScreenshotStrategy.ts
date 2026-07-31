@@ -26,7 +26,7 @@ export class ScreenshotStrategy extends CategoryStrategy {
     };
   }
 
-  // Native filter — asks the OS directly for the most recent screenshots.
+  /** Native filter — asks the OS directly for the most recent screenshots. */
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,

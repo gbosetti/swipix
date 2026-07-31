@@ -12,8 +12,10 @@ import {
 } from './ImageAnalysisService';
 import { Asset } from '../types';
 
-/** Builds a synthetic RGBA buffer for a solid color — the simplest case
- * for verifying brightness/luma math without needing a real JPEG. */
+/**
+ * Builds a synthetic RGBA buffer for a solid color — the simplest case
+ * for verifying brightness/luma math without needing a real JPEG.
+ */
 function solidRgba(width: number, height: number, r: number, g: number, b: number): Uint8Array {
   const data = new Uint8Array(width * height * 4);
   for (let i = 0; i < data.length; i += 4) {
@@ -25,8 +27,10 @@ function solidRgba(width: number, height: number, r: number, g: number, b: numbe
   return data;
 }
 
-/** Builds a synthetic checkerboard RGBA buffer — sharp, high-contrast
- * edges everywhere, the opposite case from a solid color. */
+/**
+ * Builds a synthetic checkerboard RGBA buffer — sharp, high-contrast
+ * edges everywhere, the opposite case from a solid color.
+ */
 function checkerboardRgba(width: number, height: number): Uint8Array {
   const data = new Uint8Array(width * height * 4);
   for (let y = 0; y < height; y++) {

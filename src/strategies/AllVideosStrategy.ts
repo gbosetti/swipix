@@ -25,7 +25,7 @@ export class AllVideosStrategy extends CategoryStrategy {
     return ['video'];
   }
 
-  // No filter at all, so the single most recent video is always valid.
+  /** No filter at all, so the single most recent video is always valid. */
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({ mediaTypes: this.mediaTypes });
     const undecided = await this.excludeDecided(candidates);

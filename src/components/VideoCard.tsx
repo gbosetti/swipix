@@ -34,19 +34,25 @@ function useMutedPreference(): [boolean, (next: boolean) => void] {
 
 interface VideoCardProps {
   asset: Asset;
-  /** Only the top card actually plays — the stacked cards behind it stay
-   * paused. */
+  /**
+   * Only the top card actually plays — the stacked cards behind it stay
+   * paused.
+   */
   isTop: boolean;
-  /** Fired once if the video fails to load. Mirrors PhotoCard's
+  /**
+   * Fired once if the video fails to load. Mirrors PhotoCard's
    * onLoadError — never swipeable on a video the user can't actually see;
-   * the caller is expected to silently drop this asset from the deck. */
+   * the caller is expected to silently drop this asset from the deck.
+   */
   onLoadError?: () => void;
-  /** Whether the screen this card lives on currently has navigation
+  /**
+   * Whether the screen this card lives on currently has navigation
    * focus. `isTop` alone isn't enough to know whether this should be
    * playing — a bottom-tab sibling screen stays mounted (and its top
    * card stays "the top card") even after the user switches tabs away
    * from it. Confirmed on a real device: without this, switching tabs
-   * left a video's audio playing invisibly in the background. */
+   * left a video's audio playing invisibly in the background.
+   */
   screenFocused?: boolean;
 }
 

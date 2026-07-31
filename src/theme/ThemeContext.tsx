@@ -71,8 +71,10 @@ export function useTheme(): ThemeContextValue {
   return context;
 }
 
-/** Shorthand for the common case — most components only need the
- * active palette, not the mode-switching machinery. */
+/**
+ * Shorthand for the common case — most components only need the
+ * active palette, not the mode-switching machinery.
+ */
 export function useColors(): ColorPalette {
   return useTheme().colors;
 }

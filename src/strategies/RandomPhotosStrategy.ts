@@ -16,6 +16,13 @@ const PREVIEW_SAMPLE_SIZE = 50;
  * entry point, and the fallback when more specific categories turn up
  * little. Fisher-Yates keeps the shuffle unbiased and doesn't mutate
  * the input array.
+ *
+ * @remarks
+ * Only shuffles within whatever page SwipeScreen's own sequential
+ * pagination is currently on — a long session still reads as a coarse
+ * newest-to-oldest sweep, since pages are fetched and appended in that
+ * order. See RandomShuffleStrategy for a category that's scattered
+ * across the whole library instead.
  */
 export class RandomPhotosStrategy extends CategoryStrategy {
   async matchCandidates(assets: Asset[]): Promise<Asset[]> {

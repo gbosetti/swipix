@@ -47,8 +47,10 @@ export default function RootNavigator() {
   );
 }
 
-/** Split out from RootNavigator so it can read BulkOperationContext — the
- * provider has to sit above this, not around it. */
+/**
+ * Split out from RootNavigator so it can read BulkOperationContext — the
+ * provider has to sit above this, not around it.
+ */
 function Tabs({
   colors,
   t,

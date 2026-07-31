@@ -39,7 +39,7 @@ export class MonthYearVideosStrategy extends CategoryStrategy {
     return ['video'];
   }
 
-  // See MonthYearStrategy's identical override for the rationale.
+  /** See MonthYearStrategy's identical override for the rationale. */
   protected async findPreviewAsset(): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,

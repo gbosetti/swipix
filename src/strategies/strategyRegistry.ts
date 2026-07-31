@@ -1,5 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { RandomPhotosStrategy } from './RandomPhotosStrategy';
+import { RandomShuffleStrategy } from './RandomShuffleStrategy';
 import { ScreenshotStrategy } from './ScreenshotStrategy';
 import { AlbumStrategy } from './AlbumStrategy';
 import { AlbumVideosStrategy } from './AlbumVideosStrategy';
@@ -13,11 +14,14 @@ import { BrightnessStrategy } from './BrightnessStrategy';
 import { MonthYearStrategy } from './MonthYearStrategy';
 import { MonthYearVideosStrategy } from './MonthYearVideosStrategy';
 
-/** Every strategy's stable identifier, matching its own `meta.id`. Travels
+/**
+ * Every strategy's stable identifier, matching its own `meta.id`. Travels
  * through navigation params instead of a live class instance — see
- * navigation/types.ts's SwipeRouteParams. */
+ * navigation/types.ts's SwipeRouteParams.
+ */
 export type StrategyId =
   | 'random'
+  | 'random-shuffle'
   | 'month-year'
   | 'screenshots'
   | 'album'
@@ -31,9 +35,11 @@ export type StrategyId =
   | 'short-videos'
   | 'big-videos';
 
-/** Reconstructs a CategoryStrategy from a plain, serializable
+/**
+ * Reconstructs a CategoryStrategy from a plain, serializable
  * `{strategyId, params}` pair — a live class instance isn't serializable,
- * so it can't travel through React Navigation params directly. */
+ * so it can't travel through React Navigation params directly.
+ */
 export function createStrategy(
   strategyId: StrategyId,
   params: Record<string, number | string> = {}
@@ -41,6 +47,8 @@ export function createStrategy(
   switch (strategyId) {
     case 'random':
       return new RandomPhotosStrategy();
+    case 'random-shuffle':
+      return new RandomShuffleStrategy();
     case 'month-year':
       return new MonthYearStrategy(params.year as number, params.month as number);
     case 'screenshots':

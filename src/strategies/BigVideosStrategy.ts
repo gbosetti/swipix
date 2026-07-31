@@ -52,7 +52,7 @@ export class BigVideosStrategy extends CategoryStrategy {
     return ['video'];
   }
 
-  // Reads real file bytes off asset.localUri — needs a resolved file path.
+  /** Reads real file bytes off asset.localUri — needs a resolved file path. */
   get needsDetailedFetch(): boolean {
     return true;
   }

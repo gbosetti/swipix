@@ -8,10 +8,12 @@ export interface ColorPalette {
   accent: string;
   danger: string;
   success: string;
-  /** Text/icon color for anything sitting on an accent/danger/success
+  /**
+   * Text/icon color for anything sitting on an accent/danger/success
    * surface. Those three stay constant across themes, so text on top of
    * them must too — it should never flip to textPrimary's black in
-   * light mode, which would read as low-contrast on a colored button. */
+   * light mode, which would read as low-contrast on a colored button.
+   */
   onBrand: string;
 
   textPrimary: string;

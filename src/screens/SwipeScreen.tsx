@@ -21,8 +21,10 @@ import { useColors } from '../theme/ThemeContext';
 interface SwipeHistoryEntry {
   asset: Asset;
   direction: 'left' | 'right';
-  /** Was this already Kept before the swipe (e.g. reconsidered from the
-   * Kept tab)? Undo needs to restore that, not just pull it out of Trash. */
+  /**
+   * Was this already Kept before the swipe (e.g. reconsidered from the
+   * Kept tab)? Undo needs to restore that, not just pull it out of Trash.
+   */
   wasKept?: boolean;
 }
 
@@ -131,13 +133,15 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // preview work, and leaving this screen supersedes this scan in turn.
   const sessionRef = useRef<ForegroundSession | null>(null);
 
-  /** Pages through the library via the strategy, accumulating matches
+  /**
+   * Pages through the library via the strategy, accumulating matches
    * until there's enough to show, the library's exhausted, or the safety
    * cap hits. Shared by the initial load (minMatches=INITIAL_REVEAL_THRESHOLD,
    * so it returns as soon as a batch finds anything) and background
    * top-ups (minMatches=MIN_BUFFER) — only the initial load passes
    * `onProgress`, since background top-ups have no visible loading state
-   * for it to update. */
+   * for it to update.
+   */
   const fetchMoreMatches = useCallback(
     async (
       session: ForegroundSession,
@@ -193,7 +197,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
     [strategy]
   );
 
-  /** One fetch cycle of a (possibly multi-cycle) top-up, always re-checking
+  /**
+   * One fetch cycle of a (possibly multi-cycle) top-up, always re-checking
    * "is the deck actually empty right now" from live refs rather than a
    * snapshot — a retry chain can outlive several more swipes, so a
    * `remaining` value captured when it started can go stale by the time
@@ -214,7 +219,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
    * open-ended Big Pictures search). Once the budget runs out with
    * `hasNextPage` still true, this pauses rather than claiming "finished"
    * — the library isn't actually known to be exhausted, just not fully
-   * searched yet — and hands control to the manual "search more" action. */
+   * searched yet — and hands control to the manual "search more" action.
+   */
   const runTopUpCycle = useCallback(
     (session: ForegroundSession, cycle = 0) => {
       const deckIsEmpty = swipedCountRef.current >= candidatesLengthRef.current;
@@ -272,8 +278,10 @@ export default function SwipeScreen({ route, navigation }: Props) {
     [fetchMoreMatches]
   );
 
-  /** Kicks off a background fetch once the deck is running low. No-op
-   * while a fetch is already in flight or the library's fully paged. */
+  /**
+   * Kicks off a background fetch once the deck is running low. No-op
+   * while a fetch is already in flight or the library's fully paged.
+   */
   const maybeTopUp = useCallback(
     (remaining: number) => {
       if (remaining > MIN_BUFFER) return;
@@ -286,10 +294,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
     [runTopUpCycle]
   );
 
-  /** Manual fallback for when the automatic retry budget ran out without
+  /**
+   * Manual fallback for when the automatic retry budget ran out without
    * an answer either way — re-enters the same bounded retry chain with a
    * fresh budget, rather than searching unboundedly even on an explicit
-   * user request. */
+   * user request.
+   */
   const handleSearchMore = useCallback(() => {
     if (fetchingMoreRef.current) return;
     const session = sessionRef.current;
@@ -414,17 +424,21 @@ export default function SwipeScreen({ route, navigation }: Props) {
     maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
   };
 
-  /** A photo that fails to load must never be swipeable — left/right would
+  /**
+   * A photo that fails to load must never be swipeable — left/right would
    * delete or keep something never seen. Not a decision: no Trash, no
-   * Kept, no history entry, just dropped from the deck. */
+   * Kept, no history entry, just dropped from the deck.
+   */
   const handleCardLoadError = (asset: Asset) => {
     setCandidates((prev) => (prev ? prev.filter((a) => a.id !== asset.id) : prev));
     candidatesLengthRef.current = Math.max(0, candidatesLengthRef.current - 1);
     maybeTopUp((candidates?.length ?? 1) - 1 - swipedCountRef.current);
   };
 
-  /** Never a swipe decision — opens the OS share sheet for whatever's
-   * currently shown, leaving the card and deck untouched either way. */
+  /**
+   * Never a swipe decision — opens the OS share sheet for whatever's
+   * currently shown, leaving the card and deck untouched either way.
+   */
   const handleShare = async (asset: Asset) => {
     try {
       const uri = await PhotoLibraryService.getShareableUri(asset.id);

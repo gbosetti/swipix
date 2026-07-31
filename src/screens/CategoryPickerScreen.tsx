@@ -13,6 +13,7 @@ import RangeSlider from '../components/RangeSlider';
 import MonthYearPicker from '../components/MonthYearPicker';
 import AlbumPicker from '../components/AlbumPicker';
 import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
+import { RandomShuffleStrategy } from '../strategies/RandomShuffleStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { AlbumStrategy } from '../strategies/AlbumStrategy';
 import { AlbumVideosStrategy } from '../strategies/AlbumVideosStrategy';
@@ -36,9 +37,11 @@ import { CategoryMeta } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
-/** Resolves a category card's preview to whatever `<Image>` needs — a
+/**
+ * Resolves a category card's preview to whatever `<Image>` needs — a
  * plain URI, or an extracted frame for a video. `getPreview()` never
- * rejects and is already timeout-bounded, so nothing to catch here. */
+ * rejects and is already timeout-bounded, so nothing to catch here.
+ */
 async function resolvePreviewDisplay(strategy: CategoryStrategy): Promise<string | VideoThumbnail | null> {
   const asset = await strategy.getPreview();
   if (!asset) return null;
@@ -70,6 +73,7 @@ const ALBUM_ID_KEY = '@swipix/albumId';
 const ALBUM_VIDEO_ID_KEY = '@swipix/albumVideoId';
 
 const randomPhotosStrategy = new RandomPhotosStrategy();
+const randomShuffleStrategy = new RandomShuffleStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
 const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
 // Held as instances, not pre-read `.meta`, so `.meta.title`'s translation
@@ -103,10 +107,12 @@ const titleRowStyles = StyleSheet.create({
   chevron: { fontSize: 22, fontWeight: '400' },
 });
 
-/** Title + chevron affordance shared by every card. `previewUri` falls
+/**
+ * Title + chevron affordance shared by every card. `previewUri` falls
  * back to the category's `meta.icon` when there's no match yet. Uses
  * expo-image's `<Image>` since it can render both a plain URI and an
- * extracted video-frame reference through the same `source` prop. */
+ * extracted video-frame reference through the same `source` prop.
+ */
 function TitleRow({
   title,
   icon,
@@ -244,6 +250,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // preview that failed once gets another chance.
   const refreshAllPreviews = useCallback(() => {
     refreshPreview(randomPhotosStrategy);
+    refreshPreview(randomShuffleStrategy);
     refreshPreview(screenshotStrategy);
     refreshPreview(duplicatesAndSimilarStrategy);
     refreshPreview(blurredImagesStrategy);
@@ -384,6 +391,17 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           title={randomPhotosStrategy.meta.title}
           icon={randomPhotosStrategy.meta.icon}
           previewUri={previews[randomPhotosStrategy.meta.id]}
+        />
+      </Pressable>
+
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Swipe', { strategyId: 'random-shuffle' })}
+      >
+        <TitleRow
+          title={randomShuffleStrategy.meta.title}
+          icon={randomShuffleStrategy.meta.icon}
+          previewUri={previews[randomShuffleStrategy.meta.id]}
         />
       </Pressable>
 

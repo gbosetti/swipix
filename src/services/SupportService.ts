@@ -23,11 +23,13 @@ export function buildFeedbackMailtoUrl(subject: string, body: string): string {
   return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-// Returns whether the mail app actually opened — some devices (and the
-// iOS Simulator, when no Mail account is configured) have no handler for
-// mailto: at all, in which case Linking.openURL rejects. The caller uses
-// this to fall back to something the user can still act on (the address
-// itself), instead of the tap silently doing nothing.
+/**
+ * Returns whether the mail app actually opened — some devices (and the
+ * iOS Simulator, when no Mail account is configured) have no handler for
+ * mailto: at all, in which case Linking.openURL rejects. The caller uses
+ * this to fall back to something the user can still act on (the address
+ * itself), instead of the tap silently doing nothing.
+ */
 export async function openFeedbackEmail(subject: string, body: string): Promise<boolean> {
   try {
     await Linking.openURL(buildFeedbackMailtoUrl(subject, body));

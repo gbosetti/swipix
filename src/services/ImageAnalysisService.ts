@@ -46,8 +46,10 @@ interface CacheEntry {
 
 const CACHE_KEY = '@swipix/imageAnalysisCache';
 
-// Simple LRU-style bound — a photo no longer in view stops getting its
-// lastSeenAt refreshed, so without a cap this would grow forever.
+/**
+ * Simple LRU-style bound — a photo no longer in view stops getting its
+ * lastSeenAt refreshed, so without a cap this would grow forever.
+ */
 export const MAX_CACHE_ENTRIES = 5000;
 
 let memoryCache: Map<string, CacheEntry> | null = null;
@@ -120,8 +122,10 @@ export async function analyzeImages(
   return analyses;
 }
 
-/** Bit-difference count between two dHash values, for deciding whether two
- * photos are visually similar. */
+/**
+ * Bit-difference count between two dHash values, for deciding whether two
+ * photos are visually similar.
+ */
 export function hammingDistance(a: string, b: string): number {
   const aHi = parseInt(a.slice(0, 8), 16);
   const aLo = parseInt(a.slice(8), 16);
@@ -130,14 +134,18 @@ export function hammingDistance(a: string, b: string): number {
   return popcount32((aHi ^ bHi) >>> 0) + popcount32((aLo ^ bLo) >>> 0);
 }
 
-// <=4 bits "near identical", <=10 "visually similar" per common dHash
-// literature — a starting point, not calibrated against this app's own
-// photos yet (see issue #10).
+/**
+ * <=4 bits "near identical", <=10 "visually similar" per common dHash
+ * literature — a starting point, not calibrated against this app's own
+ * photos yet (see issue #10).
+ */
 export const HAMMING_THRESHOLD = 8;
 
-/** Resize, decode, derive luma, compute all three signals from that one
+/**
+ * Resize, decode, derive luma, compute all three signals from that one
  * buffer. Swallows failures and returns null — an undecodable photo
- * should just never appear in brightness/blur/duplicate categories. */
+ * should just never appear in brightness/blur/duplicate categories.
+ */
 async function analyzeOne(uri: string): Promise<ImageAnalysis | null> {
   let tmpUri: string | null = null;
   try {
@@ -211,10 +219,12 @@ export function laplacianBlurScore(luma: Float32Array, width: number, height: nu
   return Math.round((1 - sharpness) * 100); // onto the 0(sharp)-100(blurry) scale
 }
 
-/** Downsamples the already-decoded luma buffer to a small grid
+/**
+ * Downsamples the already-decoded luma buffer to a small grid
  * (point-sampled, no second native resize) and compares each pixel to its
  * right neighbor. Packed into two uint32s since duplicate detection runs
- * this O(n^2) across the library. */
+ * this O(n^2) across the library.
+ */
 export function differenceHash(luma: Float32Array, width: number, height: number): string {
   const small = new Float32Array(HASH_COLS * HASH_ROWS);
   for (let y = 0; y < HASH_ROWS; y++) {
@@ -249,8 +259,10 @@ export function popcount32(x: number): number {
   return (x * 0x01010101) >> 24;
 }
 
-/** Runs `fn` over `items` with at most `limit` in flight — each in-flight
- * call is a real native image decode (see {@link CONCURRENCY}). */
+/**
+ * Runs `fn` over `items` with at most `limit` in flight — each in-flight
+ * call is a real native image decode (see {@link CONCURRENCY}).
+ */
 async function mapWithConcurrency<T>(
   items: T[],
   limit: number,

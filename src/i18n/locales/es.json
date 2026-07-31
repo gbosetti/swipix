@@ -162,6 +162,7 @@
     "album": "Por álbum",
     "album-videos": "Videos por álbum",
     "month-year-videos": "Videos por mes",
-    "random": "Todas las fotos"
+    "random": "Todas las fotos",
+    "random-shuffle": "Mezcla aleatoria"
   }
 }

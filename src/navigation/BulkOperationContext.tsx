@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
 interface BulkOperationContextValue {
-  /** True for the whole "Empty Trash Now" window. Read by RootNavigator
+  /**
+   * True for the whole "Empty Trash Now" window. Read by RootNavigator
    * to block switching tabs mid-flow — every tab stays mounted, so
    * without this a native delete dialog can surface on an unrelated
-   * screen the user has since wandered to. */
+   * screen the user has since wandered to.
+   */
   isBulkDeleteInProgress: boolean;
   setBulkDeleteInProgress: (value: boolean) => void;
 }

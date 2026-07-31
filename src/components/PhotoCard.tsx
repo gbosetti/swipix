@@ -16,20 +16,26 @@ interface PhotoCardProps {
   asset: Asset;
   /** True only for the frontmost, interactive card. */
   isTop?: boolean;
-  /** Fired if the asset (photo or video) fails to load. Never swipeable
+  /**
+   * Fired if the asset (photo or video) fails to load. Never swipeable
    * on something the user can't see — the caller is expected to silently
-   * drop this asset from the deck. */
+   * drop this asset from the deck.
+   */
   onLoadError?: () => void;
-  /** Opens the OS share sheet for this asset. Awaited only to drive the
+  /**
+   * Opens the OS share sheet for this asset. Awaited only to drive the
    * button's own brief loading spinner — sharing is never a swipe
-   * decision, so this never advances or otherwise touches the deck. */
+   * decision, so this never advances or otherwise touches the deck.
+   */
   onShare?: (asset: Asset) => Promise<void>;
-  /** Whether the screen showing this card currently has navigation focus.
+  /**
+   * Whether the screen showing this card currently has navigation focus.
    * `isTop` alone can't tell a playing video to stop making sound —
    * bottom-tab siblings stay mounted (just unfocused) when the user
    * switches tabs, so a card can still be "the top card of its own deck"
    * long after the whole screen isn't visible anymore. Defaults to true
-   * so a caller that doesn't track focus doesn't need to pass it. */
+   * so a caller that doesn't track focus doesn't need to pass it.
+   */
   screenFocused?: boolean;
 }
 

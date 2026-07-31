@@ -49,8 +49,10 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
     return this.findDuplicates(media, context);
   }
 
-  /** Shared by matchCandidates and findPreviewAsset so both run the same
-   * detection, just on differently-sized samples. */
+  /**
+   * Shared by matchCandidates and findPreviewAsset so both run the same
+   * detection, just on differently-sized samples.
+   */
   private async findDuplicates(media: Asset[], context?: ScanContext): Promise<Asset[]> {
     const sizes = await Promise.all(
       // localUri, not uri — a video's uri is always the raw ph:// playback

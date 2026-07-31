@@ -12,12 +12,12 @@ const mockedGetAssetsAsync = MediaLibrary.getAssetsAsync as jest.Mock;
 const mockedGetAssetInfoAsync = MediaLibrary.getAssetInfoAsync as jest.Mock;
 const mockedGetAlbumsAsync = MediaLibrary.getAlbumsAsync as jest.Mock;
 
-function rawAsset(id: string, mediaType: 'photo' | 'video' = 'photo') {
+function rawAsset(id: string, mediaType: 'photo' | 'video' = 'photo', creationTime = 1000) {
   return {
     id,
     uri: `ph://${id}`,
     mediaType,
-    creationTime: 1000,
+    creationTime,
     duration: 0,
     width: 100,
     height: 100,
@@ -597,6 +597,38 @@ describe('PhotoLibraryService.getPreviewCandidates', () => {
 
     expect(mockedGetAssetInfoAsync).toHaveBeenCalled();
     expect(candidates[0].uri).toBe('file:///a.jpg');
+  });
+});
+
+describe('PhotoLibraryService.getDateRange', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('resolves the oldest and newest creation dates from two cheap first:1 queries, not a full scan', async () => {
+    mockedGetAssetsAsync.mockImplementation(async (options: { sortBy?: unknown }) => {
+      const ascending = Array.isArray(options.sortBy) && Array.isArray(options.sortBy[0])
+        ? (options.sortBy[0] as [string, boolean])[1]
+        : false;
+      return {
+        assets: [rawAsset(ascending ? 'oldest' : 'newest', 'photo', ascending ? 1000 : 9000)],
+        endCursor: 'c',
+        hasNextPage: false,
+        totalCount: 1,
+      };
+    });
+
+    const range = await PhotoLibraryService.getDateRange(['photo']);
+
+    expect(range).toEqual({ oldest: new Date(1000), newest: new Date(9000) });
+    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
+    expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
+  });
+
+  it('resolves to null rather than throwing when the library has no assets at all', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 0 });
+
+    const range = await PhotoLibraryService.getDateRange(['photo']);
+
+    expect(range).toBeNull();
   });
 });
 

@@ -1,11 +1,13 @@
 import { InterstitialAd } from 'react-native-google-mobile-ads';
 import { showInterstitialAd } from './AdService';
 
-/** Mocks the whole SDK — it's a native module that can't run in Jest,
+/**
+ * Mocks the whole SDK — it's a native module that can't run in Jest,
  * and the actual behavior worth testing here is Swipix's own wrapper
  * logic (never blocking, never rejecting), not the SDK itself. Built as
  * a small manual event emitter so tests can trigger LOADED/ERROR/CLOSED
- * on demand, the same way the real native module would via events. */
+ * on demand, the same way the real native module would via events.
+ */
 const mockPlayer = {
   addAdEventListener: jest.fn(),
   show: jest.fn(),

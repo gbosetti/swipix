@@ -24,8 +24,10 @@ export const KeptService = {
     await this._save(updated);
   },
 
-  /** Un-marks every kept photo at once, same as "Swipe Again" on each
-   * individually — every photo just returns to the undecided pool. */
+  /**
+   * Un-marks every kept photo at once, same as "Swipe Again" on each
+   * individually — every photo just returns to the undecided pool.
+   */
   async clearAll(): Promise<void> {
     await this._save([]);
   },

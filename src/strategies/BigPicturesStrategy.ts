@@ -50,8 +50,10 @@ export class BigPicturesStrategy extends CategoryStrategy {
     };
   }
 
-  // Reads real file bytes off asset.uri — needs a resolved file path,
-  // not the fast ph:// reference SwipeScreen/previews otherwise use.
+  /**
+   * Reads real file bytes off asset.uri — needs a resolved file path,
+   * not the fast ph:// reference SwipeScreen/previews otherwise use.
+   */
   get needsDetailedFetch(): boolean {
     return true;
   }

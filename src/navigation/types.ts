@@ -1,7 +1,9 @@
 import { StrategyId } from '../strategies/strategyRegistry';
 
-/** Plain, serializable — see strategyRegistry.ts's createStrategy, which
- * turns this back into a real CategoryStrategy. */
+/**
+ * Plain, serializable — see strategyRegistry.ts's createStrategy, which
+ * turns this back into a real CategoryStrategy.
+ */
 export type SwipeRouteParams = {
   strategyId: StrategyId;
   params?: Record<string, number | string>;

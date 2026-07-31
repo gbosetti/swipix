@@ -10,9 +10,11 @@ type SwipeDirection = 'left' | 'right';
 
 interface SwipeDeckProps<T extends { id: string }> {
   data: T[];
-  /** `isTop` is true only for the frontmost, interactive card — lets
+  /**
+   * `isTop` is true only for the frontmost, interactive card — lets
    * renderCard skip expensive work (like playing a video) for the cards
-   * stacked behind it. */
+   * stacked behind it.
+   */
   renderCard: (item: T, isTop: boolean) => React.ReactNode;
   onSwipeLeft?: (item: T) => void;
   onSwipeRight?: (item: T) => void;
@@ -21,11 +23,13 @@ interface SwipeDeckProps<T extends { id: string }> {
   rightLabel?: string;
   /** Shown as a fading stamp on the card while dragging left. */
   leftLabel?: string;
-  /** Bump this (e.g. a counter you increment) to step back to the
+  /**
+   * Bump this (e.g. a counter you increment) to step back to the
    * previous card. A prop-driven trigger rather than an imperative ref —
    * the caller already knows whether undo is valid (it owns the swipe
    * history), so SwipeDeck just needs to be told "go back one," not
-   * asked to report its own state back up. */
+   * asked to report its own state back up.
+   */
   undoSignal?: number;
 }
 
