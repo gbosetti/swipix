@@ -45,9 +45,11 @@ describe('VideoCard', () => {
     jest.clearAllMocks();
   });
 
-  // Never swipeable on a video the user can't see — a real device report
-  // showed a failed video sitting there fully swipeable, letting a user
-  // trash or keep something they never actually watched.
+  /**
+   * Never swipeable on a video the user can't see — a real device report
+   * showed a failed video sitting there fully swipeable, letting a user
+   * trash or keep something they never actually watched.
+   */
   it('calls onLoadError once when the player reports an error status', async () => {
     mockedStatus = 'error';
     const onLoadError = jest.fn();
@@ -83,44 +85,55 @@ describe('VideoCard', () => {
     expect(onLoadError).not.toHaveBeenCalled();
   });
 
-  // Confirmed annoying on a real device: a per-card mute choice reset to
-  // muted on every single new video, forcing the user to re-unmute
-  // constantly. The choice should carry across the whole session instead.
+  /**
+   * Confirmed annoying on a real device: a per-card mute choice reset to
+   * muted on every single new video, forcing the user to re-unmute
+   * constantly. The choice should carry across the whole session instead.
+   */
   it('carries an unmuted choice from one video over to the next one mounted, instead of resetting per card', async () => {
     const first = await render(<VideoCard asset={makeAsset('a')} isTop />);
     fireEvent.press(screen.getByTestId('video-mute-button'));
     await waitFor(() => expect(mockedPlayer.muted).toBe(false));
     await first.unmount();
 
-    // A fresh instance — SwipeDeck mounts a new VideoCard per card, keyed
-    // by asset id, so this is what actually happens between videos.
+    /**
+     * A fresh instance — SwipeDeck mounts a new VideoCard per card, keyed
+     * by asset id, so this is what actually happens between videos.
+     */
     await render(<VideoCard asset={makeAsset('b')} isTop />);
     expect(mockedPlayer.muted).toBe(false);
   });
 
-  it('shows a resume button while paused, and tapping it plays the video (confirmed on a real device: backgrounding the app or returning from the share sheet could leave a video stuck paused with no way to resume)', async () => {
+  it('shows a play icon while paused, and tapping it plays the video (confirmed on a real device: backgrounding the app or returning from the share sheet could leave a video stuck paused with no way to resume)', async () => {
     mockedIsPlaying = false;
     await render(<VideoCard asset={makeAsset('a')} isTop />);
-    // The mount effect (isTop && !failed) already calls play() once on its
-    // own — isolate the button's own effect from that.
+    /**
+     * The mount effect (isTop && !failed) already calls play() once on its
+     * own — isolate the button's own effect from that.
+     */
     mockedPlayer.play.mockClear();
 
-    fireEvent.press(screen.getByTestId('video-play-button'));
+    fireEvent.press(screen.getByTestId('video-play-pause-button'));
 
     expect(mockedPlayer.play).toHaveBeenCalledTimes(1);
   });
 
-  it('hides the resume button while the video is actually playing', async () => {
+  it('shows a pause icon while playing, and tapping it pauses the video', async () => {
     mockedIsPlaying = true;
     await render(<VideoCard asset={makeAsset('a')} isTop />);
+    mockedPlayer.pause.mockClear();
 
-    expect(screen.queryByTestId('video-play-button')).toBeNull();
+    fireEvent.press(screen.getByTestId('video-play-pause-button'));
+
+    expect(mockedPlayer.pause).toHaveBeenCalledTimes(1);
   });
 
-  // Confirmed on a real device: bottom-tab siblings stay mounted when you
-  // switch tabs away from them, so a video kept playing (with sound) in
-  // a screen the user could no longer even see — isTop alone never
-  // changes just because the whole screen lost focus.
+  /**
+   * Confirmed on a real device: bottom-tab siblings stay mounted when you
+   * switch tabs away from them, so a video kept playing (with sound) in
+   * a screen the user could no longer even see — isTop alone never
+   * changes just because the whole screen lost focus.
+   */
   it('pauses the moment the screen loses focus, even though it is still the top card of its own deck', async () => {
     const view = await render(<VideoCard asset={makeAsset('a')} isTop screenFocused />);
     mockedPlayer.pause.mockClear();

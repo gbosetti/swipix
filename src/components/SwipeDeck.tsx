@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Animated } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
@@ -55,9 +56,11 @@ export default function SwipeDeck<T extends { id: string }>({
   const [, forceRender] = React.useReducer((x) => x + 1, 0);
   const prevUndoSignal = useRef(undoSignal);
 
-  // panResponder below is built once via useRef and closes over whatever
-  // props existed at mount — this ref keeps onSwipeComplete reading the
-  // current data/callbacks instead of a frozen first-render snapshot.
+  /**
+   * panGesture below is built once via useRef and closes over whatever
+   * props existed at mount — this ref keeps onSwipeComplete reading the
+   * current data/callbacks instead of a frozen first-render snapshot.
+   */
   const latest = useRef({ data, onSwipeLeft, onSwipeRight, onEmpty });
   latest.current = { data, onSwipeLeft, onSwipeRight, onEmpty };
 
@@ -69,31 +72,6 @@ export default function SwipeDeck<T extends { id: string }>({
     }
     prevUndoSignal.current = undoSignal;
   }, [undoSignal, position]);
-
-  // useNativeDriver: false — PanResponder needs a callable move handler,
-  // and Animated.event's native mode returns a non-callable AnimatedEvent
-  // instead. Mixing a native-driven release with JS-driven setValue() on
-  // the next drag also caused a freeze-after-first-swipe regression, so
-  // forceSwipe/resetPosition below stay non-native too.
-  const handlePanMove = useRef(
-    Animated.event([null, { dx: position.x, dy: position.y }], { useNativeDriver: false })
-  ).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: handlePanMove,
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > SWIPE_THRESHOLD) {
-          forceSwipe('right');
-        } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          forceSwipe('left');
-        } else {
-          resetPosition();
-        }
-      },
-    })
-  ).current;
 
   const forceSwipe = (direction: SwipeDirection) => {
     const x = direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
@@ -124,9 +102,41 @@ export default function SwipeDeck<T extends { id: string }>({
     Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
   };
 
-  // transform (translateX/Y + rotate), not getLayout()'s left/top —
-  // layout properties trigger a full recalculation every frame, which
-  // read as stuttery even under the JS driver.
+  /**
+   * react-native-gesture-handler, not the legacy PanResponder API —
+   * confirmed on a real Android device that PanResponder's JS-bridge
+   * touch negotiation gets repeatedly interrupted/restarted over an
+   * actively-rendering video surface (gesture.dx kept resetting near
+   * zero instead of accumulating), so a swipe could never build up
+   * enough distance to cross the threshold. Photos never hit this
+   * because they're not an actively-updating native surface.
+   * GestureDetector's native recognizer tracks the drag natively
+   * instead, unaffected by what's rendered underneath.
+   */
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onUpdate((e) => {
+          position.setValue({ x: e.translationX, y: e.translationY });
+        })
+        .onEnd((e) => {
+          if (e.translationX > SWIPE_THRESHOLD) {
+            forceSwipe('right');
+          } else if (e.translationX < -SWIPE_THRESHOLD) {
+            forceSwipe('left');
+          } else {
+            resetPosition();
+          }
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  /**
+   * transform (translateX/Y + rotate), not getLayout()'s left/top —
+   * layout properties trigger a full recalculation every frame, which
+   * read as stuttery even under the JS driver.
+   */
   const getCardStyle = () => {
     const rotate = position.x.interpolate({
       inputRange: [-SCREEN_WIDTH * 1.5, 0, SCREEN_WIDTH * 1.5],
@@ -156,30 +166,30 @@ export default function SwipeDeck<T extends { id: string }>({
         .map((item, i, visible) => {
           const isTop = i === visible.length - 1;
           return isTop ? (
-            <Animated.View
-              key={item.id}
-              style={[styles.card, getCardStyle()]}
-              {...panResponder.panHandlers}
-            >
-              {renderCard(item, true)}
-              {rightLabel && (
-                <Animated.View
-                  style={[styles.stamp, styles.rightStamp, { opacity: rightStampOpacity }]}
-                >
-                  <Text style={[styles.stampText, styles.rightStampText]}>{rightLabel}</Text>
-                </Animated.View>
-              )}
-              {leftLabel && (
-                <Animated.View
-                  style={[styles.stamp, styles.leftStamp, { opacity: leftStampOpacity }]}
-                >
-                  <Text style={[styles.stampText, styles.leftStampText]}>{leftLabel}</Text>
-                </Animated.View>
-              )}
-            </Animated.View>
+            <GestureDetector key={item.id} gesture={panGesture}>
+              <Animated.View style={[styles.card, getCardStyle()]}>
+                {renderCard(item, true)}
+                {rightLabel && (
+                  <Animated.View
+                    style={[styles.stamp, styles.rightStamp, { opacity: rightStampOpacity }]}
+                  >
+                    <Text style={[styles.stampText, styles.rightStampText]}>{rightLabel}</Text>
+                  </Animated.View>
+                )}
+                {leftLabel && (
+                  <Animated.View
+                    style={[styles.stamp, styles.leftStamp, { opacity: leftStampOpacity }]}
+                  >
+                    <Text style={[styles.stampText, styles.leftStampText]}>{leftLabel}</Text>
+                  </Animated.View>
+                )}
+              </Animated.View>
+            </GestureDetector>
           ) : (
-            // Fully opaque, not dimmed — translucency let the photo
-            // underneath bleed through the top one while dragging.
+            /**
+             * Fully opaque, not dimmed — translucency let the photo
+             * underneath bleed through the top one while dragging.
+             */
             <Animated.View key={item.id} style={[styles.card, { top: 6 * i }]}>
               {renderCard(item, false)}
             </Animated.View>
