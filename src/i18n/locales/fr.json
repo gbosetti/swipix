@@ -112,6 +112,7 @@
     "privacyRow": "Politique de confidentialité",
     "languageRow": "Langue",
     "appearanceRow": "Apparence",
+    "manageAccessRow": "Gérer l'accès aux photos",
     "rateRow": "Aidez-nous à grandir",
     "reportRow": "Signaler un bug / Faire une suggestion",
     "reportEmailSubject": "Retour Swipix (v{{version}})",

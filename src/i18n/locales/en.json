@@ -112,6 +112,7 @@
     "privacyRow": "Privacy Policy",
     "languageRow": "Language",
     "appearanceRow": "Appearance",
+    "manageAccessRow": "Manage Photo Access",
     "rateRow": "Help Us Grow",
     "reportRow": "Report a Bug / Make a Suggestion",
     "reportEmailSubject": "Swipix feedback (v{{version}})",

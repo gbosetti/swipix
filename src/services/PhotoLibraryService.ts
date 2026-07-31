@@ -1,5 +1,6 @@
 import * as MediaLibrary from 'expo-media-library';
 import { getInfoAsync } from 'expo-file-system/legacy';
+import { Linking } from 'react-native';
 import { Asset, MediaTypeFilter, ScanProgressCallback } from '../types';
 
 type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
@@ -138,6 +139,17 @@ export const PhotoLibraryService = {
   async requestPermission(): Promise<boolean> {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     return status === 'granted';
+  },
+
+  /**
+   * Lets the user change which photos/videos the app can see. Opens the
+   * app's system Settings page directly rather than the OS's in-app
+   * limited-access picker — the picker only lets the user add/remove
+   * individually-selected items, it has no "Allow all photos" option, and
+   * that's what people reaching for this actually want.
+   */
+  async manageLibraryAccess(): Promise<void> {
+    await Linking.openSettings();
   },
 
   /**

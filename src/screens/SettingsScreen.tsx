@@ -16,6 +16,7 @@ import {
   copySupportEmailToClipboard,
 } from '../services/SupportService';
 import { requestAppReview } from '../services/RatingService';
+import { PhotoLibraryService } from '../services/PhotoLibraryService';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
@@ -55,6 +56,10 @@ export default function SettingsScreen({ navigation }: Props) {
       <Pressable style={styles.row} onPress={() => navigation.navigate('Language')}>
         <Text style={styles.rowText}>{t('settings.languageRow')}</Text>
         <Text style={styles.chevron}>›</Text>
+      </Pressable>
+      <Pressable style={styles.row} onPress={() => PhotoLibraryService.manageLibraryAccess()}>
+        <Text style={styles.rowText}>{t('settings.manageAccessRow')}</Text>
+        <Ionicons name="images-outline" size={18} color={colors.textSecondary} />
       </Pressable>
 
       <Text style={styles.sectionHeader}>{t('settings.supportSection')}</Text>
