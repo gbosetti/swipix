@@ -7,17 +7,34 @@ Built with Expo (React Native) + TypeScript, React Navigation.
 ```bash
 cd swipix
 npm install
-npx expo run:ios   # first run: builds the native project + installs the dev client
+npx expo run:ios       # first run: builds the native project + installs the dev client
+npx expo run:android   # same, for a connected Android device or emulator
 ```
 
 This app can't run in Expo Go — it depends on several native modules (AdMob,
 image manipulation, device info, store review, clipboard) that Expo Go doesn't
-include. `npx expo run:ios` builds a custom dev client and installs it on a
-simulator or connected device; after that first build, day-to-day development
-just needs:
+include. `npx expo run:ios`/`run:android` build a custom dev client and
+install it on a simulator/emulator or connected device; after that first
+build, day-to-day development just needs:
 
 ```bash
 npx expo start --dev-client
+```
+
+Then open the already-installed Swipix app (not Expo Go) on the
+simulator/device — it connects straight to this Metro server. Only rerun
+`expo run:*` when native code changes (new native dependency, `app.json`
+plugin config, etc.); for JS-only changes, `expo start --dev-client` +
+reloading the app is enough and much faster.
+
+For a physical Android device, run `adb devices` first (with Android
+platform-tools on your `PATH`) to confirm it's connected and get its id, then
+pass it explicitly — `npx expo run:android` alone expects to show an
+interactive device picker, which can hang depending on how the terminal is
+invoked:
+
+```bash
+npx expo run:android --device <device-id-from-adb-devices>
 ```
 
 Note: `expo-media-library` needs a real photo library to read, so most photo
