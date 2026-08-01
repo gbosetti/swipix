@@ -134,7 +134,7 @@
     "p3": "The app is provided \"as is,\" with no warranty of any kind, including the accuracy of any automatic photo categorization (like blurry, similar, or large files). To the fullest extent permitted by law, the developer isn't liable for any loss of photos or data, or losses from mistaken deletions, from using this app.",
     "p4": "These terms may change at any time, for any reason, including to reflect new features, pricing, or legal requirements. Continuing to use the app after a change means you accept the updated terms.",
     "p5": "Swipix may add, change, or remove features at any time. This currently includes a single ad, served by Google AdMob, shown when you choose to permanently empty your trash — emptying never depends on that ad loading. Subscriptions or one-time purchases may be introduced in the future.",
-    "p6": "Full terms are in TERMS.md.",
+    "p6": "Full terms are at bosetti.dev/swipix.",
     "p7": "Questions? Contact swipix@bosetti.dev"
   },
   "privacy": {
@@ -143,7 +143,7 @@
     "p3": "A few small preferences — your language, filter settings, and what's currently in the trash — are stored locally on your device and removed when you uninstall the app.",
     "p4": "Swipix shows one non-personalized ad, via Google AdMob, when you choose to permanently empty your trash — it never blocks that action if no ad is available. Swipix currently has no payments. If that changes in the future, this policy will be updated first, and you'll be asked for any consent required at that time.",
     "p5": "This policy may be updated at any time. Continuing to use the app after a change means you accept the updated policy.",
-    "p6": "Full details are in PRIVACY.md.",
+    "p6": "Full details are at bosetti.dev/swipix.",
     "p7": "Questions? Contact swipix@bosetti.dev"
   },
   "language": {

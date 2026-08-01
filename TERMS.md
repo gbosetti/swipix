@@ -80,3 +80,5 @@ otherwise.
 ## 8. Contact
 
 Questions about these terms can be sent to swipix@bosetti.dev
+
+This document is also published at https://www.bosetti.dev/swipix/

@@ -92,3 +92,5 @@ requires otherwise.
 
 Questions about this policy, or requests related to your data, can be
 sent to swipix@bosetti.dev
+
+This document is also published at https://www.bosetti.dev/swipix/
