@@ -29,6 +29,35 @@ interface Consent {
 }
 
 /**
+ * A step that never resolves (a hung native module call, for example)
+ * used to leave the app stuck on the splash screen forever, with zero
+ * feedback — confirmed on a real Android device. Racing every startup
+ * step against this bounds the worst case: the app always becomes
+ * usable within STARTUP_TIMEOUT_MS, falling back to onboarding, same as
+ * any other startup failure.
+ */
+const STARTUP_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`Startup step timed out after ${STARTUP_TIMEOUT_MS}ms: ${label}`)),
+      STARTUP_TIMEOUT_MS
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+/**
  * Keeps the native (black) splash on screen until the onboarding check
  * below resolves — without this, Expo hides the splash as soon as the JS
  * bridge comes up, exposing the OS's default white root view for a beat
@@ -64,13 +93,10 @@ function AppContent() {
   useEffect(() => {
     (async () => {
       try {
-        await Promise.all([
-          initI18n(),
-          AsyncStorage.getItem(CONSENT_KEY).then((raw) => {
-            const consent: Consent | null = raw ? JSON.parse(raw) : null;
-            setHasCurrentConsent(consent?.version === CONSENT_VERSION);
-          }),
-        ]);
+        await withTimeout(initI18n(), 'initI18n');
+        const raw = await withTimeout(AsyncStorage.getItem(CONSENT_KEY), 'AsyncStorage.getItem');
+        const consent: Consent | null = raw ? JSON.parse(raw) : null;
+        setHasCurrentConsent(consent?.version === CONSENT_VERSION);
       } catch (error) {
         /**
          * Without this catch, a rejected initI18n() (or a malformed
