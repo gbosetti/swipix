@@ -61,5 +61,10 @@
   ],
   "ios": {
     "bundleIdentifier": "dev.bosetti.swipix"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "eae14ac9-5a39-4a48-91f9-b1ae7bf27d87"
+    }
   }
 }
