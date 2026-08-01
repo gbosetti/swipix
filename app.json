@@ -60,7 +60,10 @@
     ]
   ],
   "ios": {
-    "bundleIdentifier": "dev.bosetti.swipix"
+    "bundleIdentifier": "dev.bosetti.swipix",
+    "infoPlist": {
+      "ITSAppUsesNonExemptEncryption": false
+    }
   },
   "extra": {
     "eas": {
