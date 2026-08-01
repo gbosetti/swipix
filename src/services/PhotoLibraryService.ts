@@ -9,9 +9,6 @@ type AssetFilters = {
   createdAfter?: Date;
   createdBefore?: Date;
   albumId?: string;
-  /** Oldest-first instead of the app-wide default (newest-first) — only
-   * for finding the library's oldest asset (see getDateRange). */
-  ascending?: boolean;
 };
 export type Album = { id: string; title: string; assetCount: number };
 
@@ -299,29 +296,6 @@ export const PhotoLibraryService = {
   },
 
   /**
-   * The library's oldest and newest creation dates for `mediaTypes`, from
-   * two cheap `first: 1` queries — not a full scan. Used to pick a
-   * genuinely random point across the *whole* library's timespan (see
-   * RandomShuffleStrategy): the OS's pagination is cursor-based, not
-   * index-based, so there's no direct way to "jump to a random position"
-   * without knowing the real span to sample within first.
-   */
-  async getDateRange(
-    mediaTypes: MediaTypeFilter[],
-    { priority, isCancelled }: { priority?: CallPriority; isCancelled?: () => boolean } = {}
-  ): Promise<{ oldest: Date; newest: Date } | null> {
-    const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
-    const [newestPage, oldestPage] = await Promise.all([
-      this._fetchAssets(type, 1, undefined, false, undefined, undefined, priority, isCancelled),
-      this._fetchAssets(type, 1, undefined, false, { ascending: true }, undefined, priority, isCancelled),
-    ]);
-    const newest = newestPage.assets[0];
-    const oldest = oldestPage.assets[0];
-    if (!newest || !oldest) return null;
-    return { oldest: new Date(oldest.creationTime), newest: new Date(newest.creationTime) };
-  },
-
-  /**
    * User-created albums containing at least one asset of `mediaType` —
    * excludes iOS's auto-generated Moments and smart albums.
    *
@@ -416,10 +390,7 @@ export const PhotoLibraryService = {
         mediaType,
         first,
         after,
-        // Only deviates from the app-wide newest-first default when a
-        // caller explicitly asks for ascending (see getDateRange) —
-        // every existing caller keeps its current behavior untouched.
-        sortBy: filters?.ascending ? [['creationTime', true]] : [MediaLibrary.SortBy.creationTime],
+        sortBy: [MediaLibrary.SortBy.creationTime],
         ...(filters?.mediaSubtypes ? { mediaSubtypes: filters.mediaSubtypes } : {}),
         ...(filters?.createdAfter ? { createdAfter: filters.createdAfter } : {}),
         ...(filters?.createdBefore ? { createdBefore: filters.createdBefore } : {}),

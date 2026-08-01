@@ -600,38 +600,6 @@ describe('PhotoLibraryService.getPreviewCandidates', () => {
   });
 });
 
-describe('PhotoLibraryService.getDateRange', () => {
-  beforeEach(() => jest.clearAllMocks());
-
-  it('resolves the oldest and newest creation dates from two cheap first:1 queries, not a full scan', async () => {
-    mockedGetAssetsAsync.mockImplementation(async (options: { sortBy?: unknown }) => {
-      const ascending = Array.isArray(options.sortBy) && Array.isArray(options.sortBy[0])
-        ? (options.sortBy[0] as [string, boolean])[1]
-        : false;
-      return {
-        assets: [rawAsset(ascending ? 'oldest' : 'newest', 'photo', ascending ? 1000 : 9000)],
-        endCursor: 'c',
-        hasNextPage: false,
-        totalCount: 1,
-      };
-    });
-
-    const range = await PhotoLibraryService.getDateRange(['photo']);
-
-    expect(range).toEqual({ oldest: new Date(1000), newest: new Date(9000) });
-    expect(mockedGetAssetsAsync).toHaveBeenCalledTimes(2);
-    expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
-  });
-
-  it('resolves to null rather than throwing when the library has no assets at all', async () => {
-    mockedGetAssetsAsync.mockResolvedValue({ assets: [], endCursor: '', hasNextPage: false, totalCount: 0 });
-
-    const range = await PhotoLibraryService.getDateRange(['photo']);
-
-    expect(range).toBeNull();
-  });
-});
-
 describe('PhotoLibraryService cache eviction', () => {
   beforeEach(() => {
     jest.clearAllMocks();

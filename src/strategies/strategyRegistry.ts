@@ -1,6 +1,5 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { RandomPhotosStrategy } from './RandomPhotosStrategy';
-import { RandomShuffleStrategy } from './RandomShuffleStrategy';
 import { ScreenshotStrategy } from './ScreenshotStrategy';
 import { AlbumStrategy } from './AlbumStrategy';
 import { AlbumVideosStrategy } from './AlbumVideosStrategy';
@@ -21,7 +20,6 @@ import { MonthYearVideosStrategy } from './MonthYearVideosStrategy';
  */
 export type StrategyId =
   | 'random'
-  | 'random-shuffle'
   | 'month-year'
   | 'screenshots'
   | 'album'
@@ -47,8 +45,6 @@ export function createStrategy(
   switch (strategyId) {
     case 'random':
       return new RandomPhotosStrategy();
-    case 'random-shuffle':
-      return new RandomShuffleStrategy();
     case 'month-year':
       return new MonthYearStrategy(params.year as number, params.month as number);
     case 'screenshots':

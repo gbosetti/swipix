@@ -3,12 +3,14 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta } from '../types';
 import i18n from '../i18n';
 
-// No per-item cost (a plain native query, no pixel decode or file read),
-// so this can afford to be much bigger than the pixel-analysis strategies'
-// sample size — confirmed on a real device: with the old default of 5, a
-// fast swiping session through this exact category could decide all 5 of
-// the newest photos, leaving findPreviewAsset with nothing undecided to
-// show even though the library still has plenty left deeper in.
+/**
+ * No per-item cost (a plain native query, no pixel decode or file read),
+ * so this can afford to be much bigger than the pixel-analysis strategies'
+ * sample size — confirmed on a real device: with the old default of 5, a
+ * fast swiping session through this exact category could decide all 5 of
+ * the newest photos, leaving findPreviewAsset with nothing undecided to
+ * show even though the library still has plenty left deeper in.
+ */
 const PREVIEW_SAMPLE_SIZE = 50;
 
 /**
@@ -21,8 +23,7 @@ const PREVIEW_SAMPLE_SIZE = 50;
  * Only shuffles within whatever page SwipeScreen's own sequential
  * pagination is currently on — a long session still reads as a coarse
  * newest-to-oldest sweep, since pages are fetched and appended in that
- * order. See RandomShuffleStrategy for a category that's scattered
- * across the whole library instead.
+ * order.
  */
 export class RandomPhotosStrategy extends CategoryStrategy {
   async matchCandidates(assets: Asset[]): Promise<Asset[]> {

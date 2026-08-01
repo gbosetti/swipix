@@ -13,7 +13,6 @@ import RangeSlider from '../components/RangeSlider';
 import MonthYearPicker from '../components/MonthYearPicker';
 import AlbumPicker from '../components/AlbumPicker';
 import { RandomPhotosStrategy } from '../strategies/RandomPhotosStrategy';
-import { RandomShuffleStrategy } from '../strategies/RandomShuffleStrategy';
 import { ScreenshotStrategy } from '../strategies/ScreenshotStrategy';
 import { AlbumStrategy } from '../strategies/AlbumStrategy';
 import { AlbumVideosStrategy } from '../strategies/AlbumVideosStrategy';
@@ -73,7 +72,6 @@ const ALBUM_ID_KEY = '@swipix/albumId';
 const ALBUM_VIDEO_ID_KEY = '@swipix/albumVideoId';
 
 const randomPhotosStrategy = new RandomPhotosStrategy();
-const randomShuffleStrategy = new RandomShuffleStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
 const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
 // Held as instances, not pre-read `.meta`, so `.meta.title`'s translation
@@ -250,7 +248,6 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // preview that failed once gets another chance.
   const refreshAllPreviews = useCallback(() => {
     refreshPreview(randomPhotosStrategy);
-    refreshPreview(randomShuffleStrategy);
     refreshPreview(screenshotStrategy);
     refreshPreview(duplicatesAndSimilarStrategy);
     refreshPreview(blurredImagesStrategy);
@@ -391,17 +388,6 @@ export default function CategoryPickerScreen({ navigation }: Props) {
           title={randomPhotosStrategy.meta.title}
           icon={randomPhotosStrategy.meta.icon}
           previewUri={previews[randomPhotosStrategy.meta.id]}
-        />
-      </Pressable>
-
-      <Pressable
-        style={styles.card}
-        onPress={() => navigation.navigate('Swipe', { strategyId: 'random-shuffle' })}
-      >
-        <TitleRow
-          title={randomShuffleStrategy.meta.title}
-          icon={randomShuffleStrategy.meta.icon}
-          previewUri={previews[randomShuffleStrategy.meta.id]}
         />
       </Pressable>
 
