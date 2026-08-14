@@ -74,6 +74,14 @@ const MONTH_YEAR_VIDEO_KEY = '@swipix/monthYearVideo';
 const ALBUM_ID_KEY = '@swipix/albumId';
 const ALBUM_VIDEO_ID_KEY = '@swipix/albumVideoId';
 
+/**
+ * Duplicates & Similar, Big Pictures, and Big Videos all resolve their
+ * preview via a real per-item native scan (not a plain filtered query),
+ * which only stays cheap on a library this size or smaller — above it,
+ * their cards just keep the fallback icon rather than attempt one.
+ */
+const EXPENSIVE_PREVIEW_ASSET_THRESHOLD = 1000;
+
 const randomPhotosStrategy = new RandomPhotosStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
 const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
@@ -165,6 +173,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   });
   const [trashCount, setTrashCount] = useState(0);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  /**
+   * Gates whether the expensive preview strategies (Duplicates & Similar,
+   * Big Pictures, Big Videos) are even attempted — see the threshold
+   * check in refreshAllPreviews. null until resolved.
+   */
+  const [librarySize, setLibrarySize] = useState<number | null>(null);
   const [previews, setPreviews] = useState<Record<string, string | VideoThumbnail | null>>({});
   const [photoAlbums, setPhotoAlbums] = useState<Album[] | null>(null);
   const [videoAlbums, setVideoAlbums] = useState<Album[] | null>(null);
@@ -211,6 +225,20 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     });
   }, []);
 
+  /**
+   * One cheap count query, resolved once per mount — refreshAllPreviews
+   * waits for this before firing so the expensive-strategy gate below is
+   * never a guess. A failed count is treated as "large" (skip the
+   * expensive previews) — safer than assuming small and risking the
+   * exact contention this exists to avoid.
+   */
+  useEffect(() => {
+    if (!permissionGranted) return;
+    PhotoLibraryService.getLibrarySize()
+      .then(setLibrarySize)
+      .catch(() => setLibrarySize(Infinity));
+  }, [permissionGranted]);
+
   // Two independent lists, not one shared one: an all-video album (e.g. a
   // GoPro import) would otherwise show in the photo picker with nothing
   // for AlbumStrategy to find — each list is scoped to its media type.
@@ -235,14 +263,23 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // anyway, and reuses that in-flight fetch if it's still running).
   const sessionRef = useRef<ForegroundSession | null>(null);
 
+  /**
+   * null while the count is still resolving — treated as "not yet," same
+   * as a library that's too big, so nothing fires prematurely.
+   */
+  const canAttemptExpensivePreview =
+    librarySize !== null && librarySize < EXPENSIVE_PREVIEW_ASSET_THRESHOLD;
+
   // Each category resolves its own preview independently, via its own
   // CategoryStrategy.getPreview — one slow/failed lookup can't block or
   // break another's.
   const refreshPreview = useCallback((strategy: CategoryStrategy) => {
     const session = sessionRef.current;
-    // Background preview work, not an active swipe session — 'low'
-    // priority, and stoppable the instant this screen loses focus rather
-    // than grinding through a whole strategy's fetch unattended.
+    /**
+     * Background preview work, not an active swipe session — 'low'
+     * priority, and stoppable the instant this screen loses focus rather
+     * than grinding through a whole strategy's fetch unattended.
+     */
     const context: ScanContext = { priority: 'low', isCancelled: () => !!session && !session.isCurrent() };
     resolvePreviewDisplay(strategy, context).then((display) => {
       if (session && !session.isCurrent()) return;
@@ -256,19 +293,21 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const refreshAllPreviews = useCallback(() => {
     refreshPreview(randomPhotosStrategy);
     refreshPreview(screenshotStrategy);
-    refreshPreview(duplicatesAndSimilarStrategy);
+    if (canAttemptExpensivePreview) refreshPreview(duplicatesAndSimilarStrategy);
     refreshPreview(blurredImagesStrategy);
     refreshPreview(allVideosStrategy);
     refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]));
-    refreshPreview(
-      new BigPicturesStrategy(
-        bigPictureRangeMB[0] * 1024 * 1024,
-        toBigPictureMaxBytes(bigPictureRangeMB[1])
-      )
-    );
-    refreshPreview(
-      new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1]))
-    );
+    if (canAttemptExpensivePreview) {
+      refreshPreview(
+        new BigPicturesStrategy(
+          bigPictureRangeMB[0] * 1024 * 1024,
+          toBigPictureMaxBytes(bigPictureRangeMB[1])
+        )
+      );
+      refreshPreview(
+        new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1]))
+      );
+    }
     refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]));
     refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month));
     refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month));
@@ -276,6 +315,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     if (selectedVideoAlbumId) refreshPreview(new AlbumVideosStrategy(selectedVideoAlbumId));
   }, [
     refreshPreview,
+    canAttemptExpensivePreview,
     shortVideoRange,
     bigPictureRangeMB,
     bigVideoRangeMB,
@@ -286,12 +326,34 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     selectedVideoAlbumId,
   ]);
 
+  /**
+   * Read by useFocusEffect below instead of closing over refreshAllPreviews
+   * directly. refreshAllPreviews's identity changes whenever any filter it
+   * reads does (range sliders, month/album selection, canAttemptExpensivePreview
+   * once librarySize resolves) — useFocusEffect depending on that identity
+   * would re-subscribe (cleanup + re-fire, not just on a real focus change)
+   * every time any of those settles, superseding the in-progress session and
+   * restarting from zero. Confirmed on a real device: right after a fresh
+   * permission grant, this could repeat badly enough that previews flashed
+   * in and were immediately superseded before finishing, while a later
+   * visit (nothing left mid-flight to interrupt) looked fine. A ref sidesteps
+   * this entirely — useFocusEffect only cares about real focus/permission
+   * changes, never about what refreshAllPreviews happens to close over.
+   */
+  const refreshAllPreviewsRef = useRef(refreshAllPreviews);
+  refreshAllPreviewsRef.current = refreshAllPreviews;
+
+  /**
+   * Waits for both permission and the library-size check — otherwise this
+   * would fire while `canAttemptExpensivePreview` is still guessing "no"
+   * (librarySize null), skipping the expensive previews on every first
+   * load even for a small library. Later refreshes (range/month changes,
+   * regaining focus) are handled by their own triggers below.
+   */
   useEffect(() => {
-    if (permissionGranted) refreshAllPreviews();
-    // Only depends on permissionGranted — later refreshes (range/month
-    // changes, regaining focus) are handled by their own triggers below.
+    if (permissionGranted && librarySize !== null) refreshAllPreviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissionGranted]);
+  }, [permissionGranted, librarySize]);
 
   // The album list resolves later than permissionGranted, so the first
   // refreshAllPreviews() run above usually skips both album previews —
@@ -321,9 +383,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     useCallback(() => {
       sessionRef.current = beginForegroundSession();
       refreshTrashCount();
-      if (permissionGranted) refreshAllPreviews();
+      if (permissionGranted) refreshAllPreviewsRef.current();
       return () => sessionRef.current?.end();
-    }, [refreshTrashCount, permissionGranted, refreshAllPreviews])
+    }, [refreshTrashCount, permissionGranted])
   );
 
   const persistShortVideoRange = (low: number, high: number) => {
@@ -333,12 +395,16 @@ export default function CategoryPickerScreen({ navigation }: Props) {
 
   const persistBigPictureRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_PICTURE_RANGE_KEY, `${low},${high}`);
-    refreshPreview(new BigPicturesStrategy(low * 1024 * 1024, toBigPictureMaxBytes(high)));
+    if (canAttemptExpensivePreview) {
+      refreshPreview(new BigPicturesStrategy(low * 1024 * 1024, toBigPictureMaxBytes(high)));
+    }
   };
 
   const persistBigVideoRange = (low: number, high: number) => {
     AsyncStorage.setItem(BIG_VIDEO_RANGE_KEY, `${low},${high}`);
-    refreshPreview(new BigVideosStrategy(low * 1024 * 1024, toBigVideoMaxBytes(high)));
+    if (canAttemptExpensivePreview) {
+      refreshPreview(new BigVideosStrategy(low * 1024 * 1024, toBigVideoMaxBytes(high)));
+    }
   };
 
   const persistBrightnessRange = (low: number, high: number) => {

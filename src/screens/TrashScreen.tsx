@@ -37,8 +37,10 @@ export default function TrashScreen() {
   // Tracks which restore is in flight so its button shows a spinner and
   // ignores repeat taps.
   const [restoringId, setRestoringId] = useState<string | null>(null);
-  // Drives AdLoadingOverlay — separate from `emptying` since it only
-  // covers the ad-request phase, not the delete itself.
+  /**
+   * Drives AdUnavailableOverlay — separate from `emptying` since it only
+   * covers the ad-request phase, not the delete itself.
+   */
   const [awaitingAd, setAwaitingAd] = useState(false);
   const { setBulkDeleteInProgress } = useBulkOperation();
 

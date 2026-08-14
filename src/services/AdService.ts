@@ -91,8 +91,10 @@ export async function showInterstitialAd(): Promise<boolean> {
     const unsubscribeLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
       clearTimeout(timeoutId);
       interstitial.show().catch(() => finish(false));
-      // Stuck showing (close button unresponsive, no CLOSED event) still
-      // means the ad was actually displayed, so this counts as shown.
+      /**
+       * Stuck showing (close button unresponsive, no CLOSED event) still
+       * means the ad was actually displayed, so this counts as shown.
+       */
       showingTimeoutId = setTimeout(() => finish(true), MAX_SHOWING_MS);
     });
     const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, () => finish(false));

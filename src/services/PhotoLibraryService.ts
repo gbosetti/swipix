@@ -296,6 +296,21 @@ export const PhotoLibraryService = {
   },
 
   /**
+   * Total photo+video count in the library — a `first: 1` query costs one
+   * cheap native call and no per-item work; only `totalCount` off the
+   * response is used. Lets a caller decide whether a real per-item scan
+   * (e.g. a Duplicates/Big Pictures/Big Videos preview) is worth
+   * attempting at all before starting one.
+   */
+  async getLibrarySize(): Promise<number> {
+    const page = await withTimeout(
+      MediaLibrary.getAssetsAsync({ mediaType: ['photo', 'video'], first: 1 }),
+      PAGE_FETCH_TIMEOUT_MS
+    );
+    return page.totalCount;
+  },
+
+  /**
    * User-created albums containing at least one asset of `mediaType` —
    * excludes iOS's auto-generated Moments and smart albums.
    *

@@ -20,6 +20,12 @@ jest.mock('../services/PhotoLibraryService', () => ({
     getAlbums: jest.fn().mockResolvedValue([]),
     getPreviewCandidates: jest.fn().mockResolvedValue([]),
     getAllMedia: jest.fn().mockResolvedValue([]),
+    /**
+     * Small library — under the expensive-preview threshold, so the
+     * Duplicates/Big Pictures/Big Videos cards still render for real
+     * instead of silently skipping their preview lookup.
+     */
+    getLibrarySize: jest.fn().mockResolvedValue(50),
   },
 }));
 jest.mock('../services/TrashService', () => ({

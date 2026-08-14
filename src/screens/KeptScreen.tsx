@@ -31,7 +31,7 @@ export default function KeptScreen() {
   // Same reasoning as TrashScreen's `emptying`/`restoringId`.
   const [swipingAgainAll, setSwipingAgainAll] = useState(false);
   const [swipingAgainId, setSwipingAgainId] = useState<string | null>(null);
-  // Drives AdLoadingOverlay — same reasoning as TrashScreen's `awaitingAd`.
+  /** Drives AdUnavailableOverlay — same reasoning as TrashScreen's `awaitingAd`. */
   const [awaitingAd, setAwaitingAd] = useState(false);
 
   const refresh = useCallback(() => {
