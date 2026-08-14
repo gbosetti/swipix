@@ -1,6 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
 // See RandomPhotosStrategy's identical constant and rationale — no
@@ -27,11 +27,13 @@ export class ScreenshotStrategy extends CategoryStrategy {
   }
 
   /** Native filter — asks the OS directly for the most recent screenshots. */
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       mediaSubtypes: ['screenshot'],
       first: PREVIEW_SAMPLE_SIZE,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
     const undecided = await this.excludeDecided(candidates);
     return undecided[0] ?? null;

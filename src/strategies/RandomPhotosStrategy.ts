@@ -1,6 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
 /**
@@ -43,10 +43,12 @@ export class RandomPhotosStrategy extends CategoryStrategy {
     };
   }
 
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       first: PREVIEW_SAMPLE_SIZE,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
     const undecided = await this.excludeDecided(candidates);
     return undecided[0] ?? null;

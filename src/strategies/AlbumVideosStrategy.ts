@@ -1,6 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter, ScanContext } from '../types';
 import i18n from '../i18n';
 
 /**
@@ -36,10 +36,12 @@ export class AlbumVideosStrategy extends CategoryStrategy {
     return this.id;
   }
 
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       albumId: this.id,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
     const undecided = await this.excludeDecided(candidates);
     return undecided[0] ?? null;

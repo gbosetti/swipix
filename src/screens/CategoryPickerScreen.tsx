@@ -32,7 +32,7 @@ import { beginForegroundSession, ForegroundSession } from '../services/Foregroun
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
 import StorageMeter from '../components/StorageMeter';
 import { CategoriesStackParamList, RootTabParamList } from '../navigation/types';
-import { CategoryMeta } from '../types';
+import { CategoryMeta, ScanContext } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
@@ -41,8 +41,11 @@ import { useColors } from '../theme/ThemeContext';
  * plain URI, or an extracted frame for a video. `getPreview()` never
  * rejects and is already timeout-bounded, so nothing to catch here.
  */
-async function resolvePreviewDisplay(strategy: CategoryStrategy): Promise<string | VideoThumbnail | null> {
-  const asset = await strategy.getPreview();
+async function resolvePreviewDisplay(
+  strategy: CategoryStrategy,
+  context: ScanContext
+): Promise<string | VideoThumbnail | null> {
+  const asset = await strategy.getPreview(context);
   if (!asset) return null;
   if (asset.mediaType === 'video') return getVideoThumbnail(asset.uri);
   return asset.uri;
@@ -237,7 +240,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // break another's.
   const refreshPreview = useCallback((strategy: CategoryStrategy) => {
     const session = sessionRef.current;
-    resolvePreviewDisplay(strategy).then((display) => {
+    // Background preview work, not an active swipe session — 'low'
+    // priority, and stoppable the instant this screen loses focus rather
+    // than grinding through a whole strategy's fetch unattended.
+    const context: ScanContext = { priority: 'low', isCancelled: () => !!session && !session.isCurrent() };
+    resolvePreviewDisplay(strategy, context).then((display) => {
       if (session && !session.isCurrent()) return;
       setPreviews((current) => ({ ...current, [strategy.meta.id]: display }));
     });

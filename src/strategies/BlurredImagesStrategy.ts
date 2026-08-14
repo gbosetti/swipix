@@ -37,12 +37,14 @@ export class BlurredImagesStrategy extends CategoryStrategy {
   // bounded so a slow device falls back to the icon.
   protected previewTimeoutMs = 4000;
 
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       first: PREVIEW_SAMPLE_SIZE,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
-    const matched = await this.matchCandidates(candidates);
+    const matched = await this.matchCandidates(candidates, context);
     const undecided = await this.excludeDecided(matched);
     return undecided[0] ?? null;
   }

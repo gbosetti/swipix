@@ -1,6 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta, MediaTypeFilter } from '../types';
+import { Asset, CategoryMeta, MediaTypeFilter, ScanContext } from '../types';
 import i18n from '../i18n';
 
 const DEFAULT_MIN_SECONDS = 0;
@@ -46,10 +46,12 @@ export class ShortVideosStrategy extends CategoryStrategy {
     return ['video'];
   }
 
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       first: PREVIEW_SAMPLE_SIZE,
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
     const matched = await this.matchCandidates(candidates);
     const undecided = await this.excludeDecided(matched);

@@ -1,6 +1,6 @@
 import { CategoryStrategy } from './CategoryStrategy';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
-import { Asset, CategoryMeta } from '../types';
+import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
 /**
@@ -39,11 +39,13 @@ export class MonthYearStrategy extends CategoryStrategy {
    * Native date filters ask the OS directly for a photo IN that month,
    * rather than hoping one turns up in a "most recent overall" sample.
    */
-  protected async findPreviewAsset(): Promise<Asset | null> {
+  protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
       createdAfter: new Date(this.year, this.month, 1),
       createdBefore: new Date(this.year, this.month + 1, 1),
+      priority: context?.priority,
+      isCancelled: context?.isCancelled,
     });
     const undecided = await this.excludeDecided(candidates);
     return undecided[0] ?? null;
