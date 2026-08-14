@@ -93,7 +93,8 @@
     "emptyAllBatchNote": "Swipix deletes in batches of {{batchSize}}, so you may need to confirm more than once.",
     "cancel": "Cancel",
     "delete": "Delete",
-    "deletingProgress": "Deleting {{done}} of {{total}}…"
+    "deletingProgress": "Deleting {{done}} of {{total}}…",
+    "adUnavailable": "No ad available right now"
   },
   "kept": {
     "emptyTitle": "Nothing kept yet",
@@ -102,7 +103,8 @@
     "swipeAgainAll": "Swipe All Again",
     "swipeAgainAllTitle": "Swipe all again?",
     "swipeAgainAllBody_one": "This puts {{count}} photo back into your swipe queue. Nothing is deleted.",
-    "swipeAgainAllBody_other": "This puts {{count}} photos back into your swipe queue. Nothing is deleted."
+    "swipeAgainAllBody_other": "This puts {{count}} photos back into your swipe queue. Nothing is deleted.",
+    "adUnavailable": "No ad available right now"
   },
   "settings": {
     "preferencesSection": "Preferences",

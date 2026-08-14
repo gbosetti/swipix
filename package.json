@@ -11,7 +11,8 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "check-exact-deps": "node scripts/check-exact-deps.js"
+    "check-exact-deps": "node scripts/check-exact-deps.js",
+    "ios:reset-demo": "bash scripts/reset-ios-demo-device.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "15.0.3",

@@ -93,7 +93,8 @@
     "emptyAllBatchNote": "Swipix supprime par groupes de {{batchSize}}, vous devrez peut-être confirmer plusieurs fois.",
     "cancel": "Annuler",
     "delete": "Supprimer",
-    "deletingProgress": "Suppression {{done}} sur {{total}}…"
+    "deletingProgress": "Suppression {{done}} sur {{total}}…",
+    "adUnavailable": "Aucune publicité disponible pour le moment"
   },
   "kept": {
     "emptyTitle": "Rien de conservé pour l'instant",
@@ -102,7 +103,8 @@
     "swipeAgainAll": "Swiper toutes à nouveau",
     "swipeAgainAllTitle": "Swiper toutes à nouveau ?",
     "swipeAgainAllBody_one": "Cela remet {{count}} photo dans votre file de balayage. Rien n'est supprimé.",
-    "swipeAgainAllBody_other": "Cela remet {{count}} photos dans votre file de balayage. Rien n'est supprimé."
+    "swipeAgainAllBody_other": "Cela remet {{count}} photos dans votre file de balayage. Rien n'est supprimé.",
+    "adUnavailable": "Aucune publicité disponible pour le moment"
   },
   "settings": {
     "preferencesSection": "Préférences",

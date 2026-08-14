@@ -7,12 +7,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { TrashService, DELETE_BATCH_SIZE } from '../services/TrashService';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
-import { showInterstitialAd } from '../services/AdService';
+import { showInterstitialAd, MIN_AD_WAIT_MS } from '../services/AdService';
 import { TrashedAsset } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 import { useBulkOperation } from '../navigation/BulkOperationContext';
 import VideoCard from '../components/VideoCard';
+import AdUnavailableOverlay from '../components/AdUnavailableOverlay';
 
 /**
  * Lets the user see exactly what's staged for deletion and restore
@@ -36,6 +37,9 @@ export default function TrashScreen() {
   // Tracks which restore is in flight so its button shows a spinner and
   // ignores repeat taps.
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  // Drives AdLoadingOverlay — separate from `emptying` since it only
+  // covers the ad-request phase, not the delete itself.
+  const [awaitingAd, setAwaitingAd] = useState(false);
   const { setBulkDeleteInProgress } = useBulkOperation();
 
   const refresh = useCallback(() => {
@@ -112,7 +116,12 @@ export default function TrashScreen() {
             setEmptying(true);
             setBulkDeleteInProgress(true);
             try {
-              await showInterstitialAd();
+              const adShown = await showInterstitialAd();
+              if (!adShown) {
+                setAwaitingAd(true);
+                await new Promise((resolve) => setTimeout(resolve, MIN_AD_WAIT_MS));
+                setAwaitingAd(false);
+              }
               try {
                 await TrashService.permanentlyDelete(
                   trash.map((item) => item.id),
@@ -124,6 +133,7 @@ export default function TrashScreen() {
               refresh();
             } finally {
               setEmptying(false);
+              setAwaitingAd(false);
               setDeleteProgress(null);
               setBulkDeleteInProgress(false);
             }
@@ -251,6 +261,8 @@ export default function TrashScreen() {
           )}
         </View>
       </Modal>
+
+      <AdUnavailableOverlay visible={awaitingAd} label={t('trash.adUnavailable')} />
     </View>
   );
 }

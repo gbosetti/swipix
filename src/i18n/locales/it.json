@@ -93,7 +93,8 @@
     "emptyAllBatchNote": "Swipix elimina in gruppi di {{batchSize}}, quindi potresti dover confermare più di una volta.",
     "cancel": "Annulla",
     "delete": "Elimina",
-    "deletingProgress": "Eliminazione {{done}} di {{total}}…"
+    "deletingProgress": "Eliminazione {{done}} di {{total}}…",
+    "adUnavailable": "Nessun annuncio disponibile al momento"
   },
   "kept": {
     "emptyTitle": "Non hai ancora mantenuto nulla",
@@ -102,7 +103,8 @@
     "swipeAgainAll": "Scorri tutte di nuovo",
     "swipeAgainAllTitle": "Scorrere tutte di nuovo?",
     "swipeAgainAllBody_one": "Questo rimette {{count}} foto nella tua coda di scorrimento. Nulla viene eliminato.",
-    "swipeAgainAllBody_other": "Questo rimette {{count}} foto nella tua coda di scorrimento. Nulla viene eliminato."
+    "swipeAgainAllBody_other": "Questo rimette {{count}} foto nella tua coda di scorrimento. Nulla viene eliminato.",
+    "adUnavailable": "Nessun annuncio disponibile al momento"
   },
   "settings": {
     "preferencesSection": "Preferenze",

@@ -7,11 +7,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { KeptService } from '../services/KeptService';
 import { getVideoThumbnail } from '../services/VideoThumbnailService';
-import { showInterstitialAd } from '../services/AdService';
+import { showInterstitialAd, MIN_AD_WAIT_MS } from '../services/AdService';
 import { Asset } from '../types';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 import VideoCard from '../components/VideoCard';
+import AdUnavailableOverlay from '../components/AdUnavailableOverlay';
 
 /**
  * Every photo swiped right, across every category — same shape as
@@ -30,6 +31,8 @@ export default function KeptScreen() {
   // Same reasoning as TrashScreen's `emptying`/`restoringId`.
   const [swipingAgainAll, setSwipingAgainAll] = useState(false);
   const [swipingAgainId, setSwipingAgainId] = useState<string | null>(null);
+  // Drives AdLoadingOverlay — same reasoning as TrashScreen's `awaitingAd`.
+  const [awaitingAd, setAwaitingAd] = useState(false);
 
   const refresh = useCallback(() => {
     KeptService.getKept().then(setKept);
@@ -86,12 +89,18 @@ export default function KeptScreen() {
           // Same non-blocking pattern as Trash's "Empty Trash Now".
           setSwipingAgainAll(true);
           try {
-            await showInterstitialAd();
+            const adShown = await showInterstitialAd();
+            if (!adShown) {
+              setAwaitingAd(true);
+              await new Promise((resolve) => setTimeout(resolve, MIN_AD_WAIT_MS));
+              setAwaitingAd(false);
+            }
             await KeptService.clearAll();
             setPreviewItem(null);
             refresh();
           } finally {
             setSwipingAgainAll(false);
+            setAwaitingAd(false);
           }
         },
       },
@@ -213,6 +222,8 @@ export default function KeptScreen() {
           )}
         </View>
       </Modal>
+
+      <AdUnavailableOverlay visible={awaitingAd} label={t('kept.adUnavailable')} />
     </View>
   );
 }

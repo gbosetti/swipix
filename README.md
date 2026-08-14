@@ -2,6 +2,12 @@
 
 Built with Expo (React Native) + TypeScript, React Navigation.
 
+> Need a clean reinstall on a physical iPhone (fresh permissions/onboarding,
+> no leftover state)? Run `npm run ios:reset-demo` — it uninstalls the app
+> and rebuilds it as a Release build, which is more reliable to debug
+> against than a Debug build (no dev-client error screen, no extra
+> local-network permission prompt). See `scripts/reset-ios-demo-device.sh`.
+
 ## Getting started
 
 ```bash

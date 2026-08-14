@@ -47,32 +47,32 @@ describe('showInterstitialAd', () => {
     jest.useRealTimers();
   });
 
-  it('resolves after the ad loads, shows, and closes normally', async () => {
+  it('resolves true after the ad loads, shows, and closes normally', async () => {
     const promise = showInterstitialAd();
     await Promise.resolve(); // let ensureInitialized()'s await settle
     await Promise.resolve();
     listeners.loaded();
     await Promise.resolve();
     listeners.closed();
-    await expect(promise).resolves.toBeUndefined();
+    await expect(promise).resolves.toBe(true);
     expect(mockPlayer.show).toHaveBeenCalled();
   });
 
-  it('resolves (does not reject) when the ad fails to load', async () => {
+  it('resolves false (does not reject) when the ad fails to load', async () => {
     const promise = showInterstitialAd();
     await Promise.resolve();
     await Promise.resolve();
     listeners.error();
-    await expect(promise).resolves.toBeUndefined();
+    await expect(promise).resolves.toBe(false);
     expect(mockPlayer.show).not.toHaveBeenCalled();
   });
 
-  it('resolves after the load timeout even if no event ever fires (regression: a stuck ad network must never block the action it gates)', async () => {
+  it('resolves false after the load timeout even if no event ever fires (regression: a stuck ad network must never block the action it gates)', async () => {
     const promise = showInterstitialAd();
     await Promise.resolve();
     await Promise.resolve();
     jest.advanceTimersByTime(8000);
-    await expect(promise).resolves.toBeUndefined();
+    await expect(promise).resolves.toBe(false);
     expect(mockPlayer.show).not.toHaveBeenCalled();
   });
 
@@ -90,10 +90,10 @@ describe('showInterstitialAd', () => {
     await Promise.resolve();
     expect(resolved).toBe(false);
     listeners.closed();
-    await expect(promise).resolves.toBeUndefined();
+    await expect(promise).resolves.toBe(true);
   });
 
-  it('resolves after the showing timeout if CLOSED never fires (regression: a stuck/unresponsive ad — real device report: the close (X) button did nothing — must not wedge the app state waiting on it forever)', async () => {
+  it('resolves true after the showing timeout if CLOSED never fires (regression: a stuck/unresponsive ad — real device report: the close (X) button did nothing — must not wedge the app state waiting on it forever)', async () => {
     const promise = showInterstitialAd();
     await Promise.resolve();
     await Promise.resolve();
@@ -107,7 +107,7 @@ describe('showInterstitialAd', () => {
     await Promise.resolve();
     expect(resolved).toBe(false);
     jest.advanceTimersByTime(1000);
-    await expect(promise).resolves.toBeUndefined();
+    await expect(promise).resolves.toBe(true);
   });
 
   it('requests non-personalized ads only', async () => {
