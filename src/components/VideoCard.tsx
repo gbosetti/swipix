@@ -18,7 +18,9 @@ let mutedPreference = true;
 const muteListeners = new Set<() => void>();
 
 function setMutedPreference(next: boolean) {
-  if (mutedPreference === next) return;
+  if (mutedPreference === next) {
+    return;
+  }
   mutedPreference = next;
   muteListeners.forEach((listener) => listener());
 }
@@ -97,7 +99,9 @@ function VideoCard({ asset, isTop, onLoadError, screenFocused = true }: VideoCar
    * the timeout is what actually catches that case.
    */
   useEffect(() => {
-    if (status === 'readyToPlay' || status === 'error') return;
+    if (status === 'readyToPlay' || status === 'error') {
+      return;
+    }
     const timeoutId = setTimeout(() => setTimedOut(true), LOAD_TIMEOUT_MS);
     return () => clearTimeout(timeoutId);
   }, [status]);
@@ -117,7 +121,9 @@ function VideoCard({ asset, isTop, onLoadError, screenFocused = true }: VideoCar
     settledRef.current = false;
   }, [asset.id]);
   useEffect(() => {
-    if (!failed || settledRef.current) return;
+    if (!failed || settledRef.current) {
+      return;
+    }
     settledRef.current = true;
     onLoadErrorRef.current?.();
   }, [failed]);

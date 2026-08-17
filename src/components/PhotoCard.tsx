@@ -53,7 +53,9 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
   const [sharing, setSharing] = useState(false);
 
   const handleShare = async () => {
-    if (sharing || !onShare) return;
+    if (sharing || !onShare) {
+      return;
+    }
     setSharing(true);
     try {
       await onShare(asset);
@@ -69,10 +71,14 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
   const settledRef = useRef(false);
 
   useEffect(() => {
-    if (asset.mediaType === 'video') return;
+    if (asset.mediaType === 'video') {
+      return;
+    }
     settledRef.current = false;
     const timeoutId = setTimeout(() => {
-      if (settledRef.current) return;
+      if (settledRef.current) {
+        return;
+      }
       settledRef.current = true;
       onLoadErrorRef.current?.();
     }, LOAD_TIMEOUT_MS);

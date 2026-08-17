@@ -25,7 +25,9 @@ jest.mock('../components/SwipeDeck', () => {
     onSwipeLeft?: (item: { id: string }) => void;
   }) {
     const top = props.data[0];
-    if (!top) return null;
+    if (!top) {
+      return null;
+    }
     return ReactActual.createElement(
       View,
       null,

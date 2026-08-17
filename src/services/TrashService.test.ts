@@ -99,7 +99,9 @@ describe('TrashService', () => {
 
   it('splits a large bulk delete into batches of 50 instead of one native call (regression: issue #11 — a single huge call risks hanging/crashing on 100+ items)', async () => {
     const ids = Array.from({ length: 120 }, (_, i) => `id-${i}`);
-    for (const id of ids) await TrashService.moveToTrash(makeAsset(id));
+    for (const id of ids) {
+      await TrashService.moveToTrash(makeAsset(id));
+    }
     mockedPhotoLibraryService.deleteAssets.mockResolvedValue(undefined);
 
     await TrashService.permanentlyDelete(ids);
@@ -113,7 +115,9 @@ describe('TrashService', () => {
 
   it('reports progress after each batch completes', async () => {
     const ids = Array.from({ length: 120 }, (_, i) => `id-${i}`);
-    for (const id of ids) await TrashService.moveToTrash(makeAsset(id));
+    for (const id of ids) {
+      await TrashService.moveToTrash(makeAsset(id));
+    }
     mockedPhotoLibraryService.deleteAssets.mockResolvedValue(undefined);
     const onProgress = jest.fn();
 
@@ -126,7 +130,9 @@ describe('TrashService', () => {
 
   it('keeps already-deleted batches out of trash bookkeeping even when a later batch fails (regression: a mid-way cancellation must not resurrect or strand already-deleted photos)', async () => {
     const ids = Array.from({ length: 120 }, (_, i) => `id-${i}`);
-    for (const id of ids) await TrashService.moveToTrash(makeAsset(id));
+    for (const id of ids) {
+      await TrashService.moveToTrash(makeAsset(id));
+    }
     mockedPhotoLibraryService.deleteAssets
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('cancelled'));

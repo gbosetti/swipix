@@ -141,7 +141,9 @@ function AppContent() {
          * to "no consent on record" is safe either way: worst case, the
          * user sees onboarding again, not a silently broken app.
          */
-        if (__DEV__) console.warn('App startup init failed, falling back to onboarding:', error);
+        if (__DEV__) {
+          console.warn('App startup init failed, falling back to onboarding:', error);
+        }
         setHasCurrentConsent(false);
       } finally {
         SplashScreen.hideAsync().catch(() => {});
@@ -158,7 +160,9 @@ function AppContent() {
        * Proceed regardless — a failed write just means onboarding shows
        * again next launch, not that the user gets stuck here now.
        */
-      if (__DEV__) console.warn('Failed to persist onboarding consent:', error);
+      if (__DEV__) {
+        console.warn('Failed to persist onboarding consent:', error);
+      }
     }
     setHasCurrentConsent(true);
   };

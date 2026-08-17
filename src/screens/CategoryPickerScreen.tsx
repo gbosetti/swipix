@@ -46,8 +46,12 @@ async function resolvePreviewDisplay(
   context: ScanContext
 ): Promise<string | VideoThumbnail | null> {
   const asset = await strategy.getPreview(context);
-  if (!asset) return null;
-  if (asset.mediaType === 'video') return getVideoThumbnail(asset.uri);
+  if (!asset) {
+    return null;
+  }
+  if (asset.mediaType === 'video') {
+    return getVideoThumbnail(asset.uri);
+  }
   return asset.uri;
 }
 
@@ -211,16 +215,22 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       }
     });
     AsyncStorage.getItem(ALBUM_ID_KEY).then((stored) => {
-      if (stored != null) setSelectedAlbumId(stored);
+      if (stored != null) {
+        setSelectedAlbumId(stored);
+      }
     });
     AsyncStorage.getItem(ALBUM_VIDEO_ID_KEY).then((stored) => {
-      if (stored != null) setSelectedVideoAlbumId(stored);
+      if (stored != null) {
+        setSelectedVideoAlbumId(stored);
+      }
     });
   }, []);
 
   useEffect(() => {
     PhotoLibraryService.requestPermission().then((granted) => {
-      if (__DEV__ && !granted) console.warn('CategoryPickerScreen: photo permission not granted, previews will never load');
+      if (__DEV__ && !granted) {
+        console.warn('CategoryPickerScreen: photo permission not granted, previews will never load');
+      }
       setPermissionGranted(granted);
     });
   }, []);
@@ -233,7 +243,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
    * exact contention this exists to avoid.
    */
   useEffect(() => {
-    if (!permissionGranted) return;
+    if (!permissionGranted) {
+      return;
+    }
     PhotoLibraryService.getLibrarySize()
       .then(setLibrarySize)
       .catch(() => setLibrarySize(Infinity));
@@ -243,7 +255,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // GoPro import) would otherwise show in the photo picker with nothing
   // for AlbumStrategy to find — each list is scoped to its media type.
   useEffect(() => {
-    if (!permissionGranted) return;
+    if (!permissionGranted) {
+      return;
+    }
     PhotoLibraryService.getAlbums('photo').then((fetched) => {
       setPhotoAlbums(fetched);
       setSelectedAlbumId((current) => current ?? fetched[0]?.id ?? null);
@@ -282,7 +296,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
      */
     const context: ScanContext = { priority: 'low', isCancelled: () => !!session && !session.isCurrent() };
     resolvePreviewDisplay(strategy, context).then((display) => {
-      if (session && !session.isCurrent()) return;
+      if (session && !session.isCurrent()) {
+        return;
+      }
       setPreviews((current) => ({ ...current, [strategy.meta.id]: display }));
     });
   }, []);
@@ -293,7 +309,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const refreshAllPreviews = useCallback(() => {
     refreshPreview(randomPhotosStrategy);
     refreshPreview(screenshotStrategy);
-    if (canAttemptExpensivePreview) refreshPreview(duplicatesAndSimilarStrategy);
+    if (canAttemptExpensivePreview) {
+      refreshPreview(duplicatesAndSimilarStrategy);
+    }
     refreshPreview(blurredImagesStrategy);
     refreshPreview(allVideosStrategy);
     refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]));
@@ -311,8 +329,12 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]));
     refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month));
     refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month));
-    if (selectedAlbumId) refreshPreview(new AlbumStrategy(selectedAlbumId));
-    if (selectedVideoAlbumId) refreshPreview(new AlbumVideosStrategy(selectedVideoAlbumId));
+    if (selectedAlbumId) {
+      refreshPreview(new AlbumStrategy(selectedAlbumId));
+    }
+    if (selectedVideoAlbumId) {
+      refreshPreview(new AlbumVideosStrategy(selectedVideoAlbumId));
+    }
   }, [
     refreshPreview,
     canAttemptExpensivePreview,
@@ -351,7 +373,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
    * regaining focus) are handled by their own triggers below.
    */
   useEffect(() => {
-    if (permissionGranted && librarySize !== null) refreshAllPreviews();
+    if (permissionGranted && librarySize !== null) {
+      refreshAllPreviews();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permissionGranted, librarySize]);
 
@@ -359,13 +383,17 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   // refreshAllPreviews() run above usually skips both album previews —
   // this covers them once a selection exists.
   useEffect(() => {
-    if (!selectedAlbumId) return;
+    if (!selectedAlbumId) {
+      return;
+    }
     refreshPreview(new AlbumStrategy(selectedAlbumId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAlbumId]);
 
   useEffect(() => {
-    if (!selectedVideoAlbumId) return;
+    if (!selectedVideoAlbumId) {
+      return;
+    }
     refreshPreview(new AlbumVideosStrategy(selectedVideoAlbumId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVideoAlbumId]);
@@ -383,7 +411,9 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     useCallback(() => {
       sessionRef.current = beginForegroundSession();
       refreshTrashCount();
-      if (permissionGranted) refreshAllPreviewsRef.current();
+      if (permissionGranted) {
+        refreshAllPreviewsRef.current();
+      }
       return () => sessionRef.current?.end();
     }, [refreshTrashCount, permissionGranted])
   );

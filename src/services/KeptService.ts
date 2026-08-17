@@ -13,7 +13,9 @@ export const KeptService = {
     const kept = await this._load();
     // Reconsidering an already-kept photo (swiping right on it again in
     // the Kept tab) shouldn't duplicate the entry.
-    if (kept.some((item) => item.id === asset.id)) return;
+    if (kept.some((item) => item.id === asset.id)) {
+      return;
+    }
     kept.push(asset);
     await this._save(kept);
   },

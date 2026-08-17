@@ -54,11 +54,15 @@ export default function KeptScreen() {
 
   // Same caching approach as TrashScreen.
   useEffect(() => {
-    if (!kept) return;
+    if (!kept) {
+      return;
+    }
     const pending = kept.filter(
       (item) => item.mediaType === 'video' && !(item.id in videoThumbnails)
     );
-    if (pending.length === 0) return;
+    if (pending.length === 0) {
+      return;
+    }
     pending.forEach((item) => {
       getVideoThumbnail(item.uri).then((thumbnail) => {
         setVideoThumbnails((current) => ({ ...current, [item.id]: thumbnail }));
@@ -68,7 +72,9 @@ export default function KeptScreen() {
   }, [kept]);
 
   const handleSwipeAgain = async (assetId: string) => {
-    if (swipingAgainId) return;
+    if (swipingAgainId) {
+      return;
+    }
     setSwipingAgainId(assetId);
     try {
       await KeptService.removeKept(assetId);
@@ -80,7 +86,9 @@ export default function KeptScreen() {
   };
 
   const handleSwipeAgainAll = () => {
-    if (!kept || kept.length === 0) return;
+    if (!kept || kept.length === 0) {
+      return;
+    }
     Alert.alert(t('kept.swipeAgainAllTitle'), t('kept.swipeAgainAllBody', { count: kept.length }), [
       { text: t('trash.cancel'), style: 'cancel' },
       {

@@ -156,7 +156,9 @@ export default function SwipeDeck<T extends { id: string }>({
     extrapolate: 'clamp',
   });
 
-  if (indexRef.current >= data.length) return null;
+  if (indexRef.current >= data.length) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

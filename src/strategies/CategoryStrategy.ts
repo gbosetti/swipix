@@ -92,19 +92,27 @@ export abstract class CategoryStrategy {
     return new Promise((resolve) => {
       let settled = false;
       const timeoutId = setTimeout(() => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
-        if (__DEV__) console.warn(`getPreview timed out for ${this.meta.id} after ${this.previewTimeoutMs}ms`);
+        if (__DEV__) {
+          console.warn(`getPreview timed out for ${this.meta.id} after ${this.previewTimeoutMs}ms`);
+        }
         resolve(null);
       }, this.previewTimeoutMs);
 
       this.findPreviewAsset(context)
         .catch((error) => {
-          if (__DEV__) console.warn(`getPreview failed for ${this.meta.id}:`, error);
+          if (__DEV__) {
+            console.warn(`getPreview failed for ${this.meta.id}:`, error);
+          }
           return null;
         })
         .then((asset) => {
-          if (settled) return;
+          if (settled) {
+            return;
+          }
           settled = true;
           clearTimeout(timeoutId);
           resolve(asset);

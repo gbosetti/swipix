@@ -67,7 +67,9 @@ export async function showInterstitialAd(): Promise<boolean> {
     let settled = false;
     let showingTimeoutId: ReturnType<typeof setTimeout> | undefined;
     const finish = (shown: boolean) => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
       settled = true;
       clearTimeout(timeoutId);
       clearTimeout(showingTimeoutId);

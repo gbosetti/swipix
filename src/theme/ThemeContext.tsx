@@ -29,7 +29,9 @@ function isThemeMode(value: string): value is ThemeMode {
  * matching how this app has always looked until now).
  */
 function resolveScheme(mode: ThemeMode, deviceScheme: Scheme | null | undefined): Scheme {
-  if (mode !== 'system') return mode;
+  if (mode !== 'system') {
+    return mode;
+  }
   return deviceScheme ?? 'dark';
 }
 
@@ -51,7 +53,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // failed write just means the choice doesn't survive a restart, not
     // that switching the theme right now should be blocked or reverted.
     AsyncStorage.setItem(THEME_MODE_KEY, next).catch((error) => {
-      if (__DEV__) console.warn('Failed to persist theme mode:', error);
+      if (__DEV__) {
+        console.warn('Failed to persist theme mode:', error);
+      }
     });
   };
 

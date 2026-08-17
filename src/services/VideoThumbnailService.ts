@@ -47,7 +47,9 @@ function acquireExtractionSlot(): Promise<void> {
 function releaseExtractionSlot(): void {
   activeExtractions--;
   const next = pendingExtractions.shift();
-  if (next) next();
+  if (next) {
+    next();
+  }
 }
 
 /**
@@ -58,7 +60,9 @@ function releaseExtractionSlot(): void {
  * `<Image>` can render it), or `null` on any failure/timeout.
  */
 export async function getVideoThumbnail(uri: string): Promise<VideoThumbnail | null> {
-  if (knownFailedUris.has(uri)) return null;
+  if (knownFailedUris.has(uri)) {
+    return null;
+  }
   await acquireExtractionSlot();
   try {
     const player = createVideoPlayer(uri);
@@ -88,19 +92,25 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     let settled = false;
     const timeoutId = setTimeout(() => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
       settled = true;
       reject(new Error('Video thumbnail extraction timed out'));
     }, ms);
     promise.then(
       (value) => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
         clearTimeout(timeoutId);
         resolve(value);
       },
       (error) => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
         clearTimeout(timeoutId);
         reject(error);

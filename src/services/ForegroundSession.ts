@@ -30,7 +30,9 @@ export function beginForegroundSession(): ForegroundSession {
   return {
     isCurrent: () => token === currentToken,
     end: () => {
-      if (token === currentToken) currentToken++;
+      if (token === currentToken) {
+        currentToken++;
+      }
     },
   };
 }

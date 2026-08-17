@@ -1,4 +1,7 @@
 module.exports = {
   extends: ['expo'],
   ignorePatterns: ['/node_modules', '/.expo', '/scripts'],
+  rules: {
+    curly: ['error', 'all'],
+  },
 };

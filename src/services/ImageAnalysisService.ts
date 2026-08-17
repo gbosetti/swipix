@@ -56,22 +56,30 @@ let memoryCache: Map<string, CacheEntry> | null = null;
 let cacheDirty = false;
 
 async function ensureCacheLoaded(): Promise<Map<string, CacheEntry>> {
-  if (memoryCache) return memoryCache;
+  if (memoryCache) {
+    return memoryCache;
+  }
   const raw = await AsyncStorage.getItem(CACHE_KEY);
   memoryCache = new Map(raw ? Object.entries(JSON.parse(raw)) : []);
   return memoryCache;
 }
 
 function evictLeastRecentlySeen(cache: Map<string, CacheEntry>): void {
-  if (cache.size <= MAX_CACHE_ENTRIES) return;
+  if (cache.size <= MAX_CACHE_ENTRIES) {
+    return;
+  }
   const byAge = [...cache.entries()].sort((a, b) => a[1].lastSeenAt - b[1].lastSeenAt);
   const excess = cache.size - MAX_CACHE_ENTRIES;
-  for (let i = 0; i < excess; i++) cache.delete(byAge[i][0]);
+  for (let i = 0; i < excess; i++) {
+    cache.delete(byAge[i][0]);
+  }
   cacheDirty = true;
 }
 
 async function flushCacheIfDirty(): Promise<void> {
-  if (!cacheDirty || !memoryCache) return;
+  if (!cacheDirty || !memoryCache) {
+    return;
+  }
   await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(memoryCache)));
   cacheDirty = false;
 }
@@ -99,7 +107,9 @@ export async function analyzeImages(
   // favors recently-seen photos — rides along with the next real flush.
   for (const asset of photoAssets) {
     const existing = cache.get(asset.id);
-    if (existing) existing.lastSeenAt = now;
+    if (existing) {
+      existing.lastSeenAt = now;
+    }
   }
 
   let doneCount = 0;
@@ -118,7 +128,9 @@ export async function analyzeImages(
   await flushCacheIfDirty();
 
   const analyses = new Map<string, ImageAnalysis>();
-  for (const [id, entry] of cache) analyses.set(id, entry.analysis);
+  for (const [id, entry] of cache) {
+    analyses.set(id, entry.analysis);
+  }
   return analyses;
 }
 
@@ -186,7 +198,9 @@ export function toLuma(rgba: Uint8Array, width: number, height: number): Float32
 
 export function averageBrightness(luma: Float32Array): number {
   let sum = 0;
-  for (let i = 0; i < luma.length; i++) sum += luma[i];
+  for (let i = 0; i < luma.length; i++) {
+    sum += luma[i];
+  }
   return sum / luma.length;
 }
 

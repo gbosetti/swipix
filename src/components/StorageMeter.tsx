@@ -29,7 +29,9 @@ export default function StorageMeter() {
     }, [])
   );
 
-  if (!info) return null;
+  if (!info) {
+    return null;
+  }
 
   const usedBytes = info.totalBytes - info.freeBytes;
   const usedFraction = info.totalBytes > 0 ? usedBytes / info.totalBytes : 0;

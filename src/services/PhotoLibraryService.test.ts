@@ -152,7 +152,9 @@ describe('PhotoLibraryService.getMediaPage', () => {
       totalCount: 2,
     });
     mockedGetAssetInfoAsync.mockImplementation(async (asset: { id: string }) => {
-      if (asset.id === 'bad') throw new Error('native failure');
+      if (asset.id === 'bad') {
+        throw new Error('native failure');
+      }
       return { localUri: 'file:///good.mov', mediaSubtypes: [] };
     });
 

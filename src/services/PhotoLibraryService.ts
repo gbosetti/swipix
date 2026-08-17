@@ -51,19 +51,25 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     let settled = false;
     const timeoutId = setTimeout(() => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
       settled = true;
       reject(new Error('Native call timed out'));
     }, ms);
     promise.then(
       (value) => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
         clearTimeout(timeoutId);
         resolve(value);
       },
       (error) => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
         clearTimeout(timeoutId);
         reject(error);
@@ -105,7 +111,9 @@ function acquireNativeCallSlot(priority: CallPriority): Promise<void> {
 function releaseNativeCallSlot(): void {
   activeNativeCalls--;
   const next = pendingNativeCalls.shift();
-  if (next) next();
+  if (next) {
+    next();
+  }
 }
 
 async function mapWithConcurrency<T, R>(
@@ -368,7 +376,9 @@ export const PhotoLibraryService = {
     // onProgress fire, and its isCancelled won't be checked either —
     // acceptable, same as onProgress: a UI/resource-hygiene nicety, not
     // something correctness depends on.
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
     let evictionTimer: ReturnType<typeof setTimeout>;
     const promise = this._fetchAssetsUncached(
       mediaType,
@@ -385,7 +395,9 @@ export const PhotoLibraryService = {
     });
     inFlight.set(key, promise);
     evictionTimer = setTimeout(() => {
-      if (inFlight.get(key) === promise) inFlight.delete(key);
+      if (inFlight.get(key) === promise) {
+        inFlight.delete(key);
+      }
     }, CACHE_EVICTION_MS);
     return promise;
   },
@@ -421,7 +433,9 @@ export const PhotoLibraryService = {
     // Fired before any item starts, not just as each one finishes — a
     // 'high' request can still queue behind an already-saturated pool, so
     // waiting for the first completion could show nothing for seconds.
-    if (total > 0) onProgress?.(0, total);
+    if (total > 0) {
+      onProgress?.(0, total);
+    }
     const detailedAssets: (Asset | null)[] = await mapWithConcurrency(
       page.assets,
       async (asset): Promise<Asset | null> => {
@@ -437,7 +451,9 @@ export const PhotoLibraryService = {
           // freshly-opened swipe session even with 'high' priority —
           // priority only reorders the wait queue, it can't preempt slots
           // already held by unrelated, uncancellable in-flight work.
-          if (isCancelled?.()) return null;
+          if (isCancelled?.()) {
+            return null;
+          }
           const isVideo = asset.mediaType === 'video';
           // Light path: skip getAssetInfoAsync and hand back the raw ph://
           // URI. For photos this is just the fast path — expo-image
@@ -462,7 +478,9 @@ export const PhotoLibraryService = {
           }
           // Skip immediately for an asset already known to fail this
           // session — see ASSET_INFO_TIMEOUT_MS's comment.
-          if (knownFailedAssetIds.has(asset.id)) return null;
+          if (knownFailedAssetIds.has(asset.id)) {
+            return null;
+          }
           // Skip this one asset rather than reject the whole page — a real
           // library is likely to have at least one asset getAssetInfoAsync
           // rejects on (iCloud-only, unusual metadata, etc.), or that hangs
@@ -476,7 +494,9 @@ export const PhotoLibraryService = {
           }
           // localUri can be missing (e.g. an iCloud asset that failed to
           // download) — skip rather than hand back an unusable reference.
-          if (!info.localUri) return null;
+          if (!info.localUri) {
+            return null;
+          }
           return {
             id: asset.id,
             // Still the raw ph:// reference for a video's playback uri —
@@ -531,7 +551,9 @@ export const PhotoLibraryService = {
   ): Promise<number> {
     await acquireNativeCallSlot(priority ?? 'low');
     try {
-      if (isCancelled?.()) return 0;
+      if (isCancelled?.()) {
+        return 0;
+      }
       const info = await withTimeout(getInfoAsync(uri), ASSET_INFO_TIMEOUT_MS);
       return info.exists ? info.size : 0;
     } catch {

@@ -39,7 +39,9 @@ function makeAsset(
 ): Asset {
   assetCounter += 1;
   const uri = `file:///${id}`;
-  if (!(uri in fileSizes)) fileSizes[uri] = 1000 + assetCounter;
+  if (!(uri in fileSizes)) {
+    fileSizes[uri] = 1000 + assetCounter;
+  }
   return {
     id,
     uri,

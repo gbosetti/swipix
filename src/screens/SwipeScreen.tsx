@@ -200,7 +200,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
           priority: 'high',
           isCancelled,
         });
-        if (isCancelled()) return collected;
+        if (isCancelled()) {
+          return collected;
+        }
         const newAssets = page.assets.slice(windowSizeRef.current);
         windowSizeRef.current = page.assets.length;
         hasNextPageRef.current = page.hasNextPage;
@@ -210,11 +212,15 @@ export default function SwipeScreen({ route, navigation }: Props) {
           isCancelled,
         });
         for (const asset of matched) {
-          if (seenIdsRef.current.has(asset.id)) continue;
+          if (seenIdsRef.current.has(asset.id)) {
+            continue;
+          }
           seenIdsRef.current.add(asset.id);
           collected.push(asset);
         }
-        if (isCancelled()) return collected;
+        if (isCancelled()) {
+          return collected;
+        }
         attempts += 1;
       }
       return collected;
@@ -256,10 +262,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
       fetchMoreMatches(
         session,
         MIN_BUFFER,
-        deckIsEmpty ? (done, total) => { if (session.isCurrent()) setScanProgress({ done, total }); } : undefined
+        deckIsEmpty ? (done, total) => { if (session.isCurrent()) {setScanProgress({ done, total });} } : undefined
       )
         .then((more) => {
-          if (!session.isCurrent()) return;
+          if (!session.isCurrent()) {
+            return;
+          }
           if (more.length > 0) {
             fetchingMoreRef.current = false;
             candidatesLengthRef.current += more.length;
@@ -292,12 +300,18 @@ export default function SwipeScreen({ route, navigation }: Props) {
           // must never just vanish — that's exactly what left a swipe
           // session permanently stuck before: fetchingMoreRef never reset,
           // so neither a retry nor "finished" could ever fire again.
-          if (__DEV__) console.warn('runTopUpCycle failed:', error);
-          if (!session.isCurrent()) return;
+          if (__DEV__) {
+            console.warn('runTopUpCycle failed:', error);
+          }
+          if (!session.isCurrent()) {
+            return;
+          }
           fetchingMoreRef.current = false;
           setWaitingForMore(false);
           setScanProgress(null);
-          if (swipedCountRef.current >= candidatesLengthRef.current) setSearchPaused(true);
+          if (swipedCountRef.current >= candidatesLengthRef.current) {
+            setSearchPaused(true);
+          }
         });
     },
     [fetchMoreMatches]
@@ -309,10 +323,16 @@ export default function SwipeScreen({ route, navigation }: Props) {
    */
   const maybeTopUp = useCallback(
     (remaining: number) => {
-      if (remaining > MIN_BUFFER) return;
-      if (fetchingMoreRef.current || !hasNextPageRef.current) return;
+      if (remaining > MIN_BUFFER) {
+        return;
+      }
+      if (fetchingMoreRef.current || !hasNextPageRef.current) {
+        return;
+      }
       const session = sessionRef.current;
-      if (!session) return;
+      if (!session) {
+        return;
+      }
       fetchingMoreRef.current = true;
       runTopUpCycle(session);
     },
@@ -326,9 +346,13 @@ export default function SwipeScreen({ route, navigation }: Props) {
    * user request.
    */
   const handleSearchMore = useCallback(() => {
-    if (fetchingMoreRef.current) return;
+    if (fetchingMoreRef.current) {
+      return;
+    }
     const session = sessionRef.current;
-    if (!session) return;
+    if (!session) {
+      return;
+    }
     setSearchPaused(false);
     fetchingMoreRef.current = true;
     runTopUpCycle(session);
@@ -383,9 +407,13 @@ export default function SwipeScreen({ route, navigation }: Props) {
           cycle < MAX_TOPUP_RETRY_CYCLES
         ) {
           matches = await fetchMoreMatches(session, INITIAL_REVEAL_THRESHOLD, (done, total) => {
-            if (session.isCurrent()) setScanProgress({ done, total });
+            if (session.isCurrent()) {
+              setScanProgress({ done, total });
+            }
           });
-          if (!session.isCurrent()) return;
+          if (!session.isCurrent()) {
+            return;
+          }
           cycle += 1;
         }
       } catch (error) {
@@ -393,9 +421,13 @@ export default function SwipeScreen({ route, navigation }: Props) {
         // never leave the initial spinner stuck forever with nothing to
         // recover to — falls through to "empty" below, same as a
         // genuinely empty category, rather than hanging indefinitely.
-        if (__DEV__) console.warn('Initial load failed:', error);
+        if (__DEV__) {
+          console.warn('Initial load failed:', error);
+        }
       }
-      if (!session.isCurrent()) return;
+      if (!session.isCurrent()) {
+        return;
+      }
       candidatesLengthRef.current = matches.length;
       setScanProgress(null);
       // Set even when empty, so the screen falls through to "empty" below.
@@ -454,7 +486,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
         // of my own deck" (isTop), which never changes just because the
         // whole screen (a bottom-tab sibling) went out of focus.
         setScreenFocused(false);
-        if (candidatesRef.current === null) abandonedMidScanRef.current = true;
+        if (candidatesRef.current === null) {
+          abandonedMidScanRef.current = true;
+        }
         sessionRef.current?.end();
       };
     }, [])
@@ -506,15 +540,21 @@ export default function SwipeScreen({ route, navigation }: Props) {
       }
       await Sharing.shareAsync(uri);
     } catch (error) {
-      if (__DEV__) console.warn('Share failed:', error);
+      if (__DEV__) {
+        console.warn('Share failed:', error);
+      }
       Alert.alert(t('swipe.shareFailedTitle'), t('swipe.shareFailedBody'));
     }
   };
 
   const handleUndo = async () => {
-    if (undoInFlightRef.current) return;
+    if (undoInFlightRef.current) {
+      return;
+    }
     const last = history[history.length - 1];
-    if (!last) return;
+    if (!last) {
+      return;
+    }
 
     undoInFlightRef.current = true;
     setUndoInFlight(true);
@@ -529,7 +569,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
       } else {
         await KeptService.removeKept(last.asset.id);
       }
-      if (swipedCountRef.current > 0) swipedCountRef.current -= 1;
+      if (swipedCountRef.current > 0) {
+        swipedCountRef.current -= 1;
+      }
       setFinished(false);
       setUndoSignal((s) => s + 1);
 
@@ -641,7 +683,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
           onEmpty={() => {
             // Can run dry mid-fetch — only "finished" once nothing's left
             // to page in. SwipeDeck resumes on its own once candidates grows.
-            if (hasNextPageRef.current || fetchingMoreRef.current) return;
+            if (hasNextPageRef.current || fetchingMoreRef.current) {
+              return;
+            }
             setFinished(true);
           }}
           leftLabel={t('swipe.deleteLabel')}

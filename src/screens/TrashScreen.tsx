@@ -65,11 +65,15 @@ export default function TrashScreen() {
   // Extracts one frame per video item once, caching it here — only for
   // items not already generated.
   useEffect(() => {
-    if (!trash) return;
+    if (!trash) {
+      return;
+    }
     const pending = trash.filter(
       (item) => item.mediaType === 'video' && !(item.id in videoThumbnails)
     );
-    if (pending.length === 0) return;
+    if (pending.length === 0) {
+      return;
+    }
     pending.forEach((item) => {
       getVideoThumbnail(item.uri).then((thumbnail) => {
         setVideoThumbnails((current) => ({ ...current, [item.id]: thumbnail }));
@@ -81,7 +85,9 @@ export default function TrashScreen() {
   }, [trash]);
 
   const handleRestore = async (assetId: string) => {
-    if (restoringId) return;
+    if (restoringId) {
+      return;
+    }
     setRestoringId(assetId);
     try {
       await TrashService.restore(assetId);
@@ -93,7 +99,9 @@ export default function TrashScreen() {
   };
 
   const handleEmptyAll = () => {
-    if (!trash || trash.length === 0) return;
+    if (!trash || trash.length === 0) {
+      return;
+    }
     // Deletion chunks into DELETE_BATCH_SIZE-sized native calls, each
     // with its own OS confirmation — noted here so multiple confirmations
     // don't read as the app asking twice by mistake.

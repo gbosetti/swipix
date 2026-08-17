@@ -83,7 +83,9 @@ function RangeSlider({
         startFraction = (value - minimumValue) / (maximumValue - minimumValue);
       },
       onPanResponderMove: (_, gesture) => {
-        if (trackWidthRef.current === 0) return;
+        if (trackWidthRef.current === 0) {
+          return;
+        }
         const fraction = Math.min(1, Math.max(0, startFraction + gesture.dx / trackWidthRef.current));
         const value = fractionToValue(fraction);
         if (thumb === 'low') {

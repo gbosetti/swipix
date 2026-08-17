@@ -11,8 +11,12 @@ const mockedPlayer = { play: jest.fn(), pause: jest.fn(), muted: true, currentTi
 
 jest.mock('expo', () => ({
   useEvent: jest.fn((_player, event, initial) => {
-    if (event === 'statusChange') return { status: mockedStatus };
-    if (event === 'playingChange') return { isPlaying: mockedIsPlaying };
+    if (event === 'statusChange') {
+      return { status: mockedStatus };
+    }
+    if (event === 'playingChange') {
+      return { isPlaying: mockedIsPlaying };
+    }
     return initial;
   }),
 }));
