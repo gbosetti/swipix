@@ -333,10 +333,36 @@ export default function SwipeScreen({ route, navigation }: Props) {
         return;
       }
       let matches: Asset[] = [];
+      let cycle = 0;
       try {
-        matches = await fetchMoreMatches(session, INITIAL_REVEAL_THRESHOLD, (done, total) => {
-          if (session.isCurrent()) setScanProgress({ done, total });
-        });
+        /**
+         * A single fetchMoreMatches call only searches up to
+         * MAX_PAGE_ATTEMPTS_PER_CYCLE pages (paginating newest-first) —
+         * for a category whose real matches sit deep in a large library
+         * (e.g. "By Month" for a month many photos back), one cycle can
+         * easily come back empty despite matches genuinely existing
+         * further in. Confirmed on a real device: a month with real
+         * photos in it (visible in Photos, and correctly found by this
+         * same category's own native-date-filtered preview lookup) showed
+         * "Nothing to review here" because the swipe session's own
+         * newest-first pagination gave up after one cycle. Retrying here,
+         * bounded by the same MAX_TOPUP_RETRY_CYCLES budget a post-swipe
+         * top-up uses, keeps searching deeper before concluding there's
+         * really nothing — while still revealing immediately (
+         * INITIAL_REVEAL_THRESHOLD=1 per cycle) the moment any cycle
+         * finds something, not waiting for a larger buffer.
+         */
+        while (
+          matches.length === 0 &&
+          hasNextPageRef.current &&
+          cycle < MAX_TOPUP_RETRY_CYCLES
+        ) {
+          matches = await fetchMoreMatches(session, INITIAL_REVEAL_THRESHOLD, (done, total) => {
+            if (session.isCurrent()) setScanProgress({ done, total });
+          });
+          if (!session.isCurrent()) return;
+          cycle += 1;
+        }
       } catch (error) {
         // A rejection (e.g. a page-level native call timing out) must
         // never leave the initial spinner stuck forever with nothing to
@@ -349,6 +375,13 @@ export default function SwipeScreen({ route, navigation }: Props) {
       setScanProgress(null);
       // Set even when empty, so the screen falls through to "empty" below.
       setCandidates(matches);
+      if (matches.length === 0 && hasNextPageRef.current) {
+        // Retry budget spent without finding anything, but the library
+        // isn't known to be exhausted — same honest "paused, not empty"
+        // state a post-swipe top-up falls back to in this situation,
+        // with the same manual "search more" escape hatch.
+        setSearchPaused(true);
+      }
     })();
   }, [strategy, sessionKey, fetchMoreMatches]);
 
@@ -517,6 +550,20 @@ export default function SwipeScreen({ route, navigation }: Props) {
       <View style={[styles.center, { paddingTop: headerHeight }]}>
         <ActivityIndicator size="large" />
         {scanProgressBar}
+      </View>
+    );
+  } else if (candidates.length === 0 && searchPaused) {
+    // The initial load's own retry budget ran out without finding a
+    // match, but the library isn't known to be exhausted — same honest
+    // "paused, not empty" state and manual retry as the post-swipe case,
+    // rather than falsely claiming there's nothing here at all.
+    content = (
+      <View style={[styles.center, { paddingTop: headerHeight }]}>
+        <Text style={styles.emptyText}>{t('swipe.pausedTitle')}</Text>
+        <Text style={styles.subText}>{t('swipe.pausedBody')}</Text>
+        <Pressable style={styles.doneButton} onPress={handleSearchMore}>
+          <Text style={styles.doneButtonText}>{t('swipe.searchMore')}</Text>
+        </Pressable>
       </View>
     );
   } else if (candidates.length === 0) {

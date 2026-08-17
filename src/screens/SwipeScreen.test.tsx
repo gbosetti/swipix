@@ -77,4 +77,57 @@ describe('SwipeScreen', () => {
 
     await waitFor(() => expect(screen.getByText('swipe.permissionDeniedTitle')).toBeTruthy());
   });
+
+  it('shows a "search more" prompt instead of falsely claiming empty when the retry budget runs out but the library is not exhausted (regression: a category with real matches deep in a large library — e.g. "By Month" for an older month — showed "Nothing to review here" immediately after a single search cycle, even though the exact same month\'s native-date-filtered category preview correctly found a match)', async () => {
+    mockedPhotoLibraryService.requestPermission.mockResolvedValue(true);
+    mockedPhotoLibraryService.getMediaPage.mockResolvedValue({
+      assets: [],
+      endCursor: '',
+      hasNextPage: true,
+    });
+
+    renderSwipeScreen();
+
+    await waitFor(() => expect(screen.getByText('swipe.pausedTitle')).toBeTruthy(), { timeout: 10000 });
+    expect(screen.queryByText('swipe.emptyTitle')).toBeNull();
+    expect(screen.getByText('swipe.searchMore')).toBeTruthy();
+  }, 15000);
+
+  it('keeps searching across multiple cycles and stops once it finds a match that only turns up deep in the library, instead of giving up after one cycle', async () => {
+    const asset = {
+      id: 'deep-match',
+      uri: 'file:///deep-match.jpg',
+      mediaType: 'photo' as const,
+      creationTime: 0,
+      duration: 0,
+      width: 100,
+      height: 100,
+      mediaSubtypes: [],
+    };
+    let callCount = 0;
+    mockedPhotoLibraryService.requestPermission.mockResolvedValue(true);
+    mockedPhotoLibraryService.getMediaPage.mockImplementation(async () => {
+      callCount += 1;
+      // First 11 calls (a full retry cycle's worth of page attempts, plus
+      // one more) find nothing; only after that does a match appear —
+      // simulates a match that only exists well past the first cycle's
+      // newest-first search window. Asserting on the call count directly
+      // (rather than rendered deck content) keeps this test independent
+      // of SwipeDeck's own render behavior under Jest.
+      if (callCount <= 11) {
+        return { assets: [], endCursor: '', hasNextPage: true };
+      }
+      return { assets: [asset], endCursor: '', hasNextPage: true };
+    });
+
+    renderSwipeScreen();
+
+    await waitFor(() => expect(callCount).toBeGreaterThan(11), { timeout: 10000 });
+    const countRightAfterMatch = callCount;
+    // The retry loop should stop calling getMediaPage once a match is
+    // found — give it a moment, then confirm the count settled instead
+    // of continuing to climb.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(callCount).toBe(countRightAfterMatch);
+  }, 15000);
 });
