@@ -52,6 +52,46 @@ Run `npm run typecheck`, `npm run lint`, and `npm test` before committing —
 all three also run automatically on every push/PR via GitHub Actions
 (`.github/workflows/ci.yml`).
 
+## Releasing a new build
+
+1. **Bump the version in `app.json`** — the `version` field (e.g. `1.0.0` →
+   `1.0.1`), *before* building. `eas.json`'s `production` profile
+   auto-increments the internal build number on every build, but **not**
+   this marketing version — it has to be bumped by hand. Once a version has
+   been approved and released on the App Store, Apple rejects any new
+   build still claiming that same version number (error 90062/90186:
+   "must contain a higher version than that of the previously approved
+   version" / "train is closed for new build submissions"), so this step
+   isn't optional for a second release.
+
+2. **Build:**
+   ```bash
+   eas build --platform ios --profile production
+   ```
+
+3. **Submit the build that was just produced:**
+   ```bash
+   eas submit --platform ios --profile production --non-interactive --latest
+   ```
+
+4. **Wait for Apple to finish processing the upload** (usually 5-10 min,
+   sometimes longer) — check status here:
+   https://appstoreconnect.apple.com/apps/6797083484/testflight/ios
+
+5. **Attach the build to a version and submit for review:**
+   https://appstoreconnect.apple.com/apps/6797083484/distribution/ios/version/inflight
+   - If the app is **not yet live** (first submission, or a rejected/pending
+     version still open for edits): select the new build directly in the
+     Build section on that page, then submit.
+   - If the app is **already live** (this is a follow-up release): that
+     page won't let you attach a new build to an already-released version.
+     Click the small **dropdown chevron next to the app name** at the very
+     top of the page (next to "Swipix: Swipe away the clutter", not the
+     "iOS App Version X.X" heading below it) — that opens a "New Version"
+     option. Enter the same `version` bumped in step 1, save, then on the
+     new version's page: select the build, fill in "What's New in This
+     Version" (required — "Add for Review" fails without it), and submit.
+
 ## Where core React Native concepts live in this project
 
 | Concept | Where to use it here |
