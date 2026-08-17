@@ -15,6 +15,42 @@ const EXTRACTION_TIMEOUT_MS = 5000;
 const knownFailedUris = new Set<string>();
 
 /**
+ * Each extraction opens a real native video player (file handle, decode
+ * buffers) — TrashScreen/KeptScreen request one for every video in the
+ * list at once with no batching of their own, so a large trash/kept list
+ * (e.g. after a long deletion session) could otherwise spin up dozens of
+ * concurrent native players simultaneously. Confirmed as a real crash on
+ * a physical device: the app was killed outright with no error, no JS
+ * exception for the app's own ErrorBoundary to catch — consistent with
+ * an OS-level out-of-memory termination, which gives the app no chance
+ * to react. Kept low (heavier per-item cost than a plain asset-info
+ * call) and lives here, not per-caller, so every current and future
+ * caller is protected the same way.
+ */
+const THUMBNAIL_CONCURRENCY = 3;
+let activeExtractions = 0;
+const pendingExtractions: (() => void)[] = [];
+
+function acquireExtractionSlot(): Promise<void> {
+  if (activeExtractions < THUMBNAIL_CONCURRENCY) {
+    activeExtractions++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    pendingExtractions.push(() => {
+      activeExtractions++;
+      resolve();
+    });
+  });
+}
+
+function releaseExtractionSlot(): void {
+  activeExtractions--;
+  const next = pendingExtractions.shift();
+  if (next) next();
+}
+
+/**
  * Extracts a single representative frame from a video file, for a static
  * preview where playing the video would be overkill.
  *
@@ -23,14 +59,19 @@ const knownFailedUris = new Set<string>();
  */
 export async function getVideoThumbnail(uri: string): Promise<VideoThumbnail | null> {
   if (knownFailedUris.has(uri)) return null;
-  const player = createVideoPlayer(uri);
+  await acquireExtractionSlot();
   try {
-    return await withTimeout(extractThumbnail(player), EXTRACTION_TIMEOUT_MS);
-  } catch {
-    knownFailedUris.add(uri);
-    return null;
+    const player = createVideoPlayer(uri);
+    try {
+      return await withTimeout(extractThumbnail(player), EXTRACTION_TIMEOUT_MS);
+    } catch {
+      knownFailedUris.add(uri);
+      return null;
+    } finally {
+      player.release();
+    }
   } finally {
-    player.release();
+    releaseExtractionSlot();
   }
 }
 
