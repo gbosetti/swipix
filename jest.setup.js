@@ -18,6 +18,21 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 require('react-native-gesture-handler/jestSetup');
 
 /**
+ * The real @sentry/react-native SDK spins up native modules and
+ * background timers (session tracking, offline queue flush) on
+ * `Sentry.init()` — App.tsx calls that at module load time, so every test
+ * file would otherwise initialize it for real. Those background timers
+ * don't fully tear down in a JS-only test environment, which is why Jest
+ * warned about not exiting cleanly before this mock was added. A no-op
+ * mock keeps that init call harmless here.
+ */
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  wrap: (component) => component,
+  captureException: jest.fn(),
+}));
+
+/**
  * Required for @testing-library/react-native (React 19 + the `test-renderer`
  * package) to treat state updates that happen during a test — even ones
  * triggered from an async callback after render() returns, like a resolved

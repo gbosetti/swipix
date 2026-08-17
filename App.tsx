@@ -4,12 +4,45 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Sentry from '@sentry/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { initI18n } from './src/i18n';
+
+/**
+ * Crash/error reporting only — deliberately not the full Sentry feature
+ * set. No session replay (would record the exact photos on screen), no
+ * screenshot attachment on error (same reason), no default PII (IP
+ * address, etc.). Swipix's whole premise is that photos never leave the
+ * device; a crash reporter is the one exception that must stay strictly
+ * scoped to "what code path crashed," not "what was the user looking at."
+ *
+ * @remarks
+ * Runs before React even starts rendering, so a throw here would be
+ * outside ErrorBoundary's reach entirely — the one component whose job
+ * is "the app must never fail to start" wouldn't get a chance to run.
+ * Wrapped defensively so a crash reporter misconfiguration can never
+ * itself be the reason the app won't launch.
+ */
+try {
+  Sentry.init({
+    dsn: 'https://e7513a3c777f8c6aad72e987585d8532@o4511928343003136.ingest.de.sentry.io/4511928364564560',
+    sendDefaultPii: false,
+    attachScreenshot: false,
+    tracesSampleRate: 0,
+    environment: __DEV__ ? 'development' : 'production',
+    debug: __DEV__,
+  });
+} catch (error) {
+  // Always logged, not just in __DEV__ — Sentry itself is unavailable to
+  // report this one, so the OS's own system log (visible via Console.app
+  // or on-device diagnostics, same as any other crash log) is the only
+  // remaining trail if this ever happens in production.
+  console.warn('Sentry.init failed, continuing without crash reporting:', error);
+}
 
 export const CONSENT_KEY = '@swipix/consent';
 
@@ -21,7 +54,7 @@ export const CONSENT_KEY = '@swipix/consent';
  * timestamp, not just "the user tapped Accept at some point." Keep in
  * sync with both docs' "Last updated" dates.
  */
-export const CONSENT_VERSION = '2026-07-24-3';
+export const CONSENT_VERSION = '2026-08-18-1';
 
 interface Consent {
   version: string;
@@ -65,7 +98,7 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
  */
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-export default function App() {
+function App() {
   return (
     <GestureHandlerRootView style={rootStyles.root}>
       <ErrorBoundary>
@@ -76,6 +109,8 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(App);
 
 const rootStyles = StyleSheet.create({ root: { flex: 1 } });
 

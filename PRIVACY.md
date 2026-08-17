@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-07-24 (rev. 3)_
+_Last updated: 2026-08-18 (rev. 1)_
 
 This policy explains what Swipix ("the App") does and does not do with
 your data. The short version: everything happens on your device, and
@@ -9,11 +9,13 @@ nothing is collected, transmitted, or stored anywhere else.
 ## 1. No Data Collection
 
 Swipix does not have a backend, does not require an account, and does
-not use analytics or activity tracking. The one exception is Google
-AdMob, used to show a single, non-personalized ad when you choose to
-permanently empty your trash — see Section 6 for what that involves.
-Outside of that one moment, nothing you do in the App — which photos
-you view, keep, delete, or restore — is sent anywhere.
+not use analytics or activity tracking. There are two exceptions:
+Google AdMob, used to show a single, non-personalized ad when you
+choose to permanently empty your trash, and Sentry, used only to
+report app crashes and errors so they can be diagnosed and fixed —
+see Section 6 for what each involves. Outside of those two cases,
+nothing you do in the App — which photos you view, keep, delete, or
+restore — is sent anywhere.
 
 ## 2. Photo Library Access
 
@@ -54,7 +56,7 @@ The App is not directed at children and does not knowingly collect any
 data from anyone, regardless of age — consistent with Section 1, there
 is nothing to collect in the first place.
 
-## 6. Advertising and Future Changes
+## 6. Advertising, Crash Reporting, and Future Changes
 
 Swipix shows one ad, served by Google AdMob, when you choose to
 permanently empty your trash. Ads are requested as non-personalized:
@@ -65,6 +67,14 @@ your IP address and general device information) needed to serve and
 measure it — the same baseline data any ad SDK requires. Emptying your
 trash never depends on an ad actually loading; if none is available,
 deletion proceeds regardless.
+
+If the App crashes or encounters an unexpected error, technical
+details are automatically sent to Sentry, a crash-reporting service,
+so the problem can be diagnosed and fixed. This includes your device
+model, OS version, App version, and the specific code path that
+failed — never your photos, or which photos you've viewed, kept, or
+deleted. This only happens at the moment of a crash or error, not
+continuously, and is processed in Sentry's EU data region.
 
 Swipix has no payments currently. If that changes — for example, by
 introducing subscriptions or one-time purchases — this policy will be

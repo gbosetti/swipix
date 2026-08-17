@@ -26,6 +26,7 @@ export default function PrivacyContent() {
       <Text style={styles.paragraph}>{t('privacy.p5')}</Text>
       <Text style={styles.paragraph}>{t('privacy.p6')}</Text>
       <Text style={styles.paragraph}>{t('privacy.p7')}</Text>
+      <Text style={styles.paragraph}>{t('privacy.p8')}</Text>
     </>
   );
 }

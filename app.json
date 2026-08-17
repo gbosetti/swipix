@@ -109,6 +109,13 @@
           "3qcr597p9d.skadnetwork"
         ]
       }
+    ],
+    [
+      "@sentry/react-native/expo",
+      {
+        "organization": "gabriela-bosetti",
+        "project": "swipix"
+      }
     ]
   ],
   "ios": {

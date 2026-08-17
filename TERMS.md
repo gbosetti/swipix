@@ -1,6 +1,6 @@
 # Terms of Use
 
-_Last updated: 2026-07-24 (rev. 3)_
+_Last updated: 2026-08-18 (rev. 1)_
 
 By using Swipix ("the App"), you agree to these terms. If you do not
 agree, do not use the App.
@@ -61,7 +61,9 @@ occasionally to stay informed.
 Swipix may add, change, or discontinue features at any time. This
 currently includes a single advertisement, served by Google AdMob,
 shown when you choose to permanently empty your trash — emptying your
-trash never depends on that ad loading. Swipix may also introduce
+trash never depends on that ad loading — and automatic crash and error
+reporting via Sentry, so problems can be diagnosed and fixed (see the
+Privacy Policy for what this involves). Swipix may also introduce
 further monetization, such as subscriptions or one-time purchases, in
 the future. Where a new feature would require additional permissions or
 collect additional data, we will seek your consent for that specific
