@@ -1,9 +1,41 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import SwipeScreen from './SwipeScreen';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
+import { TrashService } from '../services/TrashService';
+
+/**
+ * A minimal stand-in for the real SwipeDeck — swaps out its native
+ * gesture-driven swiping (react-native-gesture-handler, not practical to
+ * simulate in Jest) for a plain pressable trigger, so the Undo-guard
+ * regression test below can build up swipe history without needing a
+ * real drag gesture.
+ */
+jest.mock('../components/SwipeDeck', () => {
+  // jest.mock factories can't reference out-of-scope imports, so these
+  // must be required inline rather than imported at module top.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const ReactActual = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View, Pressable } = require('react-native');
+  return function MockSwipeDeck(props: {
+    data: { id: string }[];
+    onSwipeLeft?: (item: { id: string }) => void;
+  }) {
+    const top = props.data[0];
+    if (!top) return null;
+    return ReactActual.createElement(
+      View,
+      null,
+      ReactActual.createElement(Pressable, {
+        testID: 'swipe-left',
+        onPress: () => props.onSwipeLeft?.(top),
+      })
+    );
+  };
+});
 
 // A render crash here (hook misuse, undefined access, a missing provider
 // a real screen depends on) is exactly the class of bug unit tests on
@@ -40,6 +72,20 @@ jest.mock('../services/KeptService', () => ({
 }));
 
 const mockedPhotoLibraryService = PhotoLibraryService as jest.Mocked<typeof PhotoLibraryService>;
+const mockedTrashService = TrashService as jest.Mocked<typeof TrashService>;
+
+function makeAsset(id: string) {
+  return {
+    id,
+    uri: `file:///${id}.jpg`,
+    mediaType: 'photo' as const,
+    creationTime: 0,
+    duration: 0,
+    width: 100,
+    height: 100,
+    mediaSubtypes: [],
+  };
+}
 
 function renderSwipeScreen(strategyId = 'random') {
   const navigation = { canGoBack: () => false, goBack: jest.fn(), navigate: jest.fn() };
@@ -130,4 +176,40 @@ describe('SwipeScreen', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(callCount).toBe(countRightAfterMatch);
   }, 15000);
+
+  it('ignores a second Undo tap while the first is still in flight, instead of undoing the same item twice and silently skipping another (regression: could otherwise leave a photo recorded in Trash while also reappearing as swipeable again — if then swiped the other way, it would end up in both Trash and Kept, and a later "Empty Trash Now" would permanently delete a photo the user had just chosen to keep)', async () => {
+    const asset = makeAsset('a1');
+    mockedPhotoLibraryService.requestPermission.mockResolvedValue(true);
+    mockedPhotoLibraryService.getMediaPage.mockResolvedValue({
+      assets: [asset],
+      endCursor: '',
+      hasNextPage: false,
+    });
+
+    let resolveRestore: () => void = () => {};
+    const restorePromise = new Promise<void>((resolve) => {
+      resolveRestore = resolve;
+    });
+    mockedTrashService.restore.mockReturnValue(restorePromise);
+
+    renderSwipeScreen();
+
+    await waitFor(() => expect(screen.getByTestId('swipe-left')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('swipe-left'));
+    await waitFor(() => expect(mockedTrashService.moveToTrash).toHaveBeenCalledWith(asset));
+
+    const undoButton = await screen.findByTestId('undo-button');
+    fireEvent.press(undoButton);
+    // TrashService.restore is now in flight (its promise is deliberately
+    // unresolved) — a second, overlapping tap here is exactly the race
+    // this guard exists to close.
+    fireEvent.press(undoButton);
+
+    resolveRestore();
+    await waitFor(() => expect(mockedTrashService.restore).toHaveBeenCalledTimes(1));
+    // Give an incorrect second call a moment to have fired too, if the
+    // guard didn't actually block it.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mockedTrashService.restore).toHaveBeenCalledTimes(1);
+  });
 });

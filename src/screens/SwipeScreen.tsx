@@ -98,6 +98,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const [freedCount, setFreedCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const [history, setHistory] = useState<SwipeHistoryEntry[]>([]);
+  // Drives the Undo button's disabled/dimmed appearance — the actual
+  // re-entrancy gate is undoInFlightRef below, not this; state updates
+  // aren't guaranteed to be visible synchronously to a second call fired
+  // immediately after the first (confirmed: two back-to-back calls with
+  // no gap between them could both still read this as false).
+  const [undoInFlight, setUndoInFlight] = useState(false);
   const [undoSignal, setUndoSignal] = useState(0);
   const [consecutiveUndos, setConsecutiveUndos] = useState(0);
   // Bumped by "Swipe again" when there's no previous screen to go back to.
@@ -117,6 +123,25 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const windowSizeRef = useRef(0);
   const hasNextPageRef = useRef(true);
   const fetchingMoreRef = useRef(false);
+  /**
+   * The real Undo re-entrancy gate — a ref, not state, so it's visible
+   * synchronously to a second handleUndo call fired immediately after
+   * the first, with no render in between. handleUndo reads
+   * `history[history.length - 1]` directly (not via a functional state
+   * update) before its Trash/Kept awaits — without this gate, two
+   * overlapping calls could both read the same not-yet-popped last
+   * entry, undo it twice, and silently skip the entry before it. That
+   * skipped entry would stay recorded in its original list (e.g. Trash)
+   * while also reappearing in the deck as swipeable again — if then
+   * swiped the other way, it would end up in both Trash and Kept at
+   * once, and a later "Empty Trash Now" would permanently delete a photo
+   * the user had just chosen to keep. Confirmed with a test: a
+   * state-only version of this guard (undoInFlight above) let a second,
+   * immediately-following call through, since React doesn't guarantee
+   * the updated state is visible to that second call before its own
+   * render.
+   */
+  const undoInFlightRef = useRef(false);
   // Mirrors how many cards have been swiped — SwipeDeck tracks its own
   // index but doesn't expose it.
   const swipedCountRef = useRef(0);
@@ -487,29 +512,37 @@ export default function SwipeScreen({ route, navigation }: Props) {
   };
 
   const handleUndo = async () => {
+    if (undoInFlightRef.current) return;
     const last = history[history.length - 1];
     if (!last) return;
 
-    setHistory((h) => h.slice(0, -1));
-    if (last.direction === 'left') {
-      await TrashService.restore(last.asset.id);
-      if (last.wasKept) {
-        await KeptService.addKept(last.asset);
+    undoInFlightRef.current = true;
+    setUndoInFlight(true);
+    try {
+      setHistory((h) => h.slice(0, -1));
+      if (last.direction === 'left') {
+        await TrashService.restore(last.asset.id);
+        if (last.wasKept) {
+          await KeptService.addKept(last.asset);
+        }
+        setFreedCount((c) => c - 1);
+      } else {
+        await KeptService.removeKept(last.asset.id);
       }
-      setFreedCount((c) => c - 1);
-    } else {
-      await KeptService.removeKept(last.asset.id);
-    }
-    if (swipedCountRef.current > 0) swipedCountRef.current -= 1;
-    setFinished(false);
-    setUndoSignal((s) => s + 1);
+      if (swipedCountRef.current > 0) swipedCountRef.current -= 1;
+      setFinished(false);
+      setUndoSignal((s) => s + 1);
 
-    const nextConsecutiveUndos = consecutiveUndos + 1;
-    if (nextConsecutiveUndos >= UNDO_NUDGE_THRESHOLD) {
-      setConsecutiveUndos(0);
-      Alert.alert(t('swipe.undoLimitTitle'), t('swipe.undoLimitBody'));
-    } else {
-      setConsecutiveUndos(nextConsecutiveUndos);
+      const nextConsecutiveUndos = consecutiveUndos + 1;
+      if (nextConsecutiveUndos >= UNDO_NUDGE_THRESHOLD) {
+        setConsecutiveUndos(0);
+        Alert.alert(t('swipe.undoLimitTitle'), t('swipe.undoLimitBody'));
+      } else {
+        setConsecutiveUndos(nextConsecutiveUndos);
+      }
+    } finally {
+      undoInFlightRef.current = false;
+      setUndoInFlight(false);
     }
   };
 
@@ -582,8 +615,13 @@ export default function SwipeScreen({ route, navigation }: Props) {
         <View style={[styles.statusBar, { paddingTop: headerHeight + 10 }]}>
           <Text style={styles.statusText}>{t('swipe.statusQueued', { count: freedCount })}</Text>
           {history.length > 0 && (
-            <Pressable onPress={handleUndo} hitSlop={8}>
-              <Ionicons name="arrow-undo-circle" size={28} color={colors.textSecondary} />
+            <Pressable testID="undo-button" onPress={handleUndo} disabled={undoInFlight} hitSlop={8}>
+              <Ionicons
+                name="arrow-undo-circle"
+                size={28}
+                color={colors.textSecondary}
+                style={undoInFlight ? styles.disabledIcon : undefined}
+              />
             </Pressable>
           )}
         </View>
@@ -646,8 +684,15 @@ export default function SwipeScreen({ route, navigation }: Props) {
               </Text>
             </Pressable>
             {history.length > 0 && (
-              <Pressable style={styles.undoLastButton} onPress={handleUndo} hitSlop={8}>
-                <Text style={styles.undoLastButtonText}>{t('swipe.undoLast')}</Text>
+              <Pressable
+                style={styles.undoLastButton}
+                onPress={handleUndo}
+                disabled={undoInFlight}
+                hitSlop={8}
+              >
+                <Text style={undoInFlight ? styles.disabledText : styles.undoLastButtonText}>
+                  {t('swipe.undoLast')}
+                </Text>
               </Pressable>
             )}
           </View>
@@ -712,5 +757,7 @@ function createStyles(colors: ColorPalette) {
     doneButtonText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600' },
     undoLastButton: { marginTop: 16 },
     undoLastButtonText: { color: colors.textSecondary, fontSize: 14, textDecorationLine: 'underline' },
+    disabledIcon: { opacity: 0.4 },
+    disabledText: { color: colors.textSecondary, fontSize: 14, textDecorationLine: 'underline', opacity: 0.4 },
   });
 }
