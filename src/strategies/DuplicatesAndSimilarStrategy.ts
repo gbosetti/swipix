@@ -31,43 +31,39 @@ const PREVIEW_TIMEOUT_MS = 5000;
  * - Perceptual similarity: a difference hash comparing rough visual
  *   similarity, not exact pixels — catches a retake or minor edit, at
  *   the cost of occasional false positives (tracked in issue #10).
- *   Photos only; videos still participate in the other two signals.
  *
- * Sources its own photos+videos via `getAllMedia()`, since exact-duplicate
- * detection needs videos too.
+ * Photos only, across all three signals — this lives in the Pictures
+ * section, so a video matching only the size/burst signals would still
+ * be wrong to show here.
  */
 export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
   async matchCandidates(_assets: Asset[], context?: ScanContext): Promise<Asset[]> {
     // 'high' — only ever called from an active swipe session (match()),
     // never from the Categories preview path (findPreviewAsset below).
-    const media = await PhotoLibraryService.getAllMedia({
+    const photos = await PhotoLibraryService.getAllPhotos({
       first: FETCH_LIMIT,
       onProgress: context?.onProgress,
       priority: 'high',
       isCancelled: context?.isCancelled,
     });
-    return this.findDuplicates(media, context);
+    return this.findDuplicates(photos, context);
   }
 
   /**
    * Shared by matchCandidates and findPreviewAsset so both run the same
    * detection, just on differently-sized samples.
    */
-  private async findDuplicates(media: Asset[], context?: ScanContext): Promise<Asset[]> {
+  private async findDuplicates(photos: Asset[], context?: ScanContext): Promise<Asset[]> {
     const sizes = await Promise.all(
-      // localUri, not uri — a video's uri is always the raw ph:// playback
-      // reference now (see the Asset type); only the resolved local path
-      // can actually be read for its byte size. Photos have no localUri,
-      // so this falls back to their already-resolved uri.
-      media.map((asset) =>
-        PhotoLibraryService.getFileSize(asset.localUri ?? asset.uri, {
+      photos.map((asset) =>
+        PhotoLibraryService.getFileSize(asset.uri, {
           priority: context?.priority,
           isCancelled: context?.isCancelled,
         })
       )
     );
     const bySizeAndDimensions = new Map<string, Asset[]>();
-    media.forEach((asset, i) => {
+    photos.forEach((asset, i) => {
       const key = `${sizes[i]}-${asset.width}-${asset.height}`;
       const group = bySizeAndDimensions.get(key);
       if (group) {
@@ -83,7 +79,7 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
         .map((asset) => asset.id)
     );
 
-    const sortedByTime = [...media].sort((a, b) => a.creationTime - b.creationTime);
+    const sortedByTime = [...photos].sort((a, b) => a.creationTime - b.creationTime);
     const clusters: Asset[][] = [];
     for (const asset of sortedByTime) {
       const currentCluster = clusters[clusters.length - 1];
@@ -101,7 +97,6 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
         .map((asset) => asset.id)
     );
 
-    const photos = media.filter((asset) => asset.mediaType === 'photo');
     const analysis = await analyzeImages(photos, context?.onProgress);
     const hashed = photos
       .map((asset) => ({ asset, hash: analysis.get(asset.id)?.dHash }))
@@ -120,7 +115,7 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
     }
 
     const matchedIds = new Set([...exactDuplicateIds, ...burstIds, ...similarIds]);
-    return media.filter((asset) => matchedIds.has(asset.id));
+    return photos.filter((asset) => matchedIds.has(asset.id));
   }
 
   get meta(): CategoryMeta {
@@ -134,12 +129,12 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
   protected previewTimeoutMs = PREVIEW_TIMEOUT_MS;
 
   protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
-    const media = await PhotoLibraryService.getAllMedia({
+    const photos = await PhotoLibraryService.getAllPhotos({
       first: PREVIEW_FETCH_LIMIT,
       priority: context?.priority,
       isCancelled: context?.isCancelled,
     });
-    const matched = await this.findDuplicates(media, context);
+    const matched = await this.findDuplicates(photos, context);
     const undecided = await this.excludeDecided(matched);
     return undecided[0] ?? null;
   }

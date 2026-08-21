@@ -1,6 +1,7 @@
 import * as MediaLibrary from 'expo-media-library';
 import { Linking } from 'react-native';
 import * as Sentry from '@sentry/react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 import { PhotoLibraryService } from './PhotoLibraryService';
 
 jest.mock('expo-media-library', () => ({
@@ -10,8 +11,11 @@ jest.mock('expo-media-library', () => ({
   SortBy: { creationTime: 'creationTime' },
 }));
 
+jest.mock('expo-file-system/legacy', () => ({ getInfoAsync: jest.fn() }));
+
 const mockedGetAssetsAsync = MediaLibrary.getAssetsAsync as jest.Mock;
 const mockedGetAssetInfoAsync = MediaLibrary.getAssetInfoAsync as jest.Mock;
+const mockedGetInfoAsync = FileSystem.getInfoAsync as jest.Mock;
 const mockedGetAlbumsAsync = MediaLibrary.getAlbumsAsync as jest.Mock;
 
 function rawAsset(id: string, mediaType: 'photo' | 'video' = 'photo', creationTime = 1000) {
@@ -769,5 +773,57 @@ describe('PhotoLibraryService.manageLibraryAccess', () => {
 
     await expect(PhotoLibraryService.manageLibraryAccess()).resolves.toBe(false);
     expect(captureSpy).toHaveBeenCalledWith(error);
+  });
+});
+
+describe('PhotoLibraryService.getFileSize caching', () => {
+  // resetAllMocks, not clearAllMocks — the cache being tested here is a
+  // real module-level Map that outlives any one test, so every test uses
+  // its own never-reused uri; resetAllMocks additionally clears queued
+  // mockResolvedValueOnce/mockRejectedValueOnce values (clearAllMocks
+  // only clears call history), which otherwise leak into later tests.
+  beforeEach(() => jest.resetAllMocks());
+
+  it('reads a file once and reuses that size on later calls for the same uri, without touching disk again', async () => {
+    mockedGetInfoAsync.mockResolvedValue({ exists: true, size: 5000 });
+
+    await expect(PhotoLibraryService.getFileSize('file:///cache-a.jpg')).resolves.toBe(5000);
+    await expect(PhotoLibraryService.getFileSize('file:///cache-a.jpg')).resolves.toBe(5000);
+
+    expect(mockedGetInfoAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache a size for a different uri', async () => {
+    mockedGetInfoAsync
+      .mockResolvedValueOnce({ exists: true, size: 5000 })
+      .mockResolvedValueOnce({ exists: true, size: 7000 });
+
+    await expect(PhotoLibraryService.getFileSize('file:///cache-b1.jpg')).resolves.toBe(5000);
+    await expect(PhotoLibraryService.getFileSize('file:///cache-b2.jpg')).resolves.toBe(7000);
+
+    expect(mockedGetInfoAsync).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * A failed or cancelled read returning 0 is a transient outcome, not a
+   * fact about the file — caching it would permanently and wrongly treat
+   * a real, large file as 0 bytes after one flaky read.
+   */
+  it('does not cache a failed read, so a later call retries for real', async () => {
+    mockedGetInfoAsync.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({ exists: true, size: 5000 });
+
+    await expect(PhotoLibraryService.getFileSize('file:///cache-c.jpg')).resolves.toBe(0);
+    await expect(PhotoLibraryService.getFileSize('file:///cache-c.jpg')).resolves.toBe(5000);
+
+    expect(mockedGetInfoAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not cache when the file does not exist', async () => {
+    mockedGetInfoAsync.mockResolvedValueOnce({ exists: false }).mockResolvedValueOnce({ exists: true, size: 5000 });
+
+    await expect(PhotoLibraryService.getFileSize('file:///cache-d.jpg')).resolves.toBe(0);
+    await expect(PhotoLibraryService.getFileSize('file:///cache-d.jpg')).resolves.toBe(5000);
+
+    expect(mockedGetInfoAsync).toHaveBeenCalledTimes(2);
   });
 });

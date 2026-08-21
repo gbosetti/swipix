@@ -72,7 +72,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const unrelated = makeAsset('c', { width: 50, height: 50 });
     fileSizes[unrelated.uri] = 999;
 
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b, unrelated]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b, unrelated]);
     const strategy = new DuplicatesAndSimilarStrategy();
     const result = await strategy.match([]);
     expect(result.map((asset) => asset.id).sort()).toEqual(['a', 'b']);
@@ -83,7 +83,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const b = makeAsset('b', { width: 300, height: 300 });
     fileSizes[a.uri] = 5000;
     fileSizes[b.uri] = 5000;
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b]);
     const strategy = new DuplicatesAndSimilarStrategy();
     await expect(strategy.match([])).resolves.toEqual([]);
   });
@@ -92,7 +92,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const a = makeAsset('a', { creationTime: 1_000_000 });
     const b = makeAsset('b', { creationTime: 1_002_000 }); // +2s
     const farApart = makeAsset('c', { creationTime: 2_000_000 });
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b, farApart]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b, farApart]);
     const strategy = new DuplicatesAndSimilarStrategy();
     const result = await strategy.match([]);
     expect(result.map((asset) => asset.id).sort()).toEqual(['a', 'b']);
@@ -101,7 +101,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
   it('matches photos whose perceptual hash is within the similarity threshold, even with no other signal in common', async () => {
     const a = makeAsset('a', { creationTime: 1_000_000 });
     const b = makeAsset('b', { creationTime: 9_000_000 }); // far outside the burst window
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b]);
     mockedAnalyzeImages.mockResolvedValue(
       new Map([
         [a.id, { brightness: 0, blurScore: 0, dHash: 'hash-a' }],
@@ -117,7 +117,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
   it('does not match two unrelated photos whose hash distance is large', async () => {
     const a = makeAsset('a', { creationTime: 1_000_000 });
     const b = makeAsset('b', { creationTime: 9_000_000 });
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b]);
     mockedAnalyzeImages.mockResolvedValue(
       new Map([
         [a.id, { brightness: 0, blurScore: 0, dHash: 'hash-a' }],
@@ -129,18 +129,18 @@ describe('DuplicatesAndSimilarStrategy', () => {
     await expect(strategy.match([])).resolves.toEqual([]);
   });
 
-  it('excludes videos from the perceptual-hash signal but still lets them participate in exact-duplicate/burst signals', async () => {
-    const videoA = makeAsset('videoA', { mediaType: 'video', width: 200, height: 200 });
-    const videoB = makeAsset('videoB', { mediaType: 'video', width: 200, height: 200 });
-    fileSizes[videoA.uri] = 9000;
-    fileSizes[videoB.uri] = 9000;
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([videoA, videoB]);
+  /**
+   * This category lives in the Pictures section — a video slipping into
+   * exact-duplicate/burst matches would be wrong here, so the fetch
+   * itself is scoped to photos, not filtered after the fact.
+   */
+  it('fetches only photos, never videos, since this lives in the Pictures section', async () => {
+    const a = makeAsset('a');
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a]);
     const strategy = new DuplicatesAndSimilarStrategy();
-    const result = await strategy.match([]);
-    // Matched via exact-duplicate (size+dimensions), not via the hash
-    // signal, which only ever runs against mediaType 'photo' entries.
-    expect(result.map((asset) => asset.id).sort()).toEqual(['videoA', 'videoB']);
-    expect(mockedAnalyzeImages).toHaveBeenCalledWith([], undefined);
+    await strategy.match([]);
+    expect(mockedPhotoLibraryService.getAllPhotos).toHaveBeenCalled();
+    expect(mockedPhotoLibraryService.getAllMedia).not.toHaveBeenCalled();
   });
 
   it('does not match photos that share none of the three signals', async () => {
@@ -148,7 +148,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const b = makeAsset('b', { creationTime: 9_000_000, width: 200, height: 200 });
     fileSizes[a.uri] = 1000;
     fileSizes[b.uri] = 2000;
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b]);
     const strategy = new DuplicatesAndSimilarStrategy();
     await expect(strategy.match([])).resolves.toEqual([]);
   });
@@ -158,22 +158,22 @@ describe('DuplicatesAndSimilarStrategy', () => {
     const b = makeAsset('b', { width: 200, height: 200 });
     fileSizes[a.uri] = 5000;
     fileSizes[b.uri] = 5000;
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a, b]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b]);
     const strategy = new DuplicatesAndSimilarStrategy();
     const preview = await strategy.getPreview();
     expect(['a', 'b']).toContain(preview?.id);
-    expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({ first: 15 });
+    expect(mockedPhotoLibraryService.getAllPhotos).toHaveBeenCalledWith({ first: 15 });
   });
 
   it('threads onScanProgress into both the self-fetch and the analysis pass', async () => {
     const a = makeAsset('a', { width: 200, height: 200 });
     fileSizes[a.uri] = 5000;
-    mockedPhotoLibraryService.getAllMedia.mockResolvedValue([a]);
+    mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a]);
     const strategy = new DuplicatesAndSimilarStrategy();
 
     const onScanProgress = jest.fn();
     await strategy.match([], { onProgress: onScanProgress });
-    expect(mockedPhotoLibraryService.getAllMedia).toHaveBeenCalledWith({
+    expect(mockedPhotoLibraryService.getAllPhotos).toHaveBeenCalledWith({
       first: 200,
       onProgress: onScanProgress,
       priority: 'high',

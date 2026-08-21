@@ -48,6 +48,12 @@ const ASSET_INFO_TIMEOUT_MS = 4000;
 const PAGE_FETCH_TIMEOUT_MS = 8000;
 const knownFailedAssetIds = new Set<string>();
 
+// A file's size never changes, so once read it's kept for the rest of the
+// session — Big Pictures/Big Videos/Duplicates & Similar each re-read the
+// same files independently (previews, then a real swipe session), and
+// without this every one of those repeats a real disk read from scratch.
+const fileSizeCache = new Map<string, number>();
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -180,6 +186,7 @@ export const PhotoLibraryService = {
     first = 500,
     onProgress,
     priority,
+    isCancelled,
   }: {
     first?: number;
     onProgress?: ScanProgressCallback;
@@ -188,8 +195,11 @@ export const PhotoLibraryService = {
      * preview work) — see {@link CallPriority}.
      */
     priority?: CallPriority;
+    isCancelled?: () => boolean;
   } = {}): Promise<Asset[]> {
-    return (await this._fetchAssets('photo', first, undefined, true, undefined, onProgress, priority)).assets;
+    return (
+      await this._fetchAssets('photo', first, undefined, true, undefined, onProgress, priority, isCancelled)
+    ).assets;
   },
 
   /**
@@ -564,13 +574,24 @@ export const PhotoLibraryService = {
     uri: string,
     { priority, isCancelled }: { priority?: CallPriority; isCancelled?: () => boolean } = {}
   ): Promise<number> {
+    const cached = fileSizeCache.get(uri);
+    if (cached !== undefined) {
+      return cached;
+    }
     await acquireNativeCallSlot(priority ?? 'low');
     try {
       if (isCancelled?.()) {
         return 0;
       }
       const info = await withTimeout(getInfoAsync(uri), ASSET_INFO_TIMEOUT_MS);
-      return info.exists ? info.size : 0;
+      if (!info.exists) {
+        return 0;
+      }
+      // Only the confirmed-real-size path is cached — a cancelled or
+      // failed read returning 0 is a transient outcome, not a fact about
+      // the file, and must never be remembered as its permanent size.
+      fileSizeCache.set(uri, info.size);
+      return info.size;
     } catch {
       return 0;
     } finally {
