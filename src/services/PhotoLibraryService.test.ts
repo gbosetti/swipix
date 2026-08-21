@@ -1,4 +1,6 @@
 import * as MediaLibrary from 'expo-media-library';
+import { Linking } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { PhotoLibraryService } from './PhotoLibraryService';
 
 jest.mock('expo-media-library', () => ({
@@ -742,5 +744,30 @@ describe('PhotoLibraryService album-scoped fetching (AlbumStrategy)', () => {
     await PhotoLibraryService.getPreviewCandidates({ mediaTypes: ['photo', 'video'], albumId: 'abc' });
 
     expect(mockedGetAssetsAsync).toHaveBeenCalledWith(expect.objectContaining({ album: 'abc' }));
+  });
+});
+
+describe('PhotoLibraryService.manageLibraryAccess', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('returns true when opening Settings succeeds', async () => {
+    jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+
+    await expect(PhotoLibraryService.manageLibraryAccess()).resolves.toBe(true);
+  });
+
+  /**
+   * Confirmed via a real Sentry report ("Unable to open app settings")
+   * that this native call can itself reject — must resolve to false, not
+   * throw, so the caller can show feedback instead of an unhandled
+   * rejection, and must still reach Sentry so it stays visible.
+   */
+  it('returns false and reports to Sentry when opening Settings fails', async () => {
+    const error = new Error('Unable to open app settings');
+    jest.spyOn(Linking, 'openSettings').mockRejectedValue(error);
+    const captureSpy = jest.spyOn(Sentry, 'captureException');
+
+    await expect(PhotoLibraryService.manageLibraryAccess()).resolves.toBe(false);
+    expect(captureSpy).toHaveBeenCalledWith(error);
   });
 });

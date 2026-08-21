@@ -115,6 +115,8 @@
     "languageRow": "Lingua",
     "appearanceRow": "Aspetto",
     "manageAccessRow": "Gestisci accesso alle foto",
+    "manageAccessFailedTitle": "Impossibile aprire Impostazioni",
+    "manageAccessFailedBody": "Non siamo riusciti ad aprire le Impostazioni del dispositivo. Puoi andarci manualmente da Impostazioni > Privacy > Foto.",
     "rateRow": "Aiutaci a crescere",
     "reportRow": "Segnala un bug / Fai un suggerimento",
     "reportEmailSubject": "Feedback su Swipix (v{{version}})",

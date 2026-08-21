@@ -115,6 +115,8 @@
     "languageRow": "Idioma",
     "appearanceRow": "Apariencia",
     "manageAccessRow": "Gestionar acceso a fotos",
+    "manageAccessFailedTitle": "No se pudo abrir Ajustes",
+    "manageAccessFailedBody": "No pudimos abrir la app de Ajustes de tu dispositivo. Puedes ir manualmente desde Ajustes > Privacidad > Fotos.",
     "rateRow": "Ayúdanos a crecer",
     "reportRow": "Reportar un error / Hacer una sugerencia",
     "reportEmailSubject": "Comentarios de Swipix (v{{version}})",

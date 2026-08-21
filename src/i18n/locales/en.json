@@ -115,6 +115,8 @@
     "languageRow": "Language",
     "appearanceRow": "Appearance",
     "manageAccessRow": "Manage Photo Access",
+    "manageAccessFailedTitle": "Couldn't Open Settings",
+    "manageAccessFailedBody": "We couldn't open your device's Settings app. You can get there manually from Settings > Privacy > Photos.",
     "rateRow": "Help Us Grow",
     "reportRow": "Report a Bug / Make a Suggestion",
     "reportEmailSubject": "Swipix feedback (v{{version}})",

@@ -46,6 +46,13 @@ export default function SettingsScreen({ navigation }: Props) {
     }
   };
 
+  const handleManageAccessPress = async () => {
+    const opened = await PhotoLibraryService.manageLibraryAccess();
+    if (!opened) {
+      Alert.alert(t('settings.manageAccessFailedTitle'), t('settings.manageAccessFailedBody'));
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <Text style={styles.sectionHeader}>{t('settings.preferencesSection')}</Text>
@@ -57,7 +64,7 @@ export default function SettingsScreen({ navigation }: Props) {
         <Text style={styles.rowText}>{t('settings.languageRow')}</Text>
         <Text style={styles.chevron}>›</Text>
       </Pressable>
-      <Pressable style={styles.row} onPress={() => PhotoLibraryService.manageLibraryAccess()}>
+      <Pressable style={styles.row} onPress={handleManageAccessPress}>
         <Text style={styles.rowText}>{t('settings.manageAccessRow')}</Text>
         <Ionicons name="images-outline" size={18} color={colors.textSecondary} />
       </Pressable>

@@ -115,6 +115,8 @@
     "languageRow": "Langue",
     "appearanceRow": "Apparence",
     "manageAccessRow": "Gérer l'accès aux photos",
+    "manageAccessFailedTitle": "Impossible d'ouvrir Réglages",
+    "manageAccessFailedBody": "Nous n'avons pas pu ouvrir les Réglages de votre appareil. Vous pouvez y accéder manuellement via Réglages > Confidentialité > Photos.",
     "rateRow": "Aidez-nous à grandir",
     "reportRow": "Signaler un bug / Faire une suggestion",
     "reportEmailSubject": "Retour Swipix (v{{version}})",

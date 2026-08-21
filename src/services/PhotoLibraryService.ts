@@ -1,6 +1,7 @@
 import * as MediaLibrary from 'expo-media-library';
 import { getInfoAsync } from 'expo-file-system/legacy';
 import { Linking } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { Asset, MediaTypeFilter, ScanProgressCallback } from '../types';
 
 type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
@@ -152,9 +153,23 @@ export const PhotoLibraryService = {
    * limited-access picker — the picker only lets the user add/remove
    * individually-selected items, it has no "Allow all photos" option, and
    * that's what people reaching for this actually want.
+   *
+   * @remarks
+   * `Linking.openSettings()` can itself reject (confirmed via a real
+   * Sentry report: "Unable to open app settings") — returns a boolean so
+   * the caller can show feedback instead of an unhandled rejection with
+   * nothing user-visible. Still explicitly reported to Sentry below,
+   * since catching it here would otherwise silence the same automatic
+   * unhandled-rejection capture that surfaced it in the first place.
    */
-  async manageLibraryAccess(): Promise<void> {
-    await Linking.openSettings();
+  async manageLibraryAccess(): Promise<boolean> {
+    try {
+      await Linking.openSettings();
+      return true;
+    } catch (error) {
+      Sentry.captureException(error);
+      return false;
+    }
   },
 
   /**
