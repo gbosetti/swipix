@@ -86,6 +86,13 @@ const ALBUM_VIDEO_ID_KEY = '@swipix/albumVideoId';
  */
 const EXPENSIVE_PREVIEW_ASSET_THRESHOLD = 1000;
 
+/**
+ * Caps how many preview thumbnails decode at once — confirmed as a real
+ * OOM crash on a low-end/32-bit device when all ~12 fired simultaneously
+ * right after permission grant.
+ */
+const PREVIEW_CONCURRENCY = 3;
+
 const randomPhotosStrategy = new RandomPhotosStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
 const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
@@ -295,7 +302,7 @@ export default function CategoryPickerScreen({ navigation }: Props) {
      * than grinding through a whole strategy's fetch unattended.
      */
     const context: ScanContext = { priority: 'low', isCancelled: () => !!session && !session.isCurrent() };
-    resolvePreviewDisplay(strategy, context).then((display) => {
+    return resolvePreviewDisplay(strategy, context).then((display) => {
       if (session && !session.isCurrent()) {
         return;
       }
@@ -303,37 +310,40 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     });
   }, []);
 
-  // Every category's preview, fired together but resolved independently.
+  // Every category's preview, resolved independently — but batched
+  // PREVIEW_CONCURRENCY at a time rather than all fired together, so
+  // decoding one doesn't compound the others' peak memory use.
   // Re-invoked on first load and on every later focus (below), so a
   // preview that failed once gets another chance.
-  const refreshAllPreviews = useCallback(() => {
-    refreshPreview(randomPhotosStrategy);
-    refreshPreview(screenshotStrategy);
-    if (canAttemptExpensivePreview) {
-      refreshPreview(duplicatesAndSimilarStrategy);
-    }
-    refreshPreview(blurredImagesStrategy);
-    refreshPreview(allVideosStrategy);
-    refreshPreview(new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]));
-    if (canAttemptExpensivePreview) {
-      refreshPreview(
-        new BigPicturesStrategy(
-          bigPictureRangeMB[0] * 1024 * 1024,
-          toBigPictureMaxBytes(bigPictureRangeMB[1])
-        )
-      );
-      refreshPreview(
-        new BigVideosStrategy(bigVideoRangeMB[0] * 1024 * 1024, toBigVideoMaxBytes(bigVideoRangeMB[1]))
-      );
-    }
-    refreshPreview(new BrightnessStrategy(brightnessRange[0], brightnessRange[1]));
-    refreshPreview(new MonthYearStrategy(monthYear.year, monthYear.month));
-    refreshPreview(new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month));
-    if (selectedAlbumId) {
-      refreshPreview(new AlbumStrategy(selectedAlbumId));
-    }
-    if (selectedVideoAlbumId) {
-      refreshPreview(new AlbumVideosStrategy(selectedVideoAlbumId));
+  const refreshAllPreviews = useCallback(async () => {
+    const strategies: CategoryStrategy[] = [
+      randomPhotosStrategy,
+      screenshotStrategy,
+      ...(canAttemptExpensivePreview ? [duplicatesAndSimilarStrategy] : []),
+      blurredImagesStrategy,
+      allVideosStrategy,
+      new ShortVideosStrategy(shortVideoRange[0], shortVideoRange[1]),
+      ...(canAttemptExpensivePreview
+        ? [
+            new BigPicturesStrategy(
+              bigPictureRangeMB[0] * 1024 * 1024,
+              toBigPictureMaxBytes(bigPictureRangeMB[1])
+            ),
+            new BigVideosStrategy(
+              bigVideoRangeMB[0] * 1024 * 1024,
+              toBigVideoMaxBytes(bigVideoRangeMB[1])
+            ),
+          ]
+        : []),
+      new BrightnessStrategy(brightnessRange[0], brightnessRange[1]),
+      new MonthYearStrategy(monthYear.year, monthYear.month),
+      new MonthYearVideosStrategy(monthYearVideo.year, monthYearVideo.month),
+      ...(selectedAlbumId ? [new AlbumStrategy(selectedAlbumId)] : []),
+      ...(selectedVideoAlbumId ? [new AlbumVideosStrategy(selectedVideoAlbumId)] : []),
+    ];
+    for (let i = 0; i < strategies.length; i += PREVIEW_CONCURRENCY) {
+      const batch = strategies.slice(i, i + PREVIEW_CONCURRENCY);
+      await Promise.all(batch.map((strategy) => refreshPreview(strategy)));
     }
   }, [
     refreshPreview,
