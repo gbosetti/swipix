@@ -51,6 +51,15 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [sharing, setSharing] = useState(false);
+  const [loading, setLoading] = useState(asset.mediaType !== 'video');
+  // Bumping this remounts the <Image> below (via its `key`), forcing a
+  // genuinely fresh load attempt rather than reusing whatever internal
+  // state expo-image was stuck in.
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    setLoading(asset.mediaType !== 'video');
+  }, [asset.id, asset.mediaType]);
 
   const handleShare = async () => {
     if (sharing || !onShare) {
@@ -86,15 +95,25 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
       settledRef.current = true;
       clearTimeout(timeoutId);
     };
-  }, [asset.id, asset.mediaType]);
+  }, [asset.id, asset.mediaType, reloadKey]);
 
   const handleLoaded = () => {
     settledRef.current = true;
+    setLoading(false);
   };
 
   const handleError = () => {
     settledRef.current = true;
     onLoadErrorRef.current?.();
+  };
+
+  // Lets the user force a fresh attempt on a slow/stuck load (e.g. an
+  // iCloud-only photo still downloading) instead of waiting out the full
+  // LOAD_TIMEOUT_MS backstop.
+  const handleRetry = () => {
+    settledRef.current = false;
+    setLoading(true);
+    setReloadKey((key) => key + 1);
   };
 
   return (
@@ -118,6 +137,7 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
         // expo-image, not core <Image> — it renders a raw ph:// reference
         // directly, decoding lazily off the main thread.
         <Image
+          key={reloadKey}
           source={{ uri: asset.uri }}
           style={styles.image}
           contentFit="cover"
@@ -125,8 +145,19 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
           onError={handleError}
         />
       )}
+      {isTop && asset.mediaType === 'photo' && loading && (
+        <Pressable testID="photo-retry-button" style={styles.retryButton} onPress={handleRetry} hitSlop={10}>
+          <Ionicons name="refresh" size={22} color="#ffffff" />
+        </Pressable>
+      )}
       {isTop && onShare && (
-        <Pressable style={styles.shareButton} onPress={handleShare} disabled={sharing} hitSlop={10}>
+        <Pressable
+          testID="photo-share-button"
+          style={styles.shareButton}
+          onPress={handleShare}
+          disabled={sharing}
+          hitSlop={10}
+        >
           {sharing ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
@@ -169,6 +200,21 @@ function createStyles(colors: ColorPalette) {
       width: 32,
       height: 32,
       borderRadius: 16,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    // Centered, not corner-anchored like shareButton — this is a "this
+    // needs your attention" affordance, not a persistent action button.
+    retryButton: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      marginTop: -20,
+      marginLeft: -20,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'center',
       alignItems: 'center',

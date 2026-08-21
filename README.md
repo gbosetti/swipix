@@ -52,7 +52,7 @@ Run `npm run typecheck`, `npm run lint`, and `npm test` before committing —
 all three also run automatically on every push/PR via GitHub Actions
 (`.github/workflows/ci.yml`).
 
-## Releasing a new build
+## Releasing to iOS (App Store)
 
 1. **Bump the version in `app.json`** — the `version` field (e.g. `1.0.0` →
    `1.0.1`), *before* building. `eas.json`'s `production` profile
@@ -91,6 +91,37 @@ all three also run automatically on every push/PR via GitHub Actions
      option. Enter the same `version` bumped in step 1, save, then on the
      new version's page: select the build, fill in "What's New in This
      Version" (required — "Add for Review" fails without it), and submit.
+
+## Releasing to Android (Google Play closed testing)
+
+Android submission isn't wired up for one-command `eas submit` yet —
+`eas.json`'s `submit.production` only has an `ios` block. Until a Google
+Cloud service account key is generated and added there (Play Console →
+Setup → API access), builds have to be uploaded to Play Console by hand.
+
+1. **Test on an actual Android device/emulator first** — all development
+   and testing so far has been iPhone-only, so don't assume parity.
+   ```bash
+   npx expo run:android --device <device-id-from-adb-devices>
+   ```
+
+2. **Bump the version in `app.json`** if this is a follow-up release —
+   same `version` field as the iOS flow above (shared between platforms).
+
+3. **Build the Android app bundle:**
+   ```bash
+   eas build --platform android --profile production
+   ```
+
+4. **Upload the resulting `.aab` manually** in Play Console → Testing →
+   Closed testing → your track → "Create new release."
+
+5. **Closed testing requirement for new developer accounts:** 12 opted-in
+   testers, continuously, for 14 days before production access can be
+   requested. Uploading new releases (bug fixes, etc.) does **not** reset
+   this clock — only the opted-in tester count dropping below 12 does.
+   Since April 2026 Google also checks that testers are actually *using*
+   the app, not just opted in, so it's worth nudging testers to open it.
 
 ## Where core React Native concepts live in this project
 

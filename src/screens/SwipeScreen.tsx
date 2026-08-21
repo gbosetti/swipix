@@ -193,6 +193,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
           first: windowSizeRef.current + PAGE_SIZE,
           detailed: strategy.needsDetailedFetch,
           albumId: strategy.albumId,
+          createdAfter: strategy.dateRange?.after,
+          createdBefore: strategy.dateRange?.before,
           onProgress,
           // An active swipe session shouldn't queue behind CategoryPicker-
           // Screen's own background preview fetches for the shared native
@@ -385,21 +387,9 @@ export default function SwipeScreen({ route, navigation }: Props) {
       let cycle = 0;
       try {
         /**
-         * A single fetchMoreMatches call only searches up to
-         * MAX_PAGE_ATTEMPTS_PER_CYCLE pages (paginating newest-first) —
-         * for a category whose real matches sit deep in a large library
-         * (e.g. "By Month" for a month many photos back), one cycle can
-         * easily come back empty despite matches genuinely existing
-         * further in. Confirmed on a real device: a month with real
-         * photos in it (visible in Photos, and correctly found by this
-         * same category's own native-date-filtered preview lookup) showed
-         * "Nothing to review here" because the swipe session's own
-         * newest-first pagination gave up after one cycle. Retrying here,
-         * bounded by the same MAX_TOPUP_RETRY_CYCLES budget a post-swipe
-         * top-up uses, keeps searching deeper before concluding there's
-         * really nothing — while still revealing immediately (
-         * INITIAL_REVEAL_THRESHOLD=1 per cycle) the moment any cycle
-         * finds something, not waiting for a larger buffer.
+         * A sparse category can still come back empty within one cycle's
+         * MAX_PAGE_ATTEMPTS_PER_CYCLE cap. Retries (same budget a
+         * post-swipe top-up uses) before concluding there's nothing.
          */
         while (
           matches.length === 0 &&

@@ -19,9 +19,13 @@ export class MonthYearVideosStrategy extends CategoryStrategy {
     this.month = month;
   }
 
+  get dateRange(): { after: Date; before: Date } {
+    return { after: new Date(this.year, this.month, 1), before: new Date(this.year, this.month + 1, 1) };
+  }
+
   async matchCandidates(assets: Asset[]): Promise<Asset[]> {
-    const start = new Date(this.year, this.month, 1).getTime();
-    const end = new Date(this.year, this.month + 1, 1).getTime();
+    const start = this.dateRange.after.getTime();
+    const end = this.dateRange.before.getTime();
     return assets.filter(
       (asset) => asset.mediaType === 'video' && asset.creationTime >= start && asset.creationTime < end
     );
@@ -43,8 +47,8 @@ export class MonthYearVideosStrategy extends CategoryStrategy {
   protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {
     const candidates = await PhotoLibraryService.getPreviewCandidates({
       mediaTypes: this.mediaTypes,
-      createdAfter: new Date(this.year, this.month, 1),
-      createdBefore: new Date(this.year, this.month + 1, 1),
+      createdAfter: this.dateRange.after,
+      createdBefore: this.dateRange.before,
       priority: context?.priority,
       isCancelled: context?.isCancelled,
     });

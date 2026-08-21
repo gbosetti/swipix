@@ -72,6 +72,15 @@ export abstract class CategoryStrategy {
   }
 
   /**
+   * Native creation-date range to narrow the paginated fetch — lets
+   * MonthYearStrategy/MonthYearVideosStrategy query the OS directly
+   * instead of paging through everything newer first.
+   */
+  get dateRange(): { after?: Date; before?: Date } | undefined {
+    return undefined;
+  }
+
+  /**
    * How long {@link getPreview} waits before giving up and falling back
    * to the plain icon. Override for a strategy whose `findPreviewAsset`
    * does real per-photo analysis instead of a fast native query.

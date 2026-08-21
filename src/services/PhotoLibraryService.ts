@@ -222,6 +222,8 @@ export const PhotoLibraryService = {
     after,
     detailed = false,
     albumId,
+    createdAfter,
+    createdBefore,
     onProgress,
     priority,
     isCancelled,
@@ -233,6 +235,9 @@ export const PhotoLibraryService = {
     detailed?: boolean;
     /** Scopes the fetch to one native album — see `CategoryStrategy.albumId`. */
     albumId?: string;
+    /** Native date-range narrowing — see `CategoryStrategy.dateRange`. */
+    createdAfter?: Date;
+    createdBefore?: Date;
     /** Only meaningful when `detailed` — the light path resolves near-instantly. */
     onProgress?: ScanProgressCallback;
     /** 'high' for an active swipe session; defaults to 'low'. */
@@ -246,16 +251,11 @@ export const PhotoLibraryService = {
     isCancelled?: () => boolean;
   }): Promise<AssetPage> {
     const type = mediaTypes.length === 1 ? mediaTypes[0] : mediaTypes;
-    return this._fetchAssets(
-      type,
-      first,
-      after,
-      detailed,
-      albumId ? { albumId } : undefined,
-      onProgress,
-      priority,
-      isCancelled
-    );
+    const filters: AssetFilters | undefined =
+      albumId !== undefined || createdAfter !== undefined || createdBefore !== undefined
+        ? { albumId, createdAfter, createdBefore }
+        : undefined;
+    return this._fetchAssets(type, first, after, detailed, filters, onProgress, priority, isCancelled);
   },
 
   /**
