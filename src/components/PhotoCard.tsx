@@ -147,7 +147,7 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
       )}
       {isTop && asset.mediaType === 'photo' && loading && (
         <Pressable testID="photo-retry-button" style={styles.retryButton} onPress={handleRetry} hitSlop={10}>
-          <Ionicons name="refresh" size={22} color="#ffffff" />
+          <ActivityIndicator size="small" color="#ffffff" />
         </Pressable>
       )}
       {isTop && onShare && (

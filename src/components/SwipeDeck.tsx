@@ -19,6 +19,11 @@ interface SwipeDeckProps<T extends { id: string }> {
   renderCard: (item: T, isTop: boolean) => React.ReactNode;
   onSwipeLeft?: (item: T) => void;
   onSwipeRight?: (item: T) => void;
+  /**
+   * Fired instead of onSwipeLeft/onSwipeRight when the current card is
+   * skipped rather than decided — see skipSignal.
+   */
+  onSkip?: (item: T) => void;
   onEmpty?: () => void;
   /** Shown as a fading stamp on the card while dragging right. */
   rightLabel?: string;
@@ -32,6 +37,13 @@ interface SwipeDeckProps<T extends { id: string }> {
    * asked to report its own state back up.
    */
   undoSignal?: number;
+  /**
+   * Bump this to advance past the current card without a left/right
+   * decision — same prop-driven-trigger shape as undoSignal, for a
+   * button press rather than a gesture (no natural left/right swipe
+   * direction for "neither").
+   */
+  skipSignal?: number;
 }
 
 /**
@@ -44,10 +56,12 @@ export default function SwipeDeck<T extends { id: string }>({
   renderCard,
   onSwipeLeft,
   onSwipeRight,
+  onSkip,
   onEmpty,
   rightLabel,
   leftLabel,
   undoSignal,
+  skipSignal,
 }: SwipeDeckProps<T>) {
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -55,14 +69,15 @@ export default function SwipeDeck<T extends { id: string }>({
   const indexRef = useRef(0);
   const [, forceRender] = React.useReducer((x) => x + 1, 0);
   const prevUndoSignal = useRef(undoSignal);
+  const prevSkipSignal = useRef(skipSignal);
 
   /**
    * panGesture below is built once via useRef and closes over whatever
    * props existed at mount — this ref keeps onSwipeComplete reading the
    * current data/callbacks instead of a frozen first-render snapshot.
    */
-  const latest = useRef({ data, onSwipeLeft, onSwipeRight, onEmpty });
-  latest.current = { data, onSwipeLeft, onSwipeRight, onEmpty };
+  const latest = useRef({ data, onSwipeLeft, onSwipeRight, onSkip, onEmpty });
+  latest.current = { data, onSwipeLeft, onSwipeRight, onSkip, onEmpty };
 
   useEffect(() => {
     if (undoSignal !== prevUndoSignal.current && indexRef.current > 0) {
@@ -72,6 +87,14 @@ export default function SwipeDeck<T extends { id: string }>({
     }
     prevUndoSignal.current = undoSignal;
   }, [undoSignal, position]);
+
+  useEffect(() => {
+    if (skipSignal !== prevSkipSignal.current && indexRef.current < data.length) {
+      forceSkip();
+    }
+    prevSkipSignal.current = skipSignal;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skipSignal]);
 
   const forceSwipe = (direction: SwipeDirection) => {
     const x = direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
@@ -90,6 +113,27 @@ export default function SwipeDeck<T extends { id: string }>({
     } else {
       current.onSwipeLeft?.(item);
     }
+    position.setValue({ x: 0, y: 0 });
+    indexRef.current += 1;
+    if (indexRef.current >= current.data.length) {
+      current.onEmpty?.();
+    }
+    forceRender();
+  };
+
+  /** Slides the card up and off — a distinct direction from left/right, since skip is neither a delete nor a keep decision. */
+  const forceSkip = () => {
+    Animated.timing(position, {
+      toValue: { x: 0, y: -SCREEN_WIDTH * 1.5 },
+      duration: 220,
+      useNativeDriver: false,
+    }).start(() => onSkipComplete());
+  };
+
+  const onSkipComplete = () => {
+    const current = latest.current;
+    const item = current.data[indexRef.current];
+    current.onSkip?.(item);
     position.setValue({ x: 0, y: 0 });
     indexRef.current += 1;
     if (indexRef.current >= current.data.length) {

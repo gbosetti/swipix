@@ -68,6 +68,7 @@
     "swipeAgain": "Swipe again",
     "deleteHint": "← delete",
     "keepHint": "keep →",
+    "skip": "skip",
     "keepLabel": "KEEP",
     "deleteLabel": "DELETE",
     "undoLast": "Undo last swipe",

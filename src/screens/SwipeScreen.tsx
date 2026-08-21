@@ -105,6 +105,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // no gap between them could both still read this as false).
   const [undoInFlight, setUndoInFlight] = useState(false);
   const [undoSignal, setUndoSignal] = useState(0);
+  const [skipSignal, setSkipSignal] = useState(0);
   const [consecutiveUndos, setConsecutiveUndos] = useState(0);
   // Bumped by "Swipe again" when there's no previous screen to go back to.
   const [sessionKey, setSessionKey] = useState(0);
@@ -507,6 +508,20 @@ export default function SwipeScreen({ route, navigation }: Props) {
   };
 
   /**
+   * Not a decision — no Trash, no Kept, no history entry, so there's
+   * nothing for Undo to reverse. Since the asset is never marked decided
+   * anywhere, it stays eligible to reappear in this same category later.
+   */
+  const handleSkip = () => {
+    swipedCountRef.current += 1;
+    maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
+  };
+
+  const handleSkipPress = () => {
+    setSkipSignal((s) => s + 1);
+  };
+
+  /**
    * A photo that fails to load must never be swipeable — left/right would
    * delete or keep something never seen. Not a decision: no Trash, no
    * Kept, no history entry, just dropped from the deck.
@@ -670,6 +685,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
           )}
           onSwipeLeft={handleSwipeLeft}
           onSwipeRight={handleSwipeRight}
+          onSkip={handleSkip}
           onEmpty={() => {
             // Can run dry mid-fetch — only "finished" once nothing's left
             // to page in. SwipeDeck resumes on its own once candidates grows.
@@ -681,9 +697,13 @@ export default function SwipeScreen({ route, navigation }: Props) {
           leftLabel={t('swipe.deleteLabel')}
           rightLabel={t('swipe.keepLabel')}
           undoSignal={undoSignal}
+          skipSignal={skipSignal}
         />
         <View style={styles.hintRow}>
           <Text style={styles.hint}>{t('swipe.deleteHint')}</Text>
+          <Pressable testID="skip-button" onPress={handleSkipPress} hitSlop={10}>
+            <Text style={[styles.hint, styles.skipHint]}>{t('swipe.skip')}</Text>
+          </Pressable>
           <Text style={styles.hint}>{t('swipe.keepHint')}</Text>
         </View>
         {waitingForMore && !finished && (
@@ -781,6 +801,7 @@ function createStyles(colors: ColorPalette) {
     subText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
     hintRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 24 },
     hint: { color: colors.textSecondary, fontSize: 14 },
+    skipHint: { textDecorationLine: 'underline' },
     doneButton: {
       marginTop: 16,
       backgroundColor: colors.accent,

@@ -68,6 +68,7 @@
     "swipeAgain": "Scorri di nuovo",
     "deleteHint": "← elimina",
     "keepHint": "mantieni →",
+    "skip": "salta",
     "keepLabel": "MANTIENI",
     "deleteLabel": "ELIMINA",
     "undoLast": "Annulla l'ultimo swipe",

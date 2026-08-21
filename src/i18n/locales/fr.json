@@ -68,6 +68,7 @@
     "swipeAgain": "Recommencer",
     "deleteHint": "← supprimer",
     "keepHint": "garder →",
+    "skip": "passer",
     "keepLabel": "GARDER",
     "deleteLabel": "SUPPRIMER",
     "undoLast": "Annuler le dernier balayage",
