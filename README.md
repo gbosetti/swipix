@@ -92,6 +92,20 @@ all three also run automatically on every push/PR via GitHub Actions
      new version's page: select the build, fill in "What's New in This
      Version" (required — "Add for Review" fails without it), and submit.
 
+## Releasing to iOS — one command (`npm run release:ios`)
+
+Automates steps 1-3 above: runs typecheck/lint/tests, bumps the marketing
+`version` in `app.json` (patch by default; pass `minor`, `major`, or an
+exact `X.Y.Z`), commits that bump, then builds and auto-submits to App Store
+Connect. Steps 4-5 (the App Store Connect web UI) still have to be done by
+hand. See `scripts/release-ios.sh`.
+
+```bash
+npm run release:ios          # patch bump: 1.0.2 -> 1.0.3
+npm run release:ios -- minor # 1.0.2 -> 1.1.0
+npm run release:ios -- 1.4.0 # set an exact version
+```
+
 ## Releasing to Android (Google Play closed testing)
 
 Android submission isn't wired up for one-command `eas submit` yet —

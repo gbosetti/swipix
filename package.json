@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "check-exact-deps": "node scripts/check-exact-deps.js",
-    "ios:reset-demo": "bash scripts/reset-ios-demo-device.sh"
+    "ios:reset-demo": "bash scripts/reset-ios-demo-device.sh",
+    "release:ios": "bash scripts/release-ios.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "15.0.3",
