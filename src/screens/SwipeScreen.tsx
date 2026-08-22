@@ -56,6 +56,8 @@ const MAX_PAGE_ATTEMPTS_PER_CYCLE = 10;
 // a generous search before pausing to let the user decide whether to
 // keep going.
 const MAX_TOPUP_RETRY_CYCLES = 10;
+/** A top-up that resolves within this window never shows a spinner at all — avoids a flash of loading UI for a fetch fast enough not to need one. */
+const WAITING_FOR_MORE_DELAY_MS = 1000;
 
 // Loosely typed against just the route shape — this screen mounts from two
 // different stacks and only needs goBack/canGoBack.
@@ -148,6 +150,8 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const swipedCountRef = useRef(0);
   // Mirrors candidates?.length without reading a possibly-stale closure.
   const candidatesLengthRef = useRef(0);
+  /** Delays the "waiting for more" spinner so a fetch that resolves within WAITING_FOR_MORE_DELAY_MS never flashes it at all. */
+  const waitingForMoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Every id ever added this session. Needed because self-fetching
   // strategies (Duplicates & Similar) re-scan their whole dataset on every
   // call, so a top-up can return matches already on screen — without this,
@@ -231,6 +235,26 @@ export default function SwipeScreen({ route, navigation }: Props) {
     [strategy]
   );
 
+  /** Schedules the spinner rather than showing it immediately; a no-op if one's already pending. */
+  const scheduleWaitingForMore = useCallback(() => {
+    if (waitingForMoreTimeoutRef.current) {
+      return;
+    }
+    waitingForMoreTimeoutRef.current = setTimeout(() => {
+      waitingForMoreTimeoutRef.current = null;
+      setWaitingForMore(true);
+    }, WAITING_FOR_MORE_DELAY_MS);
+  }, []);
+
+  /** Cancels a pending spinner timer (if the fetch resolved before it fired) and hides it if already shown. */
+  const cancelWaitingForMore = useCallback(() => {
+    if (waitingForMoreTimeoutRef.current) {
+      clearTimeout(waitingForMoreTimeoutRef.current);
+      waitingForMoreTimeoutRef.current = null;
+    }
+    setWaitingForMore(false);
+  }, []);
+
   /**
    * One fetch cycle of a (possibly multi-cycle) top-up, always re-checking
    * "is the deck actually empty right now" from live refs rather than a
@@ -259,7 +283,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     (session: ForegroundSession, cycle = 0) => {
       const deckIsEmpty = swipedCountRef.current >= candidatesLengthRef.current;
       if (deckIsEmpty) {
-        setWaitingForMore(true);
+        scheduleWaitingForMore();
         setSearchPaused(false);
       }
       fetchMoreMatches(
@@ -275,14 +299,14 @@ export default function SwipeScreen({ route, navigation }: Props) {
             fetchingMoreRef.current = false;
             candidatesLengthRef.current += more.length;
             setCandidates((prev) => (prev ? [...prev, ...more] : more));
-            setWaitingForMore(false);
+            cancelWaitingForMore();
             setScanProgress(null);
           } else if (hasNextPageRef.current && cycle < MAX_TOPUP_RETRY_CYCLES) {
             // This cycle's cap was hit, not the library — keep searching.
             runTopUpCycle(session, cycle + 1);
           } else {
             fetchingMoreRef.current = false;
-            setWaitingForMore(false);
+            cancelWaitingForMore();
             setScanProgress(null);
             if (swipedCountRef.current >= candidatesLengthRef.current) {
               if (!hasNextPageRef.current) {
@@ -310,14 +334,14 @@ export default function SwipeScreen({ route, navigation }: Props) {
             return;
           }
           fetchingMoreRef.current = false;
-          setWaitingForMore(false);
+          cancelWaitingForMore();
           setScanProgress(null);
           if (swipedCountRef.current >= candidatesLengthRef.current) {
             setSearchPaused(true);
           }
         });
     },
-    [fetchMoreMatches]
+    [fetchMoreMatches, scheduleWaitingForMore, cancelWaitingForMore]
   );
 
   /**
@@ -326,6 +350,10 @@ export default function SwipeScreen({ route, navigation }: Props) {
    */
   const maybeTopUp = useCallback(
     (remaining: number) => {
+      /** Re-checked every swipe, not just the triggering one, so the deck emptying mid-fetch still shows the spinner. */
+      if (remaining <= 0 && fetchingMoreRef.current) {
+        scheduleWaitingForMore();
+      }
       if (remaining > MIN_BUFFER) {
         return;
       }
@@ -339,7 +367,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
       fetchingMoreRef.current = true;
       runTopUpCycle(session);
     },
-    [runTopUpCycle]
+    [runTopUpCycle, scheduleWaitingForMore]
   );
 
   /**
@@ -372,7 +400,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     seenIdsRef.current = new Set();
     setCandidates(null);
     setScanProgress(null);
-    setWaitingForMore(false);
+    cancelWaitingForMore();
     setSearchPaused(false);
     setFinished(false);
     setFreedCount(0);
@@ -431,7 +459,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
         setSearchPaused(true);
       }
     })();
-  }, [strategy, sessionKey, fetchMoreMatches]);
+  }, [strategy, sessionKey, fetchMoreMatches, cancelWaitingForMore]);
 
   // A screen the user has navigated away from (back, tab switch) can stay
   // mounted but unfocused — bottom-tab navigators don't unmount other
@@ -496,7 +524,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     setHistory((h) => [...h, { asset, direction: 'left', wasKept }]);
     setConsecutiveUndos(0);
     swipedCountRef.current += 1;
-    maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
+    maybeTopUp(candidatesLengthRef.current - swipedCountRef.current);
   };
 
   const handleSwipeRight = async (asset: Asset) => {
@@ -504,7 +532,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     setHistory((h) => [...h, { asset, direction: 'right' }]);
     setConsecutiveUndos(0);
     swipedCountRef.current += 1;
-    maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
+    maybeTopUp(candidatesLengthRef.current - swipedCountRef.current);
   };
 
   /**
@@ -514,7 +542,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
    */
   const handleSkip = () => {
     swipedCountRef.current += 1;
-    maybeTopUp((candidates?.length ?? 0) - swipedCountRef.current);
+    maybeTopUp(candidatesLengthRef.current - swipedCountRef.current);
   };
 
   const handleSkipPress = () => {
@@ -529,7 +557,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
   const handleCardLoadError = (asset: Asset) => {
     setCandidates((prev) => (prev ? prev.filter((a) => a.id !== asset.id) : prev));
     candidatesLengthRef.current = Math.max(0, candidatesLengthRef.current - 1);
-    maybeTopUp((candidates?.length ?? 1) - 1 - swipedCountRef.current);
+    maybeTopUp(candidatesLengthRef.current - swipedCountRef.current);
   };
 
   /**
@@ -707,7 +735,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
           <Text style={styles.hint}>{t('swipe.keepHint')}</Text>
         </View>
         {waitingForMore && !finished && (
-          <View style={[styles.finishedOverlay, { paddingTop: headerHeight }]}>
+          <View testID="waiting-for-more-indicator" style={[styles.finishedOverlay, { paddingTop: headerHeight }]}>
             <ActivityIndicator size="large" />
             {scanProgressBar}
           </View>

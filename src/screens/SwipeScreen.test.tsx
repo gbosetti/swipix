@@ -103,7 +103,10 @@ function renderSwipeScreen(strategyId = 'random') {
 }
 
 describe('SwipeScreen', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.useRealTimers();
+    jest.clearAllMocks();
+  });
 
   it('renders without crashing and falls through to the empty state when nothing matches', async () => {
     mockedPhotoLibraryService.requestPermission.mockResolvedValue(true);
@@ -214,4 +217,5 @@ describe('SwipeScreen', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mockedTrashService.restore).toHaveBeenCalledTimes(1);
   });
+
 });

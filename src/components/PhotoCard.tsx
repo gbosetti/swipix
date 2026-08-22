@@ -12,6 +12,12 @@ import VideoCard from './VideoCard';
 // is the real backstop: treat a never-loaded image the same as an error.
 const LOAD_TIMEOUT_MS = 8000;
 
+// SwipeDeck already mounts the next 2 cards ahead of time, so a normal
+// decode finishes before a card ever becomes top — showing the retry
+// overlay immediately just flashes noise on every swipe. Only a load that
+// outlasts this grace period is worth surfacing.
+const RETRY_INDICATOR_DELAY_MS = 400;
+
 interface PhotoCardProps {
   asset: Asset;
   /** True only for the frontmost, interactive card. */
@@ -56,10 +62,22 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
   // genuinely fresh load attempt rather than reusing whatever internal
   // state expo-image was stuck in.
   const [reloadKey, setReloadKey] = useState(0);
+  const [showRetry, setShowRetry] = useState(false);
 
   useEffect(() => {
     setLoading(asset.mediaType !== 'video');
   }, [asset.id, asset.mediaType]);
+
+  // Delays the retry overlay itself, separately from `loading` — see
+  // RETRY_INDICATOR_DELAY_MS above.
+  useEffect(() => {
+    if (!loading) {
+      setShowRetry(false);
+      return;
+    }
+    const timeoutId = setTimeout(() => setShowRetry(true), RETRY_INDICATOR_DELAY_MS);
+    return () => clearTimeout(timeoutId);
+  }, [loading]);
 
   const handleShare = async () => {
     if (sharing || !onShare) {
@@ -151,7 +169,7 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
           onError={handleError}
         />
       )}
-      {isTop && asset.mediaType === 'photo' && loading && (
+      {isTop && asset.mediaType === 'photo' && showRetry && (
         <Pressable testID="photo-retry-button" style={styles.retryButton} onPress={handleRetry} hitSlop={10}>
           <ActivityIndicator size="small" color="#ffffff" />
         </Pressable>

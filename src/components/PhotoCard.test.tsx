@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import PhotoCard from './PhotoCard';
 import { Asset } from '../types';
 import { ThemeProvider } from '../theme/ThemeContext';
@@ -51,13 +51,28 @@ describe('PhotoCard', () => {
     jest.useRealTimers();
   });
 
-  it('shows the retry icon while the top card is still loading', async () => {
+  /**
+   * A photo that decodes within the grace period (the normal case, since
+   * SwipeDeck already pre-mounts the next 2 cards) must never flash it.
+   */
+  it('does not show the retry icon during the initial grace period', async () => {
+    jest.useFakeTimers();
     await renderPhotoCard({ asset: makeAsset('a'), isTop: true });
+    expect(screen.queryByTestId('photo-retry-button')).toBeNull();
+  });
+
+  it('shows the retry icon once the top card has been loading past the grace period', async () => {
+    jest.useFakeTimers();
+    await renderPhotoCard({ asset: makeAsset('a'), isTop: true });
+    await act(async () => { await jest.advanceTimersByTimeAsync(400); });
     expect(screen.getByTestId('photo-retry-button')).toBeTruthy();
   });
 
   it('hides the retry icon once the image loads', async () => {
+    jest.useFakeTimers();
     await renderPhotoCard({ asset: makeAsset('a'), isTop: true });
+    await act(async () => { await jest.advanceTimersByTimeAsync(400); });
+    expect(screen.getByTestId('photo-retry-button')).toBeTruthy();
     await fireEvent(screen.getByTestId('mock-photo-image'), 'load');
     expect(screen.queryByTestId('photo-retry-button')).toBeNull();
   });
@@ -68,7 +83,9 @@ describe('PhotoCard', () => {
    * confusing and unreachable.
    */
   it('never shows the retry icon on a non-top card', async () => {
+    jest.useFakeTimers();
     await renderPhotoCard({ asset: makeAsset('a'), isTop: false });
+    await act(async () => { await jest.advanceTimersByTimeAsync(400); });
     expect(screen.queryByTestId('photo-retry-button')).toBeNull();
   });
 
@@ -102,7 +119,7 @@ describe('PhotoCard', () => {
     const onLoadError = jest.fn();
     await renderPhotoCard({ asset: makeAsset('a'), isTop: true, onLoadError });
 
-    await jest.advanceTimersByTimeAsync(6000);
+    await act(async () => { await jest.advanceTimersByTimeAsync(6000); });
     await fireEvent.press(screen.getByTestId('photo-retry-button'));
     await jest.advanceTimersByTimeAsync(6000);
     expect(onLoadError).not.toHaveBeenCalled();
@@ -112,7 +129,9 @@ describe('PhotoCard', () => {
   });
 
   it('keeps showing the retry icon after pressing it, until the retried load resolves', async () => {
+    jest.useFakeTimers();
     await renderPhotoCard({ asset: makeAsset('a'), isTop: true });
+    await act(async () => { await jest.advanceTimersByTimeAsync(400); });
     await fireEvent.press(screen.getByTestId('photo-retry-button'));
     expect(screen.getByTestId('photo-retry-button')).toBeTruthy();
 
