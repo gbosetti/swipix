@@ -1,5 +1,5 @@
 import * as MediaLibrary from 'expo-media-library';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { PhotoLibraryService } from './PhotoLibraryService';
@@ -271,6 +271,39 @@ describe('PhotoLibraryService.getAllPhotos / getAllMedia (detailed fetch)', () =
 
     expect(mockedGetAssetInfoAsync).toHaveBeenCalledTimes(2);
     expect(assets.map((a) => a.id)).toEqual(['good']);
+  });
+});
+
+describe('PhotoLibraryService detailed fetch on Android', () => {
+  const originalOS = Platform.OS;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Platform.OS = 'android';
+  });
+  afterEach(() => {
+    Platform.OS = originalOS;
+  });
+
+  it('skips getAssetInfoAsync entirely even when detailed is requested, returning each asset\'s already-resolved uri (regression: Big Pictures/Big Videos found nothing on every Android device — getAssetInfoAsync rejects there without ACCESS_MEDIA_LOCATION, a permission deliberately never requested for privacy, and Android already exposes the real file:// path as uri so the detailed call is redundant anyway)', async () => {
+    mockedGetAssetsAsync.mockResolvedValue({
+      assets: [rawAsset('a'), rawAsset('b')],
+      endCursor: 'cursor-2',
+      hasNextPage: false,
+      totalCount: 2,
+    });
+
+    const page = await PhotoLibraryService.getMediaPage({
+      mediaTypes: ['photo'],
+      first: 60,
+      detailed: true,
+    });
+
+    expect(mockedGetAssetInfoAsync).not.toHaveBeenCalled();
+    expect(page.assets.map((a) => a.id)).toEqual(['a', 'b']);
+    // Nothing is dropped, so rawCount matches the returned count — the
+    // caller's growing-window pagination keeps advancing instead of
+    // stalling on a page that "resolved" zero usable assets.
+    expect(page.rawCount).toBe(2);
   });
 });
 

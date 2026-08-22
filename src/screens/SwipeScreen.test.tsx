@@ -114,6 +114,7 @@ describe('SwipeScreen', () => {
       assets: [],
       endCursor: '',
       hasNextPage: false,
+      rawCount: 0,
     });
 
     renderSwipeScreen();
@@ -135,6 +136,7 @@ describe('SwipeScreen', () => {
       assets: [],
       endCursor: '',
       hasNextPage: true,
+      rawCount: 0,
     });
 
     renderSwipeScreen();
@@ -166,9 +168,9 @@ describe('SwipeScreen', () => {
       // (rather than rendered deck content) keeps this test independent
       // of SwipeDeck's own render behavior under Jest.
       if (callCount <= 11) {
-        return { assets: [], endCursor: '', hasNextPage: true };
+        return { assets: [], endCursor: '', hasNextPage: true, rawCount: 0 };
       }
-      return { assets: [asset], endCursor: '', hasNextPage: true };
+      return { assets: [asset], endCursor: '', hasNextPage: true, rawCount: 1 };
     });
 
     renderSwipeScreen();
@@ -189,6 +191,7 @@ describe('SwipeScreen', () => {
       assets: [asset],
       endCursor: '',
       hasNextPage: false,
+      rawCount: 1,
     });
 
     let resolveRestore: () => void = () => {};

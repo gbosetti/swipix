@@ -124,6 +124,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
   // where the previous page ended, flipping hasNextPage to false too early.
   // Growing `first` from 0 and slicing off only the new tail sidesteps it.
   const windowSizeRef = useRef(0);
+  // Separate from windowSizeRef: `page.assets` is the *filtered* array
+  // (an item whose detailed fetch failed is dropped), so slicing it needs
+  // its own cumulative count — using the raw windowSizeRef here would
+  // slice past the filtered array's actual length the moment anything
+  // gets filtered, silently returning zero new items forever after.
+  const filteredWindowSizeRef = useRef(0);
   const hasNextPageRef = useRef(true);
   const fetchingMoreRef = useRef(false);
   /**
@@ -210,8 +216,21 @@ export default function SwipeScreen({ route, navigation }: Props) {
         if (isCancelled()) {
           return collected;
         }
-        const newAssets = page.assets.slice(windowSizeRef.current);
-        windowSizeRef.current = page.assets.length;
+        // Sliced against the filtered array's own cumulative count, not
+        // windowSizeRef (raw) — see filteredWindowSizeRef's comment above.
+        const newAssets = page.assets.slice(filteredWindowSizeRef.current);
+        filteredWindowSizeRef.current = page.assets.length;
+        // rawCount, not assets.length — `first` is requested as an
+        // absolute count from the start each time (growing-window, not a
+        // cursor), so this must be the absolute raw position reached, not
+        // a delta. Using the filtered assets.length here instead would
+        // silently understate it whenever an item in this page failed its
+        // own detailed fetch — a page where everything happened to fail
+        // would report 0 forward progress, leaving windowSizeRef stuck
+        // and every next request re-fetching this exact same page
+        // forever. Confirmed on a real device: an unusually large
+        // synthetic test photo did exactly this to Big Pictures.
+        windowSizeRef.current = page.rawCount;
         hasNextPageRef.current = page.hasNextPage;
         const matched = await strategy.match(newAssets, {
           onProgress,
@@ -393,6 +412,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
     const session = beginForegroundSession();
     sessionRef.current = session;
     windowSizeRef.current = 0;
+    filteredWindowSizeRef.current = 0;
     hasNextPageRef.current = true;
     fetchingMoreRef.current = false;
     swipedCountRef.current = 0;

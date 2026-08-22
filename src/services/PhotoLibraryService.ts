@@ -1,10 +1,46 @@
 import * as MediaLibrary from 'expo-media-library';
 import { getInfoAsync } from 'expo-file-system/legacy';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import { Asset, MediaTypeFilter, ScanProgressCallback } from '../types';
 
-type AssetPage = { assets: Asset[]; endCursor: string; hasNextPage: boolean };
+/**
+ * Whether MediaLibrary.getAssetInfoAsync (the "detailed" fetch) is usable
+ * on this platform.
+ *
+ * @remarks
+ * Always false on Android: there getAssetInfoAsync unconditionally tries to
+ * read an image's EXIF location, which throws unless ACCESS_MEDIA_LOCATION
+ * is granted — a permission this app deliberately never requests (it wants
+ * no location data at all). But the plain getAssetsAsync result already
+ * exposes each asset's real `file://` path as its `uri`, identical to the
+ * `localUri` the detailed call would return, so the detailed fetch is both
+ * broken and redundant here. iOS genuinely needs it: there `uri` is a
+ * `ph://` reference that must be resolved to a real path. Confirmed on a
+ * real device: without this guard, every Big Pictures/Big Videos scan
+ * failed all its per-item fetches and found nothing. Read per-call rather
+ * than cached at module load so it stays trivially testable.
+ */
+function detailedFetchSupported(): boolean {
+  return Platform.OS !== 'android';
+}
+
+type AssetPage = {
+  assets: Asset[];
+  endCursor: string;
+  hasNextPage: boolean;
+  /**
+   * Raw count returned by the native query, before per-item detailed-fetch
+   * filtering drops any asset that failed. A caller doing "growing window"
+   * pagination (SwipeScreen) must advance its window by this, not by
+   * `assets.length` — otherwise a page where every item happens to fail
+   * its detailed fetch (confirmed on a real device: an unusually large
+   * synthetic test photo) reports 0 raw progress, so the window never
+   * moves and every subsequent request re-fetches the exact same stuck
+   * page forever.
+   */
+  rawCount: number;
+};
 type AssetFilters = {
   mediaSubtypes?: MediaLibrary.MediaSubtype[];
   createdAfter?: Date;
@@ -489,7 +525,12 @@ export const PhotoLibraryService = {
           // large fraction of ordinary, non-broken videos (a known
           // expo-media-library issue, not specific to any one file).
           // ph:// is the URI expo-video actually supports.
-          if (!detailed) {
+          //
+          // Also taken unconditionally on Android — see
+          // detailedFetchSupported. There `asset.uri` is already the real
+          // `file://` path a detailed fetch would resolve to, so nothing is
+          // lost by skipping the (broken) getAssetInfoAsync call.
+          if (!detailed || !detailedFetchSupported()) {
             return {
               id: asset.id,
               uri: asset.uri,
@@ -548,6 +589,7 @@ export const PhotoLibraryService = {
       assets: detailedAssets.filter((asset): asset is Asset => asset !== null),
       endCursor: page.endCursor,
       hasNextPage: page.hasNextPage,
+      rawCount: page.assets.length,
     };
   },
 
