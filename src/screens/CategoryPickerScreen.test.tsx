@@ -58,7 +58,7 @@ describe('CategoryPickerScreen', () => {
     mockedPhotoLibraryService.requestPermission.mockResolvedValue(true);
     mockedTrashService.getTrash.mockResolvedValue([]);
 
-    renderCategoryPickerScreen();
+    await renderCategoryPickerScreen();
 
     await waitFor(() => expect(screen.getByText('categoryPicker.picturesSectionHeader')).toBeTruthy());
     expect(screen.getByText('categoryPicker.videosSectionHeader')).toBeTruthy();
@@ -67,7 +67,7 @@ describe('CategoryPickerScreen', () => {
   it('renders without crashing when photo access is denied', async () => {
     mockedPhotoLibraryService.requestPermission.mockResolvedValue(false);
 
-    renderCategoryPickerScreen();
+    await renderCategoryPickerScreen();
 
     await waitFor(() => expect(screen.getByText('categoryPicker.picturesSectionHeader')).toBeTruthy());
   });
