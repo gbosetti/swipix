@@ -135,12 +135,18 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
         )
       ) : (
         // expo-image, not core <Image> — it renders a raw ph:// reference
-        // directly, decoding lazily off the main thread.
+        // directly, decoding lazily off the main thread. cachePolicy=none
+        // and recyclingKey: a swipe-deck card is shown once and decided,
+        // never revisited this session — confirmed via a real Sentry
+        // report (RAM-overuse watchdog kill after ~100 swipes) that
+        // caching full-resolution decodes here was pure overhead.
         <Image
           key={reloadKey}
           source={{ uri: asset.uri }}
           style={styles.image}
           contentFit="cover"
+          cachePolicy="none"
+          recyclingKey={asset.id}
           onLoad={handleLoaded}
           onError={handleError}
         />
