@@ -19,9 +19,10 @@ npx expo run:android   # same, for a connected Android device or emulator
 
 This app can't run in Expo Go — it depends on several native modules (AdMob,
 image manipulation, device info, store review, clipboard) that Expo Go doesn't
-include. `npx expo run:ios`/`run:android` build a custom dev client and
-install it on a simulator/emulator or connected device; after that first
-build, day-to-day development just needs:
+include. `npx expo run:ios`/`run:android` build a custom dev client (powered
+by the `expo-dev-client` dependency — keep it installed or this workflow falls
+back to a plain debug build) and install it on a simulator/emulator or
+connected device; after that first build, day-to-day development just needs:
 
 ```bash
 npx expo start --dev-client
