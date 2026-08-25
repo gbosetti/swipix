@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react-native';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import SwipeScreen from './SwipeScreen';
 import { ThemeProvider } from '../theme/ThemeContext';
@@ -117,7 +117,7 @@ describe('SwipeScreen', () => {
       rawCount: 0,
     });
 
-    renderSwipeScreen();
+    await renderSwipeScreen();
 
     await waitFor(() => expect(screen.getByText('swipe.emptyTitle')).toBeTruthy());
   });
@@ -125,7 +125,7 @@ describe('SwipeScreen', () => {
   it('renders without crashing and shows the permission-denied state when access is off', async () => {
     mockedPhotoLibraryService.requestPermission.mockResolvedValue(false);
 
-    renderSwipeScreen();
+    await renderSwipeScreen();
 
     await waitFor(() => expect(screen.getByText('swipe.permissionDeniedTitle')).toBeTruthy());
   });
@@ -139,7 +139,7 @@ describe('SwipeScreen', () => {
       rawCount: 0,
     });
 
-    renderSwipeScreen();
+    await renderSwipeScreen();
 
     await waitFor(() => expect(screen.getByText('swipe.pausedTitle')).toBeTruthy(), { timeout: 10000 });
     expect(screen.queryByText('swipe.emptyTitle')).toBeNull();
@@ -173,7 +173,7 @@ describe('SwipeScreen', () => {
       return { assets: [asset], endCursor: '', hasNextPage: true, rawCount: 1 };
     });
 
-    renderSwipeScreen();
+    await renderSwipeScreen();
 
     await waitFor(() => expect(callCount).toBeGreaterThan(11), { timeout: 10000 });
     const countRightAfterMatch = callCount;
@@ -200,20 +200,28 @@ describe('SwipeScreen', () => {
     });
     mockedTrashService.restore.mockReturnValue(restorePromise);
 
-    renderSwipeScreen();
+    await renderSwipeScreen();
 
     await waitFor(() => expect(screen.getByTestId('swipe-left')).toBeTruthy());
-    fireEvent.press(screen.getByTestId('swipe-left'));
+    await fireEvent.press(screen.getByTestId('swipe-left'));
     await waitFor(() => expect(mockedTrashService.moveToTrash).toHaveBeenCalledWith(asset));
 
     const undoButton = await screen.findByTestId('undo-button');
+    // Deliberately NOT awaited: handleUndo suspends on the unresolved
+    // restore promise below, so awaiting the tap would hang.
     fireEvent.press(undoButton);
     // TrashService.restore is now in flight (its promise is deliberately
     // unresolved) — a second, overlapping tap here is exactly the race
     // this guard exists to close.
     fireEvent.press(undoButton);
 
-    resolveRestore();
+    // Resolving inside act() so handleUndo's post-await state updates
+    // (setFreedCount/setFinished/setUndoSignal/…) land inside an act scope
+    // instead of escaping it after the test moves on.
+    await act(async () => {
+      resolveRestore();
+      await restorePromise;
+    });
     await waitFor(() => expect(mockedTrashService.restore).toHaveBeenCalledTimes(1));
     // Give an incorrect second call a moment to have fired too, if the
     // guard didn't actually block it.
