@@ -86,7 +86,10 @@ function Tabs({
       <Tab.Screen
         name="CategoriesTab"
         component={CategoriesStackNavigator}
-        options={{ title: t('tabs.categories') }}
+        // Reset the nested stack to the category list whenever this tab
+        // loses focus, so returning to it never drops the user back into a
+        // half-finished swipe session left open on another tab.
+        options={{ title: t('tabs.categories'), popToTopOnBlur: true }}
       />
       <Tab.Screen name="SwipeTab" component={SwipeTabNavigator} options={{ title: t('tabs.swipe') }} />
       <Tab.Screen name="TrashTab" component={TrashStackNavigator} options={{ title: t('tabs.trash') }} />
