@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import * as Clipboard from 'expo-clipboard';
 import { Linking, Platform } from 'react-native';
@@ -7,6 +8,19 @@ export const SUPPORT_EMAIL = 'swipix@bosetti.dev';
 
 export function getAppVersion(): string {
   return Constants.expoConfig?.version ?? 'unknown';
+}
+
+/**
+ * The native build number (iOS CFBundleVersion / Android versionCode) of the
+ * actually-installed binary. Unlike the marketing version, this increments on
+ * every store build — so it's what distinguishes two releases that share a
+ * version name (every Android release does, since only the versionCode is
+ * bumped there). Read from the native binary via expo-application, not
+ * app.json, because this project uses EAS remote versioning (the build number
+ * lives on EAS servers, never in app.json).
+ */
+export function getBuildNumber(): string {
+  return Application.nativeBuildVersion ?? 'unknown';
 }
 
 export function getDeviceDescription(): string {

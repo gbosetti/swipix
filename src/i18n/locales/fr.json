@@ -125,7 +125,8 @@
     "reportFailedTitle": "Impossible d'ouvrir Mail",
     "reportFailedBody": "Nous n'avons pas pu ouvrir d'application mail sur cet appareil. Vous pouvez nous écrire directement à {{email}}.",
     "copyEmailAction": "Copier l'adresse email",
-    "dismissAction": "OK"
+    "dismissAction": "OK",
+    "versionLabel": "Version {{version}} ({{build}})"
   },
   "appearance": {
     "title": "Apparence",

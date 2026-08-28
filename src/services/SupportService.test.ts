@@ -1,5 +1,6 @@
 import {
   getAppVersion,
+  getBuildNumber,
   getDeviceDescription,
   getOsDescription,
   buildFeedbackMailtoUrl,
@@ -13,6 +14,7 @@ jest.mock('expo-constants', () => ({
   __esModule: true,
   default: { expoConfig: { version: '1.0.0' } },
 }));
+jest.mock('expo-application', () => ({ nativeBuildVersion: '42' }));
 jest.mock('expo-device', () => ({
   modelName: 'iPhone 15',
   osName: 'iOS',
@@ -29,6 +31,10 @@ jest.mock('react-native', () => ({
 describe('SupportService', () => {
   it('reads the app version from the Expo config', () => {
     expect(getAppVersion()).toBe('1.0.0');
+  });
+
+  it('reads the native build number from expo-application', () => {
+    expect(getBuildNumber()).toBe('42');
   });
 
   it('reads the device model', () => {

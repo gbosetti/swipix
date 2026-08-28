@@ -10,6 +10,7 @@ import { useColors } from '../theme/ThemeContext';
 import {
   SUPPORT_EMAIL,
   getAppVersion,
+  getBuildNumber,
   getDeviceDescription,
   getOsDescription,
   openFeedbackEmail,
@@ -55,6 +56,9 @@ export default function SettingsScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
+      <Text style={styles.versionText}>
+        {t('settings.versionLabel', { version: getAppVersion(), build: getBuildNumber() })}
+      </Text>
       <Text style={styles.sectionHeader}>{t('settings.preferencesSection')}</Text>
       <Pressable style={styles.row} onPress={() => navigation.navigate('Appearance')}>
         <Text style={styles.rowText}>{t('settings.appearanceRow')}</Text>
@@ -127,5 +131,11 @@ function createStyles(colors: ColorPalette) {
       marginBottom: -4,
     },
     devRowLabel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    versionText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      textAlign: 'center',
+      marginBottom: 4,
+    },
   });
 }

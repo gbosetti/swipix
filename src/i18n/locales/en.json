@@ -125,7 +125,8 @@
     "reportFailedTitle": "Couldn't Open Mail",
     "reportFailedBody": "We couldn't open a mail app on this device. You can reach us directly at {{email}}.",
     "copyEmailAction": "Copy Email Address",
-    "dismissAction": "OK"
+    "dismissAction": "OK",
+    "versionLabel": "Version {{version}} ({{build}})"
   },
   "appearance": {
     "title": "Appearance",
