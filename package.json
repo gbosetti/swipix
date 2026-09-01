@@ -13,6 +13,7 @@
     "test": "jest",
     "check-exact-deps": "node scripts/check-exact-deps.js",
     "ios:reset-demo": "bash scripts/reset-ios-demo-device.sh",
+    "android:device": "bash scripts/run-android-device.sh",
     "release:ios": "bash scripts/release-ios.sh",
     "release:android": "bash scripts/release-android.sh"
   },
