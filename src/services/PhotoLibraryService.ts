@@ -390,15 +390,25 @@ export const PhotoLibraryService = {
    * queried directly and reused as the returned `assetCount`.
    */
   async getAlbums(mediaType: MediaTypeFilter): Promise<Album[]> {
-    const albums = await MediaLibrary.getAlbumsAsync({ includeSmartAlbums: false });
-    const userAlbums = albums.filter((album) => (album.type ?? 'album') === 'album' && album.assetCount > 0);
-    const withTypeCounts = await mapWithConcurrency(userAlbums, async (album) => {
-      const page = await MediaLibrary.getAssetsAsync({ album: album.id, mediaType, first: 1 });
-      return { id: album.id, title: album.title, assetCount: page.totalCount };
-    });
-    return withTypeCounts
-      .filter((album) => album.assetCount > 0)
-      .sort((a, b) => a.title.localeCompare(b.title));
+    try {
+      const albums = await MediaLibrary.getAlbumsAsync({ includeSmartAlbums: false });
+      const userAlbums = albums.filter((album) => (album.type ?? 'album') === 'album' && album.assetCount > 0);
+      const withTypeCounts = await mapWithConcurrency(userAlbums, async (album) => {
+        const page = await MediaLibrary.getAssetsAsync({ album: album.id, mediaType, first: 1 });
+        return { id: album.id, title: album.title, assetCount: page.totalCount };
+      });
+      return withTypeCounts
+        .filter((album) => album.assetCount > 0)
+        .sort((a, b) => a.title.localeCompare(b.title));
+    } catch {
+      // getAlbumsAsync can throw "MEDIA_LIBRARY permission is required" even
+      // when requestPermission reported granted: iOS "limited" access
+      // reports a granted status yet can't enumerate albums, and access can
+      // be revoked in system settings after being granted. There are simply
+      // no albums to offer then — return empty rather than letting an
+      // unhandled rejection reach Sentry (confirmed via a real report).
+      return [];
+    }
   },
 
   /**

@@ -752,6 +752,14 @@ describe('PhotoLibraryService.getAlbums', () => {
 
     expect(photoAlbums[0].assetCount).toBe(12);
   });
+
+  it('returns an empty list instead of throwing when the OS denies access mid-call (regression: iOS "limited" access reports a granted status yet makes getAlbumsAsync throw "MEDIA_LIBRARY permission is required", which surfaced to Sentry as an unhandled rejection)', async () => {
+    mockedGetAlbumsAsync.mockRejectedValue(
+      new Error('MEDIA_LIBRARY permission is required to do this operation.')
+    );
+
+    await expect(PhotoLibraryService.getAlbums('photo')).resolves.toEqual([]);
+  });
 });
 
 describe('PhotoLibraryService album-scoped fetching (AlbumStrategy)', () => {
