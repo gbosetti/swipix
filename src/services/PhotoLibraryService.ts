@@ -201,7 +201,16 @@ async function mapWithConcurrency<T, R>(
  */
 export const PhotoLibraryService = {
   async requestPermission(): Promise<boolean> {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
+    /**
+     * Granular ['photo', 'video'] — not the default (which also asks for
+     * READ_MEDIA_AUDIO on Android 13+). This app's manifest declares only
+     * image/video permissions, and expo-media-library's docs warn that
+     * requesting a permission the manifest doesn't include corrupts the
+     * result — confirmed to break Android 14+ "selected photos" (limited)
+     * access, which came back granted yet read zero assets. No effect on
+     * iOS, where this argument is ignored.
+     */
+    const { status } = await MediaLibrary.requestPermissionsAsync(false, ['photo', 'video']);
     return status === 'granted';
   },
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, useImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Asset } from '../types';
 import { ColorPalette } from '../theme/colors';
@@ -21,6 +21,18 @@ const LOAD_TIMEOUT_MS = 8000;
  * outlasts this grace period is worth surfacing.
  */
 const RETRY_INDICATOR_DELAY_MS = 400;
+
+/**
+ * Hard cap on how large a photo is decoded for a swipe card. A 2048×2048
+ * bitmap is ~16 MB — far more than a full-screen card needs — while a raw
+ * ultra-high-resolution photo can be hundreds of MB decoded (a 143 MP image
+ * is ~575 MB). Confirmed via a real crash: one giant photo exhausted RAM and
+ * took the whole app — and much of the OS — down with it. Decoding through
+ * `useImage` with these bounds keeps any single card's memory finite
+ * regardless of the source's true dimensions; `allowDownscaling` alone (which
+ * only scales to the view) did not prevent the OOM.
+ */
+const MAX_DECODE_DIMENSION = 2048;
 
 interface PhotoCardProps {
   asset: Asset;
@@ -61,31 +73,6 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
   const colors = useColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [sharing, setSharing] = useState(false);
-  const [loading, setLoading] = useState(asset.mediaType !== 'video');
-  /**
-   * Bumping this remounts the <Image> below (via its `key`), forcing a
-   * genuinely fresh load attempt rather than reusing whatever internal
-   * state expo-image was stuck in.
-   */
-  const [reloadKey, setReloadKey] = useState(0);
-  const [showRetry, setShowRetry] = useState(false);
-
-  useEffect(() => {
-    setLoading(asset.mediaType !== 'video');
-  }, [asset.id, asset.mediaType]);
-
-  /**
-   * Delays the retry overlay itself, separately from `loading` — see
-   * RETRY_INDICATOR_DELAY_MS above.
-   */
-  useEffect(() => {
-    if (!loading) {
-      setShowRetry(false);
-      return;
-    }
-    const timeoutId = setTimeout(() => setShowRetry(true), RETRY_INDICATOR_DELAY_MS);
-    return () => clearTimeout(timeoutId);
-  }, [loading]);
 
   const handleShare = async () => {
     if (sharing || !onShare) {
@@ -99,63 +86,11 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
     }
   };
 
-  /**
-   * Latest-ref: onLoadError is a fresh closure every render, but this
-   * effect should only reset its timer when the asset itself changes.
-   */
-  const onLoadErrorRef = useRef(onLoadError);
-  onLoadErrorRef.current = onLoadError;
-  const settledRef = useRef(false);
-
-  useEffect(() => {
-    if (asset.mediaType === 'video') {
-      return;
-    }
-    settledRef.current = false;
-    const timeoutId = setTimeout(() => {
-      if (settledRef.current) {
-        return;
-      }
-      settledRef.current = true;
-      onLoadErrorRef.current?.();
-    }, LOAD_TIMEOUT_MS);
-    return () => {
-      settledRef.current = true;
-      clearTimeout(timeoutId);
-    };
-  }, [asset.id, asset.mediaType, reloadKey]);
-
-  const handleLoaded = () => {
-    settledRef.current = true;
-    setLoading(false);
-  };
-
-  const handleError = () => {
-    settledRef.current = true;
-    onLoadErrorRef.current?.();
-  };
-
-  /**
-   * Lets the user force a fresh attempt on a slow/stuck load (e.g. an
-   * iCloud-only photo still downloading) instead of waiting out the full
-   * LOAD_TIMEOUT_MS backstop.
-   */
-  const handleRetry = () => {
-    settledRef.current = false;
-    setLoading(true);
-    setReloadKey((key) => key + 1);
-  };
-
   return (
     <View style={styles.card}>
       {asset.mediaType === 'video' ? (
         isTop ? (
-          <VideoCard
-            asset={asset}
-            isTop={isTop}
-            onLoadError={onLoadError}
-            screenFocused={screenFocused}
-          />
+          <VideoCard asset={asset} isTop={isTop} onLoadError={onLoadError} screenFocused={screenFocused} />
         ) : (
           /**
            * Background cards never mount a real player — useVideoPlayer
@@ -166,29 +101,7 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
           </View>
         )
       ) : (
-        /**
-         * expo-image, not core <Image> — it renders a raw ph:// reference
-         * directly, decoding lazily off the main thread. cachePolicy=none
-         * and recyclingKey: a swipe-deck card is shown once and decided,
-         * never revisited this session — confirmed via a real Sentry
-         * report (RAM-overuse watchdog kill after ~100 swipes) that
-         * caching full-resolution decodes here was pure overhead.
-         */
-        <Image
-          key={reloadKey}
-          source={{ uri: asset.uri }}
-          style={styles.image}
-          contentFit="cover"
-          cachePolicy="none"
-          recyclingKey={asset.id}
-          onLoad={handleLoaded}
-          onError={handleError}
-        />
-      )}
-      {isTop && asset.mediaType === 'photo' && showRetry && (
-        <Pressable testID="photo-retry-button" style={styles.retryButton} onPress={handleRetry} hitSlop={10}>
-          <ActivityIndicator size="small" color="#ffffff" />
-        </Pressable>
+        <PhotoImage asset={asset} isTop={isTop} onLoadError={onLoadError} styles={styles} />
       )}
       {isTop && onShare && (
         <Pressable
@@ -210,6 +123,124 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
 }
 
 export default React.memo(PhotoCard);
+
+/**
+ * The photo branch, split out so its `useImage` hook only ever runs for an
+ * actual photo, never a video card. Decodes through `useImage` with a hard
+ * size cap (see MAX_DECODE_DIMENSION), then renders the already-bounded
+ * result — the onLoad/onError/timeout/retry flow is unchanged, just fed a
+ * capped image instead of the raw uri.
+ */
+function PhotoImage({
+  asset,
+  isTop,
+  onLoadError,
+  styles,
+}: {
+  asset: Asset;
+  isTop?: boolean;
+  onLoadError?: () => void;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const [loading, setLoading] = useState(true);
+  /**
+   * Bumping this re-runs `useImage` (it's in the dependency list), forcing a
+   * genuinely fresh decode rather than reusing whatever state it got stuck in.
+   */
+  const [reloadKey, setReloadKey] = useState(0);
+  const [showRetry, setShowRetry] = useState(false);
+  /**
+   * Latest-ref: onLoadError is a fresh closure every render, but the timeout
+   * effect should only reset its timer when the asset itself changes.
+   */
+  const onLoadErrorRef = useRef(onLoadError);
+  onLoadErrorRef.current = onLoadError;
+  const settledRef = useRef(false);
+
+  const handleLoaded = () => {
+    settledRef.current = true;
+    setLoading(false);
+  };
+
+  const handleError = () => {
+    settledRef.current = true;
+    onLoadErrorRef.current?.();
+  };
+
+  const image = useImage(
+    { uri: asset.uri },
+    { maxWidth: MAX_DECODE_DIMENSION, maxHeight: MAX_DECODE_DIMENSION, onError: handleError },
+    [asset.uri, reloadKey]
+  );
+
+  useEffect(() => {
+    setLoading(true);
+  }, [asset.id, reloadKey]);
+
+  /**
+   * Delays the retry overlay itself, separately from `loading` — see
+   * RETRY_INDICATOR_DELAY_MS above.
+   */
+  useEffect(() => {
+    if (!loading) {
+      setShowRetry(false);
+      return;
+    }
+    const timeoutId = setTimeout(() => setShowRetry(true), RETRY_INDICATOR_DELAY_MS);
+    return () => clearTimeout(timeoutId);
+  }, [loading]);
+
+  useEffect(() => {
+    settledRef.current = false;
+    const timeoutId = setTimeout(() => {
+      if (settledRef.current) {
+        return;
+      }
+      settledRef.current = true;
+      onLoadErrorRef.current?.();
+    }, LOAD_TIMEOUT_MS);
+    return () => {
+      settledRef.current = true;
+      clearTimeout(timeoutId);
+    };
+  }, [asset.id, reloadKey]);
+
+  /**
+   * Lets the user force a fresh attempt on a slow/stuck load (e.g. an
+   * iCloud-only photo still downloading) instead of waiting out the full
+   * LOAD_TIMEOUT_MS backstop.
+   */
+  const handleRetry = () => {
+    settledRef.current = false;
+    setLoading(true);
+    setReloadKey((key) => key + 1);
+  };
+
+  return (
+    <>
+      {/**
+       * `image` is expo-image's already-decoded, size-capped ref (null until
+       * the first successful decode). Rendering it — rather than the raw uri —
+       * is what bounds memory; onLoad still fires here to settle `loading`.
+       */}
+      {image && (
+        <Image
+          source={image}
+          style={styles.image}
+          contentFit="cover"
+          recyclingKey={asset.id}
+          onLoad={handleLoaded}
+          onError={handleError}
+        />
+      )}
+      {isTop && showRetry && (
+        <Pressable testID="photo-retry-button" style={styles.retryButton} onPress={handleRetry} hitSlop={10}>
+          <ActivityIndicator size="small" color="#ffffff" />
+        </Pressable>
+      )}
+    </>
+  );
+}
 
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
