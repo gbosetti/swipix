@@ -10,8 +10,10 @@ jest.mock('../services/PhotoLibraryService', () => ({
 
 const mockedPhotoLibraryService = PhotoLibraryService as jest.Mocked<typeof PhotoLibraryService>;
 
-// This strategy reads real file size via PhotoLibraryService.getFileSize —
-// faked per-uri via a lookup map instead of touching the filesystem.
+/**
+ * This strategy reads real file size via PhotoLibraryService.getFileSize —
+ * faked per-uri via a lookup map instead of touching the filesystem.
+ */
 const fileSizes: Record<string, number> = {};
 
 function makeAsset(id: string, mediaType: 'photo' | 'video', sizeBytes: number): Asset {

@@ -28,7 +28,7 @@ export default function KeptScreen() {
   const [kept, setKept] = useState<Asset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<Asset | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
-  // Same reasoning as TrashScreen's `emptying`/`restoringId`.
+  /** Same reasoning as TrashScreen's `emptying`/`restoringId`. */
   const [swipingAgainAll, setSwipingAgainAll] = useState(false);
   const [swipingAgainId, setSwipingAgainId] = useState<string | null>(null);
   /** Drives AdUnavailableOverlay — same reasoning as TrashScreen's `awaitingAd`. */
@@ -40,10 +40,12 @@ export default function KeptScreen() {
 
   useFocusEffect(refresh);
 
-  // The preview modal below can mount a real, playing VideoCard — without
-  // this, switching tabs while a preview video is open would leave it
-  // playing (with sound) on a screen the user can no longer even see,
-  // same root cause as the identical SwipeScreen bug.
+  /**
+   * The preview modal below can mount a real, playing VideoCard — without
+   * this, switching tabs while a preview video is open would leave it
+   * playing (with sound) on a screen the user can no longer even see,
+   * same root cause as the identical SwipeScreen bug.
+   */
   const [screenFocused, setScreenFocused] = useState(true);
   useFocusEffect(
     useCallback(() => {
@@ -52,7 +54,7 @@ export default function KeptScreen() {
     }, [])
   );
 
-  // Same caching approach as TrashScreen.
+  /** Same caching approach as TrashScreen. */
   useEffect(() => {
     if (!kept) {
       return;
@@ -94,7 +96,7 @@ export default function KeptScreen() {
       {
         text: t('kept.swipeAgainAll'),
         onPress: async () => {
-          // Same non-blocking pattern as Trash's "Empty Trash Now".
+          /** Same non-blocking pattern as Trash's "Empty Trash Now". */
           setSwipingAgainAll(true);
           try {
             const adShown = await showInterstitialAd();
@@ -144,7 +146,7 @@ export default function KeptScreen() {
                   videoThumbnail ? (
                     <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
                   ) : (
-                    // Still extracting the frame, or extraction failed.
+                    /** Still extracting the frame, or extraction failed. */
                     <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
                       <Ionicons name="videocam" size={22} color={colors.textSecondary} />
                     </View>

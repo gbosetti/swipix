@@ -3,9 +3,11 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
-// See RandomPhotosStrategy's identical constant and rationale — no
-// per-item cost, so it's cheap to sample deep enough that a fast swiping
-// session through this exact category can't decide every candidate.
+/**
+ * See RandomPhotosStrategy's identical constant and rationale — no
+ * per-item cost, so it's cheap to sample deep enough that a fast swiping
+ * session through this exact category can't decide every candidate.
+ */
 const PREVIEW_SAMPLE_SIZE = 50;
 
 /**

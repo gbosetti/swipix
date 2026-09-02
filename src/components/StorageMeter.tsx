@@ -6,7 +6,7 @@ import { StorageService, StorageInfo } from '../services/StorageService';
 import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 
-const LOW_SPACE_THRESHOLD_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
+const LOW_SPACE_THRESHOLD_BYTES = 2 * 1024 * 1024 * 1024; /** 2 GB */
 
 function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;

@@ -49,45 +49,57 @@ type AssetFilters = {
 };
 export type Album = { id: string; title: string; assetCount: number };
 
-// De-dupes identical concurrent fetches — CategoryPickerScreen fires several
-// strategies' preview lookups at once, some with byte-for-byte identical params.
+/**
+ * De-dupes identical concurrent fetches — CategoryPickerScreen fires several
+ * strategies' preview lookups at once, some with byte-for-byte identical params.
+ */
 const inFlight = new Map<string, Promise<AssetPage>>();
 
-// Safety net for a native call that never settles at all (seen after a large
-// deletion, while iOS's Photos index is still updating) — `.finally()` below
-// never fires for those, so this key would otherwise stay poisoned forever.
+/**
+ * Safety net for a native call that never settles at all (seen after a large
+ * deletion, while iOS's Photos index is still updating) — `.finally()` below
+ * never fires for those, so this key would otherwise stay poisoned forever.
+ */
 const CACHE_EVICTION_MS = 15000;
 
-// getAssetInfoAsync resolves synchronously on iOS's main thread when not
-// prefetched, so raising this doesn't buy real parallelism — it just lets
-// more calls fight over the same thread. Kept low deliberately: at 30, a
-// ~25-item CategoryPickerScreen preview burst (Big Pictures + Big Videos +
-// Duplicates) never even fills the cap, so nothing waits in the priority
-// queue below for an active swipe session's 'high' request to jump ahead
-// of — confirmed on a real device, this alone caused an 11s wait for the
-// first progress-bar update. A lower cap throttles that burst into
-// smaller waves, leaving room for priority to actually matter.
+/**
+ * getAssetInfoAsync resolves synchronously on iOS's main thread when not
+ * prefetched, so raising this doesn't buy real parallelism — it just lets
+ * more calls fight over the same thread. Kept low deliberately: at 30, a
+ * ~25-item CategoryPickerScreen preview burst (Big Pictures + Big Videos +
+ * Duplicates) never even fills the cap, so nothing waits in the priority
+ * queue below for an active swipe session's 'high' request to jump ahead
+ * of — confirmed on a real device, this alone caused an 11s wait for the
+ * first progress-bar update. A lower cap throttles that burst into
+ * smaller waves, leaving room for priority to actually matter.
+ */
 const ASSET_INFO_CONCURRENCY = 8;
 
-// A sandbox-denied asset can retry internally rather than rejecting
-// quickly — bounds one getAssetInfoAsync call, and skips a known-bad
-// asset entirely on later fetches instead of relaunching it fresh.
+/**
+ * A sandbox-denied asset can retry internally rather than rejecting
+ * quickly — bounds one getAssetInfoAsync call, and skips a known-bad
+ * asset entirely on later fetches instead of relaunching it fresh.
+ */
 const ASSET_INFO_TIMEOUT_MS = 4000;
-// The page-level query itself, not any one asset — a real, if rare,
-// native hang here previously had no bound at all, and unlike a single
-// asset's lookup, this one blocks the *entire* fetch (nothing to skip and
-// move past). Confirmed as a real cause of a swipe session getting stuck
-// with no error and no recovery: the caller's own promise chain simply
-// never resolved, so nothing downstream (retry, "finished", anything)
-// ever ran. More generous than ASSET_INFO_TIMEOUT_MS since it covers a
-// whole page, not one item.
+/**
+ * The page-level query itself, not any one asset — a real, if rare,
+ * native hang here previously had no bound at all, and unlike a single
+ * asset's lookup, this one blocks the *entire* fetch (nothing to skip and
+ * move past). Confirmed as a real cause of a swipe session getting stuck
+ * with no error and no recovery: the caller's own promise chain simply
+ * never resolved, so nothing downstream (retry, "finished", anything)
+ * ever ran. More generous than ASSET_INFO_TIMEOUT_MS since it covers a
+ * whole page, not one item.
+ */
 const PAGE_FETCH_TIMEOUT_MS = 8000;
 const knownFailedAssetIds = new Set<string>();
 
-// A file's size never changes, so once read it's kept for the rest of the
-// session — Big Pictures/Big Videos/Duplicates & Similar each re-read the
-// same files independently (previews, then a real swipe session), and
-// without this every one of those repeats a real disk read from scratch.
+/**
+ * A file's size never changes, so once read it's kept for the rest of the
+ * session — Big Pictures/Big Videos/Duplicates & Similar each re-read the
+ * same files independently (previews, then a real swipe session), and
+ * without this every one of those repeats a real disk read from scratch.
+ */
 const fileSizeCache = new Map<string, number>();
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -121,18 +133,22 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-// Global, not per-call — every getAssetInfoAsync lands on the same iOS main
-// thread regardless of which call issued it, so several independent
-// ASSET_INFO_CONCURRENCY-wide batches at once still add up to real contention.
+/**
+ * Global, not per-call — every getAssetInfoAsync lands on the same iOS main
+ * thread regardless of which call issued it, so several independent
+ * ASSET_INFO_CONCURRENCY-wide batches at once still add up to real contention.
+ */
 let activeNativeCalls = 0;
 const pendingNativeCalls: (() => void)[] = [];
 
 type CallPriority = 'high' | 'low';
 
-// 'high' jumps the queue ahead of already-waiting 'low' requests — an
-// active swipe session's own fetch shouldn't queue behind CategoryPicker-
-// Screen's background preview work just because the preview requests
-// happened to arrive first.
+/**
+ * 'high' jumps the queue ahead of already-waiting 'low' requests — an
+ * active swipe session's own fetch shouldn't queue behind CategoryPicker-
+ * Screen's background preview work just because the preview requests
+ * happened to arrive first.
+ */
 function acquireNativeCallSlot(priority: CallPriority): Promise<void> {
   if (activeNativeCalls < ASSET_INFO_CONCURRENCY) {
     activeNativeCalls++;
@@ -401,12 +417,14 @@ export const PhotoLibraryService = {
         .filter((album) => album.assetCount > 0)
         .sort((a, b) => a.title.localeCompare(b.title));
     } catch {
-      // getAlbumsAsync can throw "MEDIA_LIBRARY permission is required" even
-      // when requestPermission reported granted: iOS "limited" access
-      // reports a granted status yet can't enumerate albums, and access can
-      // be revoked in system settings after being granted. There are simply
-      // no albums to offer then — return empty rather than letting an
-      // unhandled rejection reach Sentry (confirmed via a real report).
+      /**
+       * getAlbumsAsync can throw "MEDIA_LIBRARY permission is required" even
+       * when requestPermission reported granted: iOS "limited" access
+       * reports a granted status yet can't enumerate albums, and access can
+       * be revoked in system settings after being granted. There are simply
+       * no albums to offer then — return empty rather than letting an
+       * unhandled rejection reach Sentry (confirmed via a real report).
+       */
       return [];
     }
   },
@@ -443,10 +461,12 @@ export const PhotoLibraryService = {
   ): Promise<AssetPage> {
     const key = JSON.stringify({ mediaType, first, after: after ?? null, detailed, filters: filters ?? null });
     const existing = inFlight.get(key);
-    // A second caller sharing this in-flight promise won't see its own
-    // onProgress fire, and its isCancelled won't be checked either —
-    // acceptable, same as onProgress: a UI/resource-hygiene nicety, not
-    // something correctness depends on.
+    /**
+     * A second caller sharing this in-flight promise won't see its own
+     * onProgress fire, and its isCancelled won't be checked either —
+     * acceptable, same as onProgress: a UI/resource-hygiene nicety, not
+     * something correctness depends on.
+     */
     if (existing) {
       return existing;
     }
@@ -497,13 +517,17 @@ export const PhotoLibraryService = {
       PAGE_FETCH_TIMEOUT_MS
     );
 
-    // info.location (GPS) is deliberately never mapped onto Asset — nothing
-    // in the app reads it, and data minimization rules out capturing it.
+    /**
+     * info.location (GPS) is deliberately never mapped onto Asset — nothing
+     * in the app reads it, and data minimization rules out capturing it.
+     */
     let doneCount = 0;
     const total = page.assets.length;
-    // Fired before any item starts, not just as each one finishes — a
-    // 'high' request can still queue behind an already-saturated pool, so
-    // waiting for the first completion could show nothing for seconds.
+    /**
+     * Fired before any item starts, not just as each one finishes — a
+     * 'high' request can still queue behind an already-saturated pool, so
+     * waiting for the first completion could show nothing for seconds.
+     */
     if (total > 0) {
       onProgress?.(0, total);
     }
@@ -511,35 +535,39 @@ export const PhotoLibraryService = {
       page.assets,
       async (asset): Promise<Asset | null> => {
         try {
-          // Checked after acquiring a slot, not just once up front — an
-          // abandoned page fetch (user left mid-scan) still has to let
-          // items already dispatched finish, but one not yet started has
-          // no reason to make its own real native call and occupy a slot
-          // a newly-active session actually needs. Confirmed on a real
-          // device: without this, leaving a slow scan mid-flight (Big
-          // Pictures) could hold the whole concurrency pool hostage for
-          // as long as its abandoned page took to fully drain, starving a
-          // freshly-opened swipe session even with 'high' priority —
-          // priority only reorders the wait queue, it can't preempt slots
-          // already held by unrelated, uncancellable in-flight work.
+          /**
+           * Checked after acquiring a slot, not just once up front — an
+           * abandoned page fetch (user left mid-scan) still has to let
+           * items already dispatched finish, but one not yet started has
+           * no reason to make its own real native call and occupy a slot
+           * a newly-active session actually needs. Confirmed on a real
+           * device: without this, leaving a slow scan mid-flight (Big
+           * Pictures) could hold the whole concurrency pool hostage for
+           * as long as its abandoned page took to fully drain, starving a
+           * freshly-opened swipe session even with 'high' priority —
+           * priority only reorders the wait queue, it can't preempt slots
+           * already held by unrelated, uncancellable in-flight work.
+           */
           if (isCancelled?.()) {
             return null;
           }
           const isVideo = asset.mediaType === 'video';
-          // Light path: skip getAssetInfoAsync and hand back the raw ph://
-          // URI. For photos this is just the fast path — expo-image
-          // resolves ph:// lazily, off the main thread. For videos it's
-          // not optional: expo-video's own docs say never to use
-          // getAssetInfoAsync's localUri for playback — on a real device,
-          // iOS's sandbox denied mediaserverd read access to it for a
-          // large fraction of ordinary, non-broken videos (a known
-          // expo-media-library issue, not specific to any one file).
-          // ph:// is the URI expo-video actually supports.
-          //
-          // Also taken unconditionally on Android — see
-          // detailedFetchSupported. There `asset.uri` is already the real
-          // `file://` path a detailed fetch would resolve to, so nothing is
-          // lost by skipping the (broken) getAssetInfoAsync call.
+          /**
+           * Light path: skip getAssetInfoAsync and hand back the raw ph://
+           * URI. For photos this is just the fast path — expo-image
+           * resolves ph:// lazily, off the main thread. For videos it's
+           * not optional: expo-video's own docs say never to use
+           * getAssetInfoAsync's localUri for playback — on a real device,
+           * iOS's sandbox denied mediaserverd read access to it for a
+           * large fraction of ordinary, non-broken videos (a known
+           * expo-media-library issue, not specific to any one file).
+           * ph:// is the URI expo-video actually supports.
+           *
+           * Also taken unconditionally on Android — see
+           * detailedFetchSupported. There `asset.uri` is already the real
+           * `file://` path a detailed fetch would resolve to, so nothing is
+           * lost by skipping the (broken) getAssetInfoAsync call.
+           */
           if (!detailed || !detailedFetchSupported()) {
             return {
               id: asset.id,
@@ -552,15 +580,19 @@ export const PhotoLibraryService = {
               mediaSubtypes: asset.mediaSubtypes ?? [],
             };
           }
-          // Skip immediately for an asset already known to fail this
-          // session — see ASSET_INFO_TIMEOUT_MS's comment.
+          /**
+           * Skip immediately for an asset already known to fail this
+           * session — see ASSET_INFO_TIMEOUT_MS's comment.
+           */
           if (knownFailedAssetIds.has(asset.id)) {
             return null;
           }
-          // Skip this one asset rather than reject the whole page — a real
-          // library is likely to have at least one asset getAssetInfoAsync
-          // rejects on (iCloud-only, unusual metadata, etc.), or that hangs
-          // long enough to be worth bounding on its own.
+          /**
+           * Skip this one asset rather than reject the whole page — a real
+           * library is likely to have at least one asset getAssetInfoAsync
+           * rejects on (iCloud-only, unusual metadata, etc.), or that hangs
+           * long enough to be worth bounding on its own.
+           */
           let info: MediaLibrary.AssetInfo;
           try {
             info = await withTimeout(MediaLibrary.getAssetInfoAsync(asset), ASSET_INFO_TIMEOUT_MS);
@@ -568,16 +600,20 @@ export const PhotoLibraryService = {
             knownFailedAssetIds.add(asset.id);
             return null;
           }
-          // localUri can be missing (e.g. an iCloud asset that failed to
-          // download) — skip rather than hand back an unusable reference.
+          /**
+           * localUri can be missing (e.g. an iCloud asset that failed to
+           * download) — skip rather than hand back an unusable reference.
+           */
           if (!info.localUri) {
             return null;
           }
           return {
             id: asset.id,
-            // Still the raw ph:// reference for a video's playback uri —
-            // only file-size-reading callers need the resolved path,
-            // carried separately in localUri (see the Asset type).
+            /**
+             * Still the raw ph:// reference for a video's playback uri —
+             * only file-size-reading callers need the resolved path,
+             * carried separately in localUri (see the Asset type).
+             */
             uri: isVideo ? asset.uri : info.localUri,
             localUri: isVideo ? info.localUri : undefined,
             mediaType: isVideo ? 'video' : 'photo',
@@ -639,9 +675,11 @@ export const PhotoLibraryService = {
       if (!info.exists) {
         return 0;
       }
-      // Only the confirmed-real-size path is cached — a cancelled or
-      // failed read returning 0 is a transient outcome, not a fact about
-      // the file, and must never be remembered as its permanent size.
+      /**
+       * Only the confirmed-real-size path is cached — a cancelled or
+       * failed read returning 0 is a transient outcome, not a fact about
+       * the file, and must never be remembered as its permanent size.
+       */
       fileSizeCache.set(uri, info.size);
       return info.size;
     } catch {

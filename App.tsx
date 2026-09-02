@@ -37,10 +37,12 @@ try {
     debug: __DEV__,
   });
 } catch (error) {
-  // Always logged, not just in __DEV__ — Sentry itself is unavailable to
-  // report this one, so the OS's own system log (visible via Console.app
-  // or on-device diagnostics, same as any other crash log) is the only
-  // remaining trail if this ever happens in production.
+  /**
+   * Always logged, not just in __DEV__ — Sentry itself is unavailable to
+   * report this one, so the OS's own system log (visible via Console.app
+   * or on-device diagnostics, same as any other crash log) is the only
+   * remaining trail if this ever happens in production.
+   */
   console.warn('Sentry.init failed, continuing without crash reporting:', error);
 }
 

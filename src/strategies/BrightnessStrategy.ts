@@ -4,7 +4,7 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
-// See BlurredImagesStrategy's identical constants.
+/** See BlurredImagesStrategy's identical constants. */
 const PREVIEW_SAMPLE_SIZE = 15;
 
 /**
@@ -17,13 +17,15 @@ export class BrightnessStrategy extends CategoryStrategy {
 
   constructor(minBrightness = 0, maxBrightness = 70) {
     super();
-    this.minBrightness = minBrightness; // 0-255 scale
+    this.minBrightness = minBrightness; /** 0-255 scale */
     this.maxBrightness = maxBrightness;
   }
 
   async matchCandidates(assets: Asset[], context?: ScanContext): Promise<Asset[]> {
-    // One bulk call, not one per photo — analyzeImages shares a decode
-    // across brightness/blur/duplicate-hash and caches by asset id.
+    /**
+     * One bulk call, not one per photo — analyzeImages shares a decode
+     * across brightness/blur/duplicate-hash and caches by asset id.
+     */
     const analysis = await analyzeImages(assets, context?.onProgress);
     return assets.filter((asset) => {
       const brightness = analysis.get(asset.id)?.brightness;

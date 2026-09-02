@@ -6,10 +6,12 @@ import { ThemeProvider } from '../theme/ThemeContext';
 import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { TrashService } from '../services/TrashService';
 
-// A render crash here (hook misuse, undefined access, a missing provider)
-// is exactly the class of bug unit tests on strategies/services can't
-// catch — this screen mounts on every app launch, so a crash here is a
-// crash-on-every-reload, not just a broken category.
+/**
+ * A render crash here (hook misuse, undefined access, a missing provider)
+ * is exactly the class of bug unit tests on strategies/services can't
+ * catch — this screen mounts on every app launch, so a crash here is a
+ * crash-on-every-reload, not just a broken category.
+ */
 jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 jest.mock('expo', () => ({ ...jest.requireActual('expo'), useEvent: jest.fn(() => ({})) }));
 jest.mock('expo-video', () => ({ VideoView: 'VideoView', useVideoPlayer: jest.fn(() => ({})) }));

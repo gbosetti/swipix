@@ -13,11 +13,13 @@ import { MonthYearVideosStrategy } from './MonthYearVideosStrategy';
 import { ShortVideosStrategy } from './ShortVideosStrategy';
 import { BigVideosStrategy } from './BigVideosStrategy';
 
-// Every strategyId must round-trip to the right class AND, for
-// param-taking strategies, actually apply the params — this is what
-// SwipeScreen relies on to reconstruct a real strategy from the plain
-// {strategyId, params} that now travels through navigation instead of a
-// live instance (see navigation/types.ts's SwipeRouteParams).
+/**
+ * Every strategyId must round-trip to the right class AND, for
+ * param-taking strategies, actually apply the params — this is what
+ * SwipeScreen relies on to reconstruct a real strategy from the plain
+ * {strategyId, params} that now travels through navigation instead of a
+ * live instance (see navigation/types.ts's SwipeRouteParams).
+ */
 describe('createStrategy', () => {
   it('reconstructs every parameterless strategy as the right class', () => {
     expect(createStrategy('random')).toBeInstanceOf(RandomPhotosStrategy);

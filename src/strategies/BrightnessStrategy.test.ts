@@ -47,7 +47,7 @@ describe('BrightnessStrategy', () => {
 
   it('excludes a photo the analysis pipeline could not process (regression: an undecodable photo must not crash the whole category)', async () => {
     const asset = makeAsset('undecodable');
-    mockedAnalyzeImages.mockResolvedValue(new Map()); // analysis failed, no entry for this asset
+    mockedAnalyzeImages.mockResolvedValue(new Map()); /** analysis failed, no entry for this asset */
     const strategy = new BrightnessStrategy();
     await expect(strategy.match([asset])).resolves.toEqual([]);
   });

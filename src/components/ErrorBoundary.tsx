@@ -31,16 +31,20 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Reporting the crash must never prevent showing the fallback UI
-    // below — that's the one thing this component exists to guarantee.
+    /**
+     * Reporting the crash must never prevent showing the fallback UI
+     * below — that's the one thing this component exists to guarantee.
+     */
     try {
       Sentry.captureException(error, {
         contexts: { react: { componentStack: errorInfo.componentStack } },
       });
     } catch (reportingError) {
-      // The fallback UI below renders regardless — this is purely so a
-      // failure to report the crash still leaves a trail somewhere (the
-      // OS's own system log) instead of vanishing with zero record at all.
+      /**
+       * The fallback UI below renders regardless — this is purely so a
+       * failure to report the crash still leaves a trail somewhere (the
+       * OS's own system log) instead of vanishing with zero record at all.
+       */
       console.warn('Sentry.captureException failed:', reportingError);
     }
   }

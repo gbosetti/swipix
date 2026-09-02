@@ -25,7 +25,7 @@ function makeAsset(id: string, mediaType: 'photo' | 'video', creationTime: numbe
 
 describe('MonthYearStrategy', () => {
   it('matches photos taken within the given month, excluding the boundary days of adjacent months', async () => {
-    const inMonth = new Date(2026, 2, 15).getTime(); // March 15, 2026
+    const inMonth = new Date(2026, 2, 15).getTime(); /** March 15, 2026 */
     const lastDayOfPrevMonth = new Date(2026, 1, 28, 23, 59, 59).getTime();
     const firstDayOfNextMonth = new Date(2026, 3, 1).getTime();
 
@@ -35,7 +35,7 @@ describe('MonthYearStrategy', () => {
       makeAsset('nextMonth', 'photo', firstDayOfNextMonth),
     ];
 
-    const strategy = new MonthYearStrategy(2026, 2); // March (0-indexed)
+    const strategy = new MonthYearStrategy(2026, 2); /** March (0-indexed) */
     const result = await strategy.match(assets);
     expect(result.map((a) => a.id)).toEqual(['inMonth']);
   });

@@ -14,8 +14,10 @@ import { TrashService } from '../services/TrashService';
  * real drag gesture.
  */
 jest.mock('../components/SwipeDeck', () => {
-  // jest.mock factories can't reference out-of-scope imports, so these
-  // must be required inline rather than imported at module top.
+  /**
+   * jest.mock factories can't reference out-of-scope imports, so these
+   * must be required inline rather than imported at module top.
+   */
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ReactActual = require('react');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -39,15 +41,19 @@ jest.mock('../components/SwipeDeck', () => {
   };
 });
 
-// A render crash here (hook misuse, undefined access, a missing provider
-// a real screen depends on) is exactly the class of bug unit tests on
-// strategies/services can't catch — several shipped this way this week
-// because nothing ever actually mounted the screen.
+/**
+ * A render crash here (hook misuse, undefined access, a missing provider
+ * a real screen depends on) is exactly the class of bug unit tests on
+ * strategies/services can't catch — several shipped this way this week
+ * because nothing ever actually mounted the screen.
+ */
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 0 }));
 jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-// PhotoCard pulls in VideoCard for the video-asset branch, which needs
-// expo-video's native module — unavailable under Jest regardless of
-// whether a test actually renders a video card.
+/**
+ * PhotoCard pulls in VideoCard for the video-asset branch, which needs
+ * expo-video's native module — unavailable under Jest regardless of
+ * whether a test actually renders a video card.
+ */
 jest.mock('expo', () => ({ ...jest.requireActual('expo'), useEvent: jest.fn(() => ({})) }));
 jest.mock('expo-video', () => ({ VideoView: 'VideoView', useVideoPlayer: jest.fn(() => ({})) }));
 
@@ -161,12 +167,14 @@ describe('SwipeScreen', () => {
     mockedPhotoLibraryService.requestPermission.mockResolvedValue(true);
     mockedPhotoLibraryService.getMediaPage.mockImplementation(async () => {
       callCount += 1;
-      // First 11 calls (a full retry cycle's worth of page attempts, plus
-      // one more) find nothing; only after that does a match appear —
-      // simulates a match that only exists well past the first cycle's
-      // newest-first search window. Asserting on the call count directly
-      // (rather than rendered deck content) keeps this test independent
-      // of SwipeDeck's own render behavior under Jest.
+      /**
+       * First 11 calls (a full retry cycle's worth of page attempts, plus
+       * one more) find nothing; only after that does a match appear —
+       * simulates a match that only exists well past the first cycle's
+       * newest-first search window. Asserting on the call count directly
+       * (rather than rendered deck content) keeps this test independent
+       * of SwipeDeck's own render behavior under Jest.
+       */
       if (callCount <= 11) {
         return { assets: [], endCursor: '', hasNextPage: true, rawCount: 0 };
       }
@@ -177,9 +185,11 @@ describe('SwipeScreen', () => {
 
     await waitFor(() => expect(callCount).toBeGreaterThan(11), { timeout: 10000 });
     const countRightAfterMatch = callCount;
-    // The retry loop should stop calling getMediaPage once a match is
-    // found — give it a moment, then confirm the count settled instead
-    // of continuing to climb.
+    /**
+     * The retry loop should stop calling getMediaPage once a match is
+     * found — give it a moment, then confirm the count settled instead
+     * of continuing to climb.
+     */
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(callCount).toBe(countRightAfterMatch);
   }, 15000);
@@ -207,24 +217,32 @@ describe('SwipeScreen', () => {
     await waitFor(() => expect(mockedTrashService.moveToTrash).toHaveBeenCalledWith(asset));
 
     const undoButton = await screen.findByTestId('undo-button');
-    // Deliberately NOT awaited: handleUndo suspends on the unresolved
-    // restore promise below, so awaiting the tap would hang.
+    /**
+     * Deliberately NOT awaited: handleUndo suspends on the unresolved
+     * restore promise below, so awaiting the tap would hang.
+     */
     fireEvent.press(undoButton);
-    // TrashService.restore is now in flight (its promise is deliberately
-    // unresolved) — a second, overlapping tap here is exactly the race
-    // this guard exists to close.
+    /**
+     * TrashService.restore is now in flight (its promise is deliberately
+     * unresolved) — a second, overlapping tap here is exactly the race
+     * this guard exists to close.
+     */
     fireEvent.press(undoButton);
 
-    // Resolving inside act() so handleUndo's post-await state updates
-    // (setFreedCount/setFinished/setUndoSignal/…) land inside an act scope
-    // instead of escaping it after the test moves on.
+    /**
+     * Resolving inside act() so handleUndo's post-await state updates
+     * (setFreedCount/setFinished/setUndoSignal/…) land inside an act scope
+     * instead of escaping it after the test moves on.
+     */
     await act(async () => {
       resolveRestore();
       await restorePromise;
     });
     await waitFor(() => expect(mockedTrashService.restore).toHaveBeenCalledTimes(1));
-    // Give an incorrect second call a moment to have fired too, if the
-    // guard didn't actually block it.
+    /**
+     * Give an incorrect second call a moment to have fired too, if the
+     * guard didn't actually block it.
+     */
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mockedTrashService.restore).toHaveBeenCalledTimes(1);
   });

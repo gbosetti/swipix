@@ -57,8 +57,10 @@ describe('toLuma', () => {
   });
 
   it('applies ITU-R BT.601 weights, not a plain average, for colored pixels', () => {
-    // Pure green should read brighter than pure blue at the same 255
-    // value, since luma weights green (0.587) far higher than blue (0.114).
+    /**
+     * Pure green should read brighter than pure blue at the same 255
+     * value, since luma weights green (0.587) far higher than blue (0.114).
+     */
     const green = toLuma(solidRgba(1, 1, 0, 255, 0), 1, 1)[0];
     const blue = toLuma(solidRgba(1, 1, 0, 0, 255), 1, 1)[0];
     expect(green).toBeGreaterThan(blue);
@@ -118,11 +120,13 @@ describe('differenceHash / hammingDistance', () => {
   });
 
   it('gives a small but nonzero distance for a minor variation', () => {
-    // A solid gray image (every dHash bit 0, no ambiguity) against the
-    // same image with only its right third brightened — a step, not a
-    // periodic pattern, so unlike a checkerboard it can't alias against
-    // the hash's downsampling stride. Only the columns straddling the
-    // step should flip.
+    /**
+     * A solid gray image (every dHash bit 0, no ambiguity) against the
+     * same image with only its right third brightened — a step, not a
+     * periodic pattern, so unlike a checkerboard it can't alias against
+     * the hash's downsampling stride. Only the columns straddling the
+     * step should flip.
+     */
     const width = 20;
     const height = 20;
     const base = solidRgba(width, height, 128, 128, 128);
@@ -145,12 +149,14 @@ describe('differenceHash / hammingDistance', () => {
   it('gives a large distance for visually opposite images', () => {
     const width = 20;
     const height = 20;
-    // A flat image has no left/right gradients at all, so every dHash
-    // bit is 0. A monotonic left-to-right gradient is the opposite case:
-    // every sampled column is brighter than the one before it, so every
-    // comparison reads true regardless of downsampling stride — unlike a
-    // checkerboard, a monotonic gradient can't alias into a
-    // coincidentally-matching pattern.
+    /**
+     * A flat image has no left/right gradients at all, so every dHash
+     * bit is 0. A monotonic left-to-right gradient is the opposite case:
+     * every sampled column is brighter than the one before it, so every
+     * comparison reads true regardless of downsampling stride — unlike a
+     * checkerboard, a monotonic gradient can't alias into a
+     * coincidentally-matching pattern.
+     */
     const solid = toLuma(solidRgba(width, height, 128, 128, 128), width, height);
     const gradient = new Float32Array(width * height);
     for (let y = 0; y < height; y++) {
@@ -172,13 +178,15 @@ describe('analyzeImages cache eviction', () => {
     for (let i = 0; i < total; i++) {
       seeded[`id-${i}`] = {
         analysis: { brightness: 100, blurScore: 0, dHash: '0'.repeat(16) },
-        lastSeenAt: i, // ascending — id-0 is oldest
+        lastSeenAt: i, /** ascending — id-0 is oldest */
       };
     }
     await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(seeded));
 
-    // No assets passed — eviction runs purely off cache size, independent
-    // of any hits/misses in this call.
+    /**
+     * No assets passed — eviction runs purely off cache size, independent
+     * of any hits/misses in this call.
+     */
     const result = await analyzeImages([] as Asset[]);
 
     expect(result.size).toBe(MAX_CACHE_ENTRIES);

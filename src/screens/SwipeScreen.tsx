@@ -28,39 +28,53 @@ interface SwipeHistoryEntry {
   wasKept?: boolean;
 }
 
-// After this many undos in a row, nudge toward Trash instead of stepping
-// back one card at a time.
+/**
+ * After this many undos in a row, nudge toward Trash instead of stepping
+ * back one card at a time.
+ */
 const UNDO_NUDGE_THRESHOLD = 3;
 
-// Small enough to load fast, big enough to feel like a full deck. Also how
-// much the fetch window (windowSizeRef) grows by each cycle.
+/**
+ * Small enough to load fast, big enough to feel like a full deck. Also how
+ * much the fetch window (windowSizeRef) grows by each cycle.
+ */
 const PAGE_SIZE = 60;
-// Both the "top up now" trigger and the minimum a background top-up tries
-// to accumulate before stopping.
+/**
+ * Both the "top up now" trigger and the minimum a background top-up tries
+ * to accumulate before stopping.
+ */
 const MIN_BUFFER = 15;
-// The initial load shows the deck as soon as a batch finds anything at
-// all, rather than silently scanning further batches to reach MIN_BUFFER
-// first — swiping should start as soon as there's something to swipe.
-// Background top-ups (already showing a deck, no loading UI to wait on)
-// keep using MIN_BUFFER.
+/**
+ * The initial load shows the deck as soon as a batch finds anything at
+ * all, rather than silently scanning further batches to reach MIN_BUFFER
+ * first — swiping should start as soon as there's something to swipe.
+ * Background top-ups (already showing a deck, no loading UI to wait on)
+ * keep using MIN_BUFFER.
+ */
 const INITIAL_REVEAL_THRESHOLD = 1;
-// Safety cap per fetch cycle so a sparse/empty category still resolves to
-// "empty" instead of paging through the whole library.
+/**
+ * Safety cap per fetch cycle so a sparse/empty category still resolves to
+ * "empty" instead of paging through the whole library.
+ */
 const MAX_PAGE_ATTEMPTS_PER_CYCLE = 10;
-// A top-up retries automatically while the deck's run dry (see
-// runTopUpCycle) — bounded across the whole retry chain, not just one
-// cycle, so a genuinely rare category (Big Pictures in a huge library)
-// can't monopolize the shared native-call pool indefinitely at 'high'
-// priority, starving unrelated background work (e.g. Categories' own
-// video previews). 10 cycles × MAX_PAGE_ATTEMPTS_PER_CYCLE × PAGE_SIZE is
-// a generous search before pausing to let the user decide whether to
-// keep going.
+/**
+ * A top-up retries automatically while the deck's run dry (see
+ * runTopUpCycle) — bounded across the whole retry chain, not just one
+ * cycle, so a genuinely rare category (Big Pictures in a huge library)
+ * can't monopolize the shared native-call pool indefinitely at 'high'
+ * priority, starving unrelated background work (e.g. Categories' own
+ * video previews). 10 cycles × MAX_PAGE_ATTEMPTS_PER_CYCLE × PAGE_SIZE is
+ * a generous search before pausing to let the user decide whether to
+ * keep going.
+ */
 const MAX_TOPUP_RETRY_CYCLES = 10;
 /** A top-up that resolves within this window never shows a spinner at all — avoids a flash of loading UI for a fetch fast enough not to need one. */
 const WAITING_FOR_MORE_DELAY_MS = 1000;
 
-// Loosely typed against just the route shape — this screen mounts from two
-// different stacks and only needs goBack/canGoBack.
+/**
+ * Loosely typed against just the route shape — this screen mounts from two
+ * different stacks and only needs goBack/canGoBack.
+ */
 type Props = NativeStackScreenProps<{ Swipe: SwipeRouteParams }, 'Swipe'>;
 
 /**
@@ -79,56 +93,70 @@ export default function SwipeScreen({ route, navigation }: Props) {
   );
   const headerHeight = useHeaderHeight();
   const [candidates, setCandidates] = useState<Asset[] | null>(null);
-  // Populated during the initial load for any strategy — a sparse filter
-  // (e.g. Screenshots in a huge library) can page through several fetches
-  // before finding even one match, which is exactly the kind of loading
-  // delay a bare spinner hides. Left null between updates, so a fetch that
-  // never reports (nothing to report — e.g. permission still resolving)
-  // just shows the plain spinner instead of a stuck bar.
+  /**
+   * Populated during the initial load for any strategy — a sparse filter
+   * (e.g. Screenshots in a huge library) can page through several fetches
+   * before finding even one match, which is exactly the kind of loading
+   * delay a bare spinner hides. Left null between updates, so a fetch that
+   * never reports (nothing to report — e.g. permission still resolving)
+   * just shows the plain spinner instead of a stuck bar.
+   */
   const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
-  // True only once the deck has actually run dry (not just "running low")
-  // and a top-up is searching for more — see maybeTopUp. Distinct from
-  // `finished`: the library isn't known to be exhausted yet.
+  /**
+   * True only once the deck has actually run dry (not just "running low")
+   * and a top-up is searching for more — see maybeTopUp. Distinct from
+   * `finished`: the library isn't known to be exhausted yet.
+   */
   const [waitingForMore, setWaitingForMore] = useState(false);
-  // True once the automatic retry budget (MAX_TOPUP_RETRY_CYCLES) runs out
-  // without either finding more or exhausting the library — deliberately
-  // NOT the same as `finished`: we genuinely don't know whether more
-  // matches exist further in, so it'd be dishonest to claim "all done".
-  // Offers a manual "search more" action instead of silently stopping.
+  /**
+   * True once the automatic retry budget (MAX_TOPUP_RETRY_CYCLES) runs out
+   * without either finding more or exhausting the library — deliberately
+   * NOT the same as `finished`: we genuinely don't know whether more
+   * matches exist further in, so it'd be dishonest to claim "all done".
+   * Offers a manual "search more" action instead of silently stopping.
+   */
   const [searchPaused, setSearchPaused] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [freedCount, setFreedCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const [history, setHistory] = useState<SwipeHistoryEntry[]>([]);
-  // Drives the Undo button's disabled/dimmed appearance — the actual
-  // re-entrancy gate is undoInFlightRef below, not this; state updates
-  // aren't guaranteed to be visible synchronously to a second call fired
-  // immediately after the first (confirmed: two back-to-back calls with
-  // no gap between them could both still read this as false).
+  /**
+   * Drives the Undo button's disabled/dimmed appearance — the actual
+   * re-entrancy gate is undoInFlightRef below, not this; state updates
+   * aren't guaranteed to be visible synchronously to a second call fired
+   * immediately after the first (confirmed: two back-to-back calls with
+   * no gap between them could both still read this as false).
+   */
   const [undoInFlight, setUndoInFlight] = useState(false);
   const [undoSignal, setUndoSignal] = useState(0);
   const [skipSignal, setSkipSignal] = useState(0);
   const [consecutiveUndos, setConsecutiveUndos] = useState(0);
-  // Bumped by "Swipe again" when there's no previous screen to go back to.
+  /** Bumped by "Swipe again" when there's no previous screen to go back to. */
   const [sessionKey, setSessionKey] = useState(0);
-  // A playing video needs to know this too, not just whether it's the top
-  // card of its own deck — see the useFocusEffect below.
+  /**
+   * A playing video needs to know this too, not just whether it's the top
+   * card of its own deck — see the useFocusEffect below.
+   */
   const [screenFocused, setScreenFocused] = useState(true);
 
-  // Refs, not state — read/written from async loops and swipe handlers
-  // without needing their own re-render.
-  //
-  // windowSizeRef, not a cursor: expo-media-library's iOS cursor resolution
-  // (`fetchResult.index(of:)` against a fresh PHFetchResult each call) isn't
-  // reliable when assets tie on the sort key — the index can land past
-  // where the previous page ended, flipping hasNextPage to false too early.
-  // Growing `first` from 0 and slicing off only the new tail sidesteps it.
+  /**
+   * Refs, not state — read/written from async loops and swipe handlers
+   * without needing their own re-render.
+   *
+   * windowSizeRef, not a cursor: expo-media-library's iOS cursor resolution
+   * (`fetchResult.index(of:)` against a fresh PHFetchResult each call) isn't
+   * reliable when assets tie on the sort key — the index can land past
+   * where the previous page ended, flipping hasNextPage to false too early.
+   * Growing `first` from 0 and slicing off only the new tail sidesteps it.
+   */
   const windowSizeRef = useRef(0);
-  // Separate from windowSizeRef: `page.assets` is the *filtered* array
-  // (an item whose detailed fetch failed is dropped), so slicing it needs
-  // its own cumulative count — using the raw windowSizeRef here would
-  // slice past the filtered array's actual length the moment anything
-  // gets filtered, silently returning zero new items forever after.
+  /**
+   * Separate from windowSizeRef: `page.assets` is the *filtered* array
+   * (an item whose detailed fetch failed is dropped), so slicing it needs
+   * its own cumulative count — using the raw windowSizeRef here would
+   * slice past the filtered array's actual length the moment anything
+   * gets filtered, silently returning zero new items forever after.
+   */
   const filteredWindowSizeRef = useRef(0);
   const hasNextPageRef = useRef(true);
   const fetchingMoreRef = useRef(false);
@@ -151,22 +179,28 @@ export default function SwipeScreen({ route, navigation }: Props) {
    * render.
    */
   const undoInFlightRef = useRef(false);
-  // Mirrors how many cards have been swiped — SwipeDeck tracks its own
-  // index but doesn't expose it.
+  /**
+   * Mirrors how many cards have been swiped — SwipeDeck tracks its own
+   * index but doesn't expose it.
+   */
   const swipedCountRef = useRef(0);
-  // Mirrors candidates?.length without reading a possibly-stale closure.
+  /** Mirrors candidates?.length without reading a possibly-stale closure. */
   const candidatesLengthRef = useRef(0);
   /** Delays the "waiting for more" spinner so a fetch that resolves within WAITING_FOR_MORE_DELAY_MS never flashes it at all. */
   const waitingForMoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Every id ever added this session. Needed because self-fetching
-  // strategies (Duplicates & Similar) re-scan their whole dataset on every
-  // call, so a top-up can return matches already on screen — without this,
-  // the same photo could land at two deck positions and get decided twice.
+  /**
+   * Every id ever added this session. Needed because self-fetching
+   * strategies (Duplicates & Similar) re-scan their whole dataset on every
+   * call, so a top-up can return matches already on screen — without this,
+   * the same photo could land at two deck positions and get decided twice.
+   */
   const seenIdsRef = useRef<Set<string>>(new Set());
-  // Renewed on every fresh session (strategy or sessionKey change) and on
-  // every focus — shared across screens via ForegroundSession, so opening
-  // a category correctly supersedes CategoryPickerScreen's own background
-  // preview work, and leaving this screen supersedes this scan in turn.
+  /**
+   * Renewed on every fresh session (strategy or sessionKey change) and on
+   * every focus — shared across screens via ForegroundSession, so opening
+   * a category correctly supersedes CategoryPickerScreen's own background
+   * preview work, and leaving this screen supersedes this scan in turn.
+   */
   const sessionRef = useRef<ForegroundSession | null>(null);
 
   /**
@@ -184,13 +218,15 @@ export default function SwipeScreen({ route, navigation }: Props) {
       minMatches: number,
       onProgress?: ScanProgressCallback
     ): Promise<Asset[]> => {
-      // Passed all the way down to PhotoLibraryService so an item that
-      // hasn't started its own native call yet can skip it once this
-      // session is abandoned — the outer checks below only stop this loop
-      // from launching the NEXT page fetch, they don't stop one already
-      // in flight from making every one of its own native calls
-      // regardless (see PhotoLibraryService.getMediaPage's `isCancelled`
-      // for why that matters).
+      /**
+       * Passed all the way down to PhotoLibraryService so an item that
+       * hasn't started its own native call yet can skip it once this
+       * session is abandoned — the outer checks below only stop this loop
+       * from launching the NEXT page fetch, they don't stop one already
+       * in flight from making every one of its own native calls
+       * regardless (see PhotoLibraryService.getMediaPage's `isCancelled`
+       * for why that matters).
+       */
       const isCancelled = () => !session.isCurrent();
       const collected: Asset[] = [];
       let attempts = 0;
@@ -207,29 +243,35 @@ export default function SwipeScreen({ route, navigation }: Props) {
           createdAfter: strategy.dateRange?.after,
           createdBefore: strategy.dateRange?.before,
           onProgress,
-          // An active swipe session shouldn't queue behind CategoryPicker-
-          // Screen's own background preview fetches for the shared native
-          // call budget.
+          /**
+           * An active swipe session shouldn't queue behind CategoryPicker-
+           * Screen's own background preview fetches for the shared native
+           * call budget.
+           */
           priority: 'high',
           isCancelled,
         });
         if (isCancelled()) {
           return collected;
         }
-        // Sliced against the filtered array's own cumulative count, not
-        // windowSizeRef (raw) — see filteredWindowSizeRef's comment above.
+        /**
+         * Sliced against the filtered array's own cumulative count, not
+         * windowSizeRef (raw) — see filteredWindowSizeRef's comment above.
+         */
         const newAssets = page.assets.slice(filteredWindowSizeRef.current);
         filteredWindowSizeRef.current = page.assets.length;
-        // rawCount, not assets.length — `first` is requested as an
-        // absolute count from the start each time (growing-window, not a
-        // cursor), so this must be the absolute raw position reached, not
-        // a delta. Using the filtered assets.length here instead would
-        // silently understate it whenever an item in this page failed its
-        // own detailed fetch — a page where everything happened to fail
-        // would report 0 forward progress, leaving windowSizeRef stuck
-        // and every next request re-fetching this exact same page
-        // forever. Confirmed on a real device: an unusually large
-        // synthetic test photo did exactly this to Big Pictures.
+        /**
+         * rawCount, not assets.length — `first` is requested as an
+         * absolute count from the start each time (growing-window, not a
+         * cursor), so this must be the absolute raw position reached, not
+         * a delta. Using the filtered assets.length here instead would
+         * silently understate it whenever an item in this page failed its
+         * own detailed fetch — a page where everything happened to fail
+         * would report 0 forward progress, leaving windowSizeRef stuck
+         * and every next request re-fetching this exact same page
+         * forever. Confirmed on a real device: an unusually large
+         * synthetic test photo did exactly this to Big Pictures.
+         */
         windowSizeRef.current = page.rawCount;
         hasNextPageRef.current = page.hasNextPage;
         const matched = await strategy.match(newAssets, {
@@ -321,7 +363,7 @@ export default function SwipeScreen({ route, navigation }: Props) {
             cancelWaitingForMore();
             setScanProgress(null);
           } else if (hasNextPageRef.current && cycle < MAX_TOPUP_RETRY_CYCLES) {
-            // This cycle's cap was hit, not the library — keep searching.
+            /** This cycle's cap was hit, not the library — keep searching. */
             runTopUpCycle(session, cycle + 1);
           } else {
             fetchingMoreRef.current = false;
@@ -329,23 +371,29 @@ export default function SwipeScreen({ route, navigation }: Props) {
             setScanProgress(null);
             if (swipedCountRef.current >= candidatesLengthRef.current) {
               if (!hasNextPageRef.current) {
-                // Truly exhausted and no further swipe will happen to
-                // re-trigger SwipeDeck's own onEmpty — this is the last
-                // place left to surface "finished".
+                /**
+                 * Truly exhausted and no further swipe will happen to
+                 * re-trigger SwipeDeck's own onEmpty — this is the last
+                 * place left to surface "finished".
+                 */
                 setFinished(true);
               } else {
-                // Retry budget spent, library not exhausted — pause and
-                // let the user decide whether it's worth searching further.
+                /**
+                 * Retry budget spent, library not exhausted — pause and
+                 * let the user decide whether it's worth searching further.
+                 */
                 setSearchPaused(true);
               }
             }
           }
         })
         .catch((error) => {
-          // A rejection here (e.g. a page-level native call timing out)
-          // must never just vanish — that's exactly what left a swipe
-          // session permanently stuck before: fetchingMoreRef never reset,
-          // so neither a retry nor "finished" could ever fire again.
+          /**
+           * A rejection here (e.g. a page-level native call timing out)
+           * must never just vanish — that's exactly what left a swipe
+           * session permanently stuck before: fetchingMoreRef never reset,
+           * so neither a retry nor "finished" could ever fire again.
+           */
           if (__DEV__) {
             console.warn('runTopUpCycle failed:', error);
           }
@@ -456,10 +504,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
           cycle += 1;
         }
       } catch (error) {
-        // A rejection (e.g. a page-level native call timing out) must
-        // never leave the initial spinner stuck forever with nothing to
-        // recover to — falls through to "empty" below, same as a
-        // genuinely empty category, rather than hanging indefinitely.
+        /**
+         * A rejection (e.g. a page-level native call timing out) must
+         * never leave the initial spinner stuck forever with nothing to
+         * recover to — falls through to "empty" below, same as a
+         * genuinely empty category, rather than hanging indefinitely.
+         */
         if (__DEV__) {
           console.warn('Initial load failed:', error);
         }
@@ -469,42 +519,46 @@ export default function SwipeScreen({ route, navigation }: Props) {
       }
       candidatesLengthRef.current = matches.length;
       setScanProgress(null);
-      // Set even when empty, so the screen falls through to "empty" below.
+      /** Set even when empty, so the screen falls through to "empty" below. */
       setCandidates(matches);
       if (matches.length === 0 && hasNextPageRef.current) {
-        // Retry budget spent without finding anything, but the library
-        // isn't known to be exhausted — same honest "paused, not empty"
-        // state a post-swipe top-up falls back to in this situation,
-        // with the same manual "search more" escape hatch.
+        /**
+         * Retry budget spent without finding anything, but the library
+         * isn't known to be exhausted — same honest "paused, not empty"
+         * state a post-swipe top-up falls back to in this situation,
+         * with the same manual "search more" escape hatch.
+         */
         setSearchPaused(true);
       }
     })();
   }, [strategy, sessionKey, fetchMoreMatches, cancelWaitingForMore]);
 
-  // A screen the user has navigated away from (back, tab switch) can stay
-  // mounted but unfocused — bottom-tab navigators don't unmount other
-  // tabs' stacks. Ending the session on blur is what actually stops an
-  // abandoned scan: it can't cancel a native call already in flight (no
-  // cancellation API), but it stops fetchMoreMatches from launching any
-  // further ones once the user's left, and — since sessions are shared
-  // across screens — clears the way for CategoryPickerScreen's own
-  // preview work to matter again the moment the user's back on it. If the
-  // scan hadn't finished yet (the standalone Swipe tab case — SwipeScreen
-  // stays mounted, so it won't get a fresh mount to retry with),
-  // abandonedMidScanRef flags it so returning to this same screen resumes
-  // instead of sitting on a spinner that nothing will ever resolve.
-  //
-  // Reads candidatesRef, not candidates directly, and keeps the callback
-  // passed to useFocusEffect referentially stable ([] deps): React
-  // Navigation's useFocusEffect re-subscribes (running this cleanup, then
-  // immediately re-invoking the effect) whenever the callback's identity
-  // changes, not just on a real focus/blur — with `candidates` in the dep
-  // array, every setCandidates call (initial load, every top-up) looked
-  // exactly like "blurred while candidates was still null" to the stale
-  // per-render closure, tripped abandonedMidScanRef, and immediately
-  // resumed via a sessionKey bump — an infinite reset loop that never let
-  // the screen settle (confirmed on a real device: Swipe never finished
-  // loading).
+  /**
+   * A screen the user has navigated away from (back, tab switch) can stay
+   * mounted but unfocused — bottom-tab navigators don't unmount other
+   * tabs' stacks. Ending the session on blur is what actually stops an
+   * abandoned scan: it can't cancel a native call already in flight (no
+   * cancellation API), but it stops fetchMoreMatches from launching any
+   * further ones once the user's left, and — since sessions are shared
+   * across screens — clears the way for CategoryPickerScreen's own
+   * preview work to matter again the moment the user's back on it. If the
+   * scan hadn't finished yet (the standalone Swipe tab case — SwipeScreen
+   * stays mounted, so it won't get a fresh mount to retry with),
+   * abandonedMidScanRef flags it so returning to this same screen resumes
+   * instead of sitting on a spinner that nothing will ever resolve.
+   *
+   * Reads candidatesRef, not candidates directly, and keeps the callback
+   * passed to useFocusEffect referentially stable ([] deps): React
+   * Navigation's useFocusEffect re-subscribes (running this cleanup, then
+   * immediately re-invoking the effect) whenever the callback's identity
+   * changes, not just on a real focus/blur — with `candidates` in the dep
+   * array, every setCandidates call (initial load, every top-up) looked
+   * exactly like "blurred while candidates was still null" to the stale
+   * per-render closure, tripped abandonedMidScanRef, and immediately
+   * resumed via a sessionKey bump — an infinite reset loop that never let
+   * the screen settle (confirmed on a real device: Swipe never finished
+   * loading).
+   */
   const candidatesRef = useRef<Asset[] | null>(null);
   useEffect(() => {
     candidatesRef.current = candidates;
@@ -518,12 +572,14 @@ export default function SwipeScreen({ route, navigation }: Props) {
         setSessionKey((k) => k + 1);
       }
       return () => {
-        // A playing video must stop making sound the instant this screen
-        // loses focus — confirmed on a real device: switching to another
-        // tab left a video's audio running in the background, since
-        // VideoCard's own play/pause logic only knows "am I the top card
-        // of my own deck" (isTop), which never changes just because the
-        // whole screen (a bottom-tab sibling) went out of focus.
+        /**
+         * A playing video must stop making sound the instant this screen
+         * loses focus — confirmed on a real device: switching to another
+         * tab left a video's audio running in the background, since
+         * VideoCard's own play/pause logic only knows "am I the top card
+         * of my own deck" (isTop), which never changes just because the
+         * whole screen (a bottom-tab sibling) went out of focus.
+         */
         setScreenFocused(false);
         if (candidatesRef.current === null) {
           abandonedMidScanRef.current = true;
@@ -534,11 +590,13 @@ export default function SwipeScreen({ route, navigation }: Props) {
   );
 
   const handleSwipeLeft = async (asset: Asset) => {
-    // Never permanent — TrashService only stages it.
+    /** Never permanent — TrashService only stages it. */
     const wasKept = await KeptService.isKept(asset.id);
     await TrashService.moveToTrash(asset);
-    // A delete always overrides a previous keep, so nothing sits in both
-    // Trash and Kept. No-op if it was never kept.
+    /**
+     * A delete always overrides a previous keep, so nothing sits in both
+     * Trash and Kept. No-op if it was never kept.
+     */
     await KeptService.removeKept(asset.id);
     setFreedCount((c) => c + 1);
     setHistory((h) => [...h, { asset, direction: 'left', wasKept }]);
@@ -649,8 +707,10 @@ export default function SwipeScreen({ route, navigation }: Props) {
     }
   }, [navigation]);
 
-  // Shared by the initial load and the "deck ran dry, still searching"
-  // overlay below — same honest, chunk-by-chunk progress either way.
+  /**
+   * Shared by the initial load and the "deck ran dry, still searching"
+   * overlay below — same honest, chunk-by-chunk progress either way.
+   */
   const scanProgressBar = scanProgress && (
     <View style={styles.scanProgressWrap}>
       <View style={styles.scanProgressTrack}>
@@ -681,10 +741,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
       </View>
     );
   } else if (candidates.length === 0 && searchPaused) {
-    // The initial load's own retry budget ran out without finding a
-    // match, but the library isn't known to be exhausted — same honest
-    // "paused, not empty" state and manual retry as the post-swipe case,
-    // rather than falsely claiming there's nothing here at all.
+    /**
+     * The initial load's own retry budget ran out without finding a
+     * match, but the library isn't known to be exhausted — same honest
+     * "paused, not empty" state and manual retry as the post-swipe case,
+     * rather than falsely claiming there's nothing here at all.
+     */
     content = (
       <View style={[styles.center, { paddingTop: headerHeight }]}>
         <Text style={styles.emptyText}>{t('swipe.pausedTitle')}</Text>
@@ -701,10 +763,12 @@ export default function SwipeScreen({ route, navigation }: Props) {
       </View>
     );
   } else {
-    // SwipeDeck stays mounted regardless of `finished` — its card index is
-    // a ref, so replacing this tree would remount at index 0 instead of
-    // stepping back from the real last card on Undo. Finished renders as
-    // an overlay on top instead.
+    /**
+     * SwipeDeck stays mounted regardless of `finished` — its card index is
+     * a ref, so replacing this tree would remount at index 0 instead of
+     * stepping back from the real last card on Undo. Finished renders as
+     * an overlay on top instead.
+     */
     content = (
       <View style={styles.swipeArea}>
         <View style={[styles.statusBar, { paddingTop: headerHeight + 10 }]}>
@@ -735,8 +799,10 @@ export default function SwipeScreen({ route, navigation }: Props) {
           onSwipeRight={handleSwipeRight}
           onSkip={handleSkip}
           onEmpty={() => {
-            // Can run dry mid-fetch — only "finished" once nothing's left
-            // to page in. SwipeDeck resumes on its own once candidates grows.
+            /**
+             * Can run dry mid-fetch — only "finished" once nothing's left
+             * to page in. SwipeDeck resumes on its own once candidates grows.
+             */
             if (hasNextPageRef.current || fetchingMoreRef.current) {
               return;
             }

@@ -2,9 +2,11 @@ import { Asset, CategoryMeta, MediaTypeFilter, ScanContext } from '../types';
 import { TrashService } from '../services/TrashService';
 import { KeptService } from '../services/KeptService';
 
-// Long enough for a real native query or a small analysis pass, short
-// enough that a category stuck behind heavy processing (Duplicates &
-// Similar) never blocks every other category's preview.
+/**
+ * Long enough for a real native query or a small analysis pass, short
+ * enough that a category stuck behind heavy processing (Duplicates &
+ * Similar) never blocks every other category's preview.
+ */
 const DEFAULT_PREVIEW_TIMEOUT_MS = 3000;
 
 /**

@@ -65,8 +65,10 @@ function toBigPictureMaxBytes(highMB: number): number {
 }
 const DEFAULT_BIG_VIDEO_RANGE_MB: [number, number] = [100, 2000];
 const BIG_VIDEO_RANGE_KEY = '@swipix/bigVideoRangeMB';
-// The slider's ceiling means "and above," not a hard cap — a hard cap
-// would silently exclude the very files a "big videos" filter exists for.
+/**
+ * The slider's ceiling means "and above," not a hard cap — a hard cap
+ * would silently exclude the very files a "big videos" filter exists for.
+ */
 const BIG_VIDEO_SLIDER_MAX_MB = 5000;
 function toBigVideoMaxBytes(highMB: number): number {
   return highMB >= BIG_VIDEO_SLIDER_MAX_MB ? Infinity : highMB * 1024 * 1024;
@@ -96,8 +98,10 @@ const PREVIEW_CONCURRENCY = 3;
 const randomPhotosStrategy = new RandomPhotosStrategy();
 const screenshotStrategy = new ScreenshotStrategy();
 const duplicatesAndSimilarStrategy = new DuplicatesAndSimilarStrategy();
-// Held as instances, not pre-read `.meta`, so `.meta.title`'s translation
-// lookup re-evaluates fresh on every render instead of freezing at import.
+/**
+ * Held as instances, not pre-read `.meta`, so `.meta.title`'s translation
+ * lookup re-evaluates fresh on every render instead of freezing at import.
+ */
 const allVideosStrategy = new AllVideosStrategy();
 const shortVideosDefaults = new ShortVideosStrategy();
 const bigPicturesDefaults = new BigPicturesStrategy();
@@ -106,13 +110,17 @@ const blurredImagesStrategy = new BlurredImagesStrategy();
 const brightnessDefaults = new BrightnessStrategy();
 const monthYearDefaults = new MonthYearStrategy(0, 0);
 const monthYearVideosDefaults = new MonthYearVideosStrategy(0, 0);
-// meta.title/icon are constant regardless of which album is selected —
-// used only for the card header.
+/**
+ * meta.title/icon are constant regardless of which album is selected —
+ * used only for the card header.
+ */
 const albumDefaults = new AlbumStrategy('');
 const albumVideosDefaults = new AlbumVideosStrategy('');
 
-// Composite: navigates within its own stack (to Swipe) and to a sibling
-// tab (Trash) from the trash banner.
+/**
+ * Composite: navigates within its own stack (to Swipe) and to a sibling
+ * tab (Trash) from the trash banner.
+ */
 type Props = CompositeScreenProps<
   NativeStackScreenProps<CategoriesStackParamList, 'CategoryPicker'>,
   BottomTabScreenProps<RootTabParamList>
@@ -258,9 +266,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
       .catch(() => setLibrarySize(Infinity));
   }, [permissionGranted]);
 
-  // Two independent lists, not one shared one: an all-video album (e.g. a
-  // GoPro import) would otherwise show in the photo picker with nothing
-  // for AlbumStrategy to find — each list is scoped to its media type.
+  /**
+   * Two independent lists, not one shared one: an all-video album (e.g. a
+   * GoPro import) would otherwise show in the photo picker with nothing
+   * for AlbumStrategy to find — each list is scoped to its media type.
+   */
   useEffect(() => {
     if (!permissionGranted) {
       return;
@@ -275,13 +285,15 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     });
   }, [permissionGranted]);
 
-  // Shared with SwipeScreen via ForegroundSession — begun on focus below,
-  // so opening a category to swipe correctly supersedes this screen's own
-  // preview work: a result that resolves after that happens gets dropped
-  // instead of applying (native work already in flight still finishes and
-  // updates PhotoLibraryService's own cache, it just no longer bothers
-  // updating this screen's state — the very next focus re-requests it
-  // anyway, and reuses that in-flight fetch if it's still running).
+  /**
+   * Shared with SwipeScreen via ForegroundSession — begun on focus below,
+   * so opening a category to swipe correctly supersedes this screen's own
+   * preview work: a result that resolves after that happens gets dropped
+   * instead of applying (native work already in flight still finishes and
+   * updates PhotoLibraryService's own cache, it just no longer bothers
+   * updating this screen's state — the very next focus re-requests it
+   * anyway, and reuses that in-flight fetch if it's still running).
+   */
   const sessionRef = useRef<ForegroundSession | null>(null);
 
   /**
@@ -291,9 +303,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
   const canAttemptExpensivePreview =
     librarySize !== null && librarySize < EXPENSIVE_PREVIEW_ASSET_THRESHOLD;
 
-  // Each category resolves its own preview independently, via its own
-  // CategoryStrategy.getPreview — one slow/failed lookup can't block or
-  // break another's.
+  /**
+   * Each category resolves its own preview independently, via its own
+   * CategoryStrategy.getPreview — one slow/failed lookup can't block or
+   * break another's.
+   */
   const refreshPreview = useCallback((strategy: CategoryStrategy) => {
     const session = sessionRef.current;
     /**
@@ -310,11 +324,13 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     });
   }, []);
 
-  // Every category's preview, resolved independently — but batched
-  // PREVIEW_CONCURRENCY at a time rather than all fired together, so
-  // decoding one doesn't compound the others' peak memory use.
-  // Re-invoked on first load and on every later focus (below), so a
-  // preview that failed once gets another chance.
+  /**
+   * Every category's preview, resolved independently — but batched
+   * PREVIEW_CONCURRENCY at a time rather than all fired together, so
+   * decoding one doesn't compound the others' peak memory use.
+   * Re-invoked on first load and on every later focus (below), so a
+   * preview that failed once gets another chance.
+   */
   const refreshAllPreviews = useCallback(async () => {
     const strategies: CategoryStrategy[] = [
       randomPhotosStrategy,
@@ -389,9 +405,11 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permissionGranted, librarySize]);
 
-  // The album list resolves later than permissionGranted, so the first
-  // refreshAllPreviews() run above usually skips both album previews —
-  // this covers them once a selection exists.
+  /**
+   * The album list resolves later than permissionGranted, so the first
+   * refreshAllPreviews() run above usually skips both album previews —
+   * this covers them once a selection exists.
+   */
   useEffect(() => {
     if (!selectedAlbumId) {
       return;
@@ -412,11 +430,13 @@ export default function CategoryPickerScreen({ navigation }: Props) {
     TrashService.getTrash().then((trash) => setTrashCount(trash.length));
   }, []);
 
-  // Refresh on every focus (e.g. back from Trash or a swipe session), not
-  // just on mount — the first focus fires before permission resolves, so
-  // permissionGranted is checked rather than assumed. Also where this
-  // screen claims the shared ForegroundSession as the current foreground
-  // activity — see refreshPreview's use of it above.
+  /**
+   * Refresh on every focus (e.g. back from Trash or a swipe session), not
+   * just on mount — the first focus fires before permission resolves, so
+   * permissionGranted is checked rather than assumed. Also where this
+   * screen claims the shared ForegroundSession as the current foreground
+   * activity — see refreshPreview's use of it above.
+   */
   useFocusEffect(
     useCallback(() => {
       sessionRef.current = beginForegroundSession();

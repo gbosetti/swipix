@@ -13,6 +13,6 @@ export async function requestAppReview(): Promise<void> {
       await StoreReview.requestReview();
     }
   } catch {
-    // Nothing to surface to the user — see comment above.
+    /** Nothing to surface to the user — see comment above. */
   }
 }

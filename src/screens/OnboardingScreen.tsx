@@ -35,9 +35,11 @@ export default function OnboardingScreen({ onAccept }: OnboardingScreenProps) {
   const current = steps[step];
 
   const handleDecline = () => {
-    // iOS apps can't quit themselves (Apple HIG) — the alert can only
-    // explain closing manually. Android gets the same explanation, plus
-    // a button that can actually act on it.
+    /**
+     * iOS apps can't quit themselves (Apple HIG) — the alert can only
+     * explain closing manually. Android gets the same explanation, plus
+     * a button that can actually act on it.
+     */
     if (Platform.OS === 'android') {
       Alert.alert(t('onboarding.declineTitle'), t('onboarding.declineBody'), [
         { text: t('onboarding.declineCancel'), style: 'cancel' },

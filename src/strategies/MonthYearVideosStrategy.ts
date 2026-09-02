@@ -11,7 +11,7 @@ import i18n from '../i18n';
  */
 export class MonthYearVideosStrategy extends CategoryStrategy {
   year: number;
-  month: number; // 0-11
+  month: number; /** 0-11 */
 
   constructor(year: number, month: number) {
     super();

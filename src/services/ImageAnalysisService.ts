@@ -24,19 +24,25 @@ export interface ImageAnalysis {
   dHash: string;
 }
 
-// Wide enough for real edge structure to survive blur detection, small
-// enough to decode in a few ms. Also feeds the perceptual hash below, so
-// there's no second native resize.
+/**
+ * Wide enough for real edge structure to survive blur detection, small
+ * enough to decode in a few ms. Also feeds the perceptual hash below, so
+ * there's no second native resize.
+ */
 const RESIZE_WIDTH = 200;
 
-// 9x8 grid = 64 bits, packed as two uint32s (see hammingDistance) instead
-// of BigInt — matters for the O(n^2) pass in DuplicatesAndSimilarStrategy.
+/**
+ * 9x8 grid = 64 bits, packed as two uint32s (see hammingDistance) instead
+ * of BigInt — matters for the O(n^2) pass in DuplicatesAndSimilarStrategy.
+ */
 const HASH_COLS = 9;
 const HASH_ROWS = 8;
 
-// expo-image-manipulator decodes the full-resolution source before
-// resizing, so a 12-48MP photo means real transient native memory per
-// decode — kept conservative rather than maxed out.
+/**
+ * expo-image-manipulator decodes the full-resolution source before
+ * resizing, so a 12-48MP photo means real transient native memory per
+ * decode — kept conservative rather than maxed out.
+ */
 const CONCURRENCY = 3;
 
 interface CacheEntry {
@@ -103,8 +109,10 @@ export async function analyzeImages(
   const misses = photoAssets.filter((asset) => !cache.has(asset.id));
   const now = Date.now();
 
-  // Touch hits' lastSeenAt in memory only (not marked dirty) so eviction
-  // favors recently-seen photos — rides along with the next real flush.
+  /**
+   * Touch hits' lastSeenAt in memory only (not marked dirty) so eviction
+   * favors recently-seen photos — rides along with the next real flush.
+   */
   for (const asset of photoAssets) {
     const existing = cache.get(asset.id);
     if (existing) {
@@ -181,7 +189,7 @@ async function analyzeOne(uri: string): Promise<ImageAnalysis | null> {
       try {
         new File(tmpUri).delete();
       } catch {
-        // Best-effort cleanup — a leftover temp file is harmless.
+        /** Best-effort cleanup — a leftover temp file is harmless. */
       }
     }
   }
@@ -204,10 +212,12 @@ export function averageBrightness(luma: Float32Array): number {
   return sum / luma.length;
 }
 
-// Discrete Laplacian kernel — high response variance means lots of edge
-// content (sharp), low variance means smooth/blurry. Not a calibrated
-// constant (depends on sensor/resolution/compression); tune alongside
-// BlurredImagesStrategy's BLUR_THRESHOLD against real photos (issue #10).
+/**
+ * Discrete Laplacian kernel — high response variance means lots of edge
+ * content (sharp), low variance means smooth/blurry. Not a calibrated
+ * constant (depends on sensor/resolution/compression); tune alongside
+ * BlurredImagesStrategy's BLUR_THRESHOLD against real photos (issue #10).
+ */
 const BLUR_VARIANCE_SCALE = 1000;
 
 export function laplacianVariance(luma: Float32Array, width: number, height: number): number {
@@ -229,8 +239,8 @@ export function laplacianVariance(luma: Float32Array, width: number, height: num
 
 export function laplacianBlurScore(luma: Float32Array, width: number, height: number): number {
   const variance = laplacianVariance(luma, width, height);
-  const sharpness = Math.min(variance / BLUR_VARIANCE_SCALE, 1); // 0 blurry .. 1 sharp
-  return Math.round((1 - sharpness) * 100); // onto the 0(sharp)-100(blurry) scale
+  const sharpness = Math.min(variance / BLUR_VARIANCE_SCALE, 1); /** 0 blurry .. 1 sharp */
+  return Math.round((1 - sharpness) * 100); /** onto the 0(sharp)-100(blurry) scale */
 }
 
 /**

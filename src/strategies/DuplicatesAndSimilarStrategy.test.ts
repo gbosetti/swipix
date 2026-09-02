@@ -7,15 +7,19 @@ jest.mock('../services/PhotoLibraryService');
 jest.mock('../services/TrashService', () => ({ TrashService: { getTrash: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/KeptService', () => ({ KeptService: { getKept: jest.fn().mockResolvedValue([]) } }));
 
-// The exact-duplicate signal reads real file size via
-// PhotoLibraryService.getFileSize — faked per-uri instead of touching the
-// filesystem, same approach as BigPicturesStrategy.test.ts.
+/**
+ * The exact-duplicate signal reads real file size via
+ * PhotoLibraryService.getFileSize — faked per-uri instead of touching the
+ * filesystem, same approach as BigPicturesStrategy.test.ts.
+ */
 const fileSizes: Record<string, number> = {};
 
-// hammingDistance's own math is already covered by
-// ImageAnalysisService.test.ts — mocked here so this file's tests stay
-// focused on the strategy's three-signal union logic, not re-deriving
-// hash math from dHash strings.
+/**
+ * hammingDistance's own math is already covered by
+ * ImageAnalysisService.test.ts — mocked here so this file's tests stay
+ * focused on the strategy's three-signal union logic, not re-deriving
+ * hash math from dHash strings.
+ */
 jest.mock('../services/ImageAnalysisService', () => ({
   ...jest.requireActual('../services/ImageAnalysisService'),
   analyzeImages: jest.fn(),
@@ -26,11 +30,13 @@ const mockedPhotoLibraryService = PhotoLibraryService as jest.Mocked<typeof Phot
 const mockedAnalyzeImages = analyzeImages as jest.MockedFunction<typeof analyzeImages>;
 const mockedHammingDistance = hammingDistance as jest.MockedFunction<typeof hammingDistance>;
 
-// Each call gets a distinct width/height/size by default (derived from a
-// counter) so tests exercising the burst or hash signals don't
-// accidentally also trip the exact-duplicate signal by sharing the same
-// placeholder dimensions/size — a test must opt in to a collision by
-// setting matching values explicitly.
+/**
+ * Each call gets a distinct width/height/size by default (derived from a
+ * counter) so tests exercising the burst or hash signals don't
+ * accidentally also trip the exact-duplicate signal by sharing the same
+ * placeholder dimensions/size — a test must opt in to a collision by
+ * setting matching values explicitly.
+ */
 let assetCounter = 0;
 
 function makeAsset(
@@ -46,7 +52,7 @@ function makeAsset(
     id,
     uri,
     mediaType: 'photo',
-    creationTime: assetCounter * 100_000_000, // far apart by default, well outside the burst window
+    creationTime: assetCounter * 100_000_000, /** far apart by default, well outside the burst window */
     duration: 0,
     width: 100 + assetCounter,
     height: 100 + assetCounter,
@@ -60,7 +66,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
     jest.clearAllMocks();
     Object.keys(fileSizes).forEach((key) => delete fileSizes[key]);
     mockedAnalyzeImages.mockResolvedValue(new Map());
-    mockedHammingDistance.mockReturnValue(64); // "completely different" by default
+    mockedHammingDistance.mockReturnValue(64); /** "completely different" by default */
     mockedPhotoLibraryService.getFileSize.mockImplementation(async (uri) => fileSizes[uri] ?? 0);
   });
 
@@ -90,7 +96,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
 
   it('matches photos taken within the burst window (3 seconds)', async () => {
     const a = makeAsset('a', { creationTime: 1_000_000 });
-    const b = makeAsset('b', { creationTime: 1_002_000 }); // +2s
+    const b = makeAsset('b', { creationTime: 1_002_000 }); /** +2s */
     const farApart = makeAsset('c', { creationTime: 2_000_000 });
     mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b, farApart]);
     const strategy = new DuplicatesAndSimilarStrategy();
@@ -100,7 +106,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
 
   it('matches photos whose perceptual hash is within the similarity threshold, even with no other signal in common', async () => {
     const a = makeAsset('a', { creationTime: 1_000_000 });
-    const b = makeAsset('b', { creationTime: 9_000_000 }); // far outside the burst window
+    const b = makeAsset('b', { creationTime: 9_000_000 }); /** far outside the burst window */
     mockedPhotoLibraryService.getAllPhotos.mockResolvedValue([a, b]);
     mockedAnalyzeImages.mockResolvedValue(
       new Map([
@@ -108,7 +114,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
         [b.id, { brightness: 0, blurScore: 0, dHash: 'hash-b' }],
       ])
     );
-    mockedHammingDistance.mockReturnValue(3); // within threshold
+    mockedHammingDistance.mockReturnValue(3); /** within threshold */
     const strategy = new DuplicatesAndSimilarStrategy();
     const result = await strategy.match([]);
     expect(result.map((asset) => asset.id).sort()).toEqual(['a', 'b']);
@@ -124,7 +130,7 @@ describe('DuplicatesAndSimilarStrategy', () => {
         [b.id, { brightness: 0, blurScore: 0, dHash: 'hash-b' }],
       ])
     );
-    mockedHammingDistance.mockReturnValue(40); // far outside threshold
+    mockedHammingDistance.mockReturnValue(40); /** far outside threshold */
     const strategy = new DuplicatesAndSimilarStrategy();
     await expect(strategy.match([])).resolves.toEqual([]);
   });

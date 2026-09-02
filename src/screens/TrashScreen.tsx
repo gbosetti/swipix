@@ -28,14 +28,20 @@ export default function TrashScreen() {
   const [trash, setTrash] = useState<TrashedAsset[] | null>(null);
   const [previewItem, setPreviewItem] = useState<TrashedAsset | null>(null);
   const [videoThumbnails, setVideoThumbnails] = useState<Record<string, VideoThumbnail | null>>({});
-  // True until the whole ad+delete flow settles — showInterstitialAd can
-  // take up to ~8s, and a silent wait that long reads as broken.
+  /**
+   * True until the whole ad+delete flow settles — showInterstitialAd can
+   * take up to ~8s, and a silent wait that long reads as broken.
+   */
   const [emptying, setEmptying] = useState(false);
-  // Large trash counts delete in batches, each with its own native
-  // confirmation — worth surfacing progress, not one opaque spinner.
+  /**
+   * Large trash counts delete in batches, each with its own native
+   * confirmation — worth surfacing progress, not one opaque spinner.
+   */
   const [deleteProgress, setDeleteProgress] = useState<{ done: number; total: number } | null>(null);
-  // Tracks which restore is in flight so its button shows a spinner and
-  // ignores repeat taps.
+  /**
+   * Tracks which restore is in flight so its button shows a spinner and
+   * ignores repeat taps.
+   */
   const [restoringId, setRestoringId] = useState<string | null>(null);
   /**
    * Drives AdUnavailableOverlay — separate from `emptying` since it only
@@ -50,10 +56,12 @@ export default function TrashScreen() {
 
   useFocusEffect(refresh);
 
-  // The preview modal below can mount a real, playing VideoCard — without
-  // this, switching tabs while a preview video is open would leave it
-  // playing (with sound) on a screen the user can no longer even see,
-  // same root cause as the identical SwipeScreen bug.
+  /**
+   * The preview modal below can mount a real, playing VideoCard — without
+   * this, switching tabs while a preview video is open would leave it
+   * playing (with sound) on a screen the user can no longer even see,
+   * same root cause as the identical SwipeScreen bug.
+   */
   const [screenFocused, setScreenFocused] = useState(true);
   useFocusEffect(
     useCallback(() => {
@@ -62,8 +70,10 @@ export default function TrashScreen() {
     }, [])
   );
 
-  // Extracts one frame per video item once, caching it here — only for
-  // items not already generated.
+  /**
+   * Extracts one frame per video item once, caching it here — only for
+   * items not already generated.
+   */
   useEffect(() => {
     if (!trash) {
       return;
@@ -79,8 +89,10 @@ export default function TrashScreen() {
         setVideoThumbnails((current) => ({ ...current, [item.id]: thumbnail }));
       });
     });
-    // Excludes videoThumbnails deliberately — including it would re-run
-    // this on every thumbnail just added.
+    /**
+     * Excludes videoThumbnails deliberately — including it would re-run
+     * this on every thumbnail just added.
+     */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trash]);
 
@@ -102,9 +114,11 @@ export default function TrashScreen() {
     if (!trash || trash.length === 0) {
       return;
     }
-    // Deletion chunks into DELETE_BATCH_SIZE-sized native calls, each
-    // with its own OS confirmation — noted here so multiple confirmations
-    // don't read as the app asking twice by mistake.
+    /**
+     * Deletion chunks into DELETE_BATCH_SIZE-sized native calls, each
+     * with its own OS confirmation — noted here so multiple confirmations
+     * don't read as the app asking twice by mistake.
+     */
     const body =
       trash.length > DELETE_BATCH_SIZE
         ? `${t('trash.emptyAllBody', { count: trash.length })} ${t('trash.emptyAllBatchNote', { batchSize: DELETE_BATCH_SIZE })}`
@@ -118,11 +132,13 @@ export default function TrashScreen() {
           text: t('trash.delete'),
           style: 'destructive',
           onPress: async () => {
-            // showInterstitialAd always resolves within its own timeout,
-            // so this delays at most a few seconds. setBulkDeleteInProgress
-            // blocks switching tabs for the same window — without it, a
-            // delete confirmation could surface on top of an unrelated
-            // screen the user has already navigated to.
+            /**
+             * showInterstitialAd always resolves within its own timeout,
+             * so this delays at most a few seconds. setBulkDeleteInProgress
+             * blocks switching tabs for the same window — without it, a
+             * delete confirmation could surface on top of an unrelated
+             * screen the user has already navigated to.
+             */
             setEmptying(true);
             setBulkDeleteInProgress(true);
             try {
@@ -138,7 +154,7 @@ export default function TrashScreen() {
                   (done, total) => setDeleteProgress({ done, total })
                 );
               } catch {
-                // Cancelled or failed — trash bookkeeping stays untouched.
+                /** Cancelled or failed — trash bookkeeping stays untouched. */
               }
               refresh();
             } finally {
@@ -181,7 +197,7 @@ export default function TrashScreen() {
                   videoThumbnail ? (
                     <Image source={videoThumbnail} style={styles.thumbnail} contentFit="cover" />
                   ) : (
-                    // Still extracting the frame, or extraction failed.
+                    /** Still extracting the frame, or extraction failed. */
                     <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
                       <Ionicons name="videocam" size={22} color={colors.textSecondary} />
                     </View>

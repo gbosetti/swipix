@@ -3,11 +3,11 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, MediaTypeFilter, ScanContext } from '../types';
 import i18n from '../i18n';
 
-// See BigPicturesStrategy's identical constant.
+/** See BigPicturesStrategy's identical constant. */
 const PREVIEW_SAMPLE_SIZE = 5;
 
-const DEFAULT_MIN_BYTES = 100 * 1024 * 1024; // 100 MB
-const DEFAULT_MAX_BYTES = 2000 * 1024 * 1024; // ~2 GB
+const DEFAULT_MIN_BYTES = 100 * 1024 * 1024; /** 100 MB */
+const DEFAULT_MAX_BYTES = 2000 * 1024 * 1024; /** ~2 GB */
 
 /**
  * Large videos — the other half of the old "Big Files" category. Uses a
@@ -27,9 +27,11 @@ export class BigVideosStrategy extends CategoryStrategy {
   async matchCandidates(assets: Asset[], context?: ScanContext): Promise<Asset[]> {
     const videos = assets.filter((asset) => asset.mediaType === 'video');
     const sizes = await Promise.all(
-      // localUri, not uri — a video's uri is always the raw ph:// playback
-      // reference now (see the Asset type); only the resolved local path
-      // can actually be read for its byte size.
+      /**
+       * localUri, not uri — a video's uri is always the raw ph:// playback
+       * reference now (see the Asset type); only the resolved local path
+       * can actually be read for its byte size.
+       */
       videos.map((asset) =>
         PhotoLibraryService.getFileSize(asset.localUri ?? asset.uri, {
           priority: context?.priority,
@@ -57,7 +59,7 @@ export class BigVideosStrategy extends CategoryStrategy {
     return true;
   }
 
-  // See BigPicturesStrategy's identical override.
+  /** See BigPicturesStrategy's identical override. */
   protected previewTimeoutMs = 6000;
 
   protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {

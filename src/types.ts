@@ -14,7 +14,7 @@ export interface Asset {
   uri: string;
   mediaType: 'photo' | 'video';
   creationTime: number;
-  duration: number; // seconds; 0 for photos
+  duration: number; /** seconds; 0 for photos */
   width: number;
   height: number;
   mediaSubtypes: string[];

@@ -4,20 +4,24 @@ import { analyzeImages, hammingDistance, HAMMING_THRESHOLD } from '../services/I
 import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
-// Photos this close together are probably a burst.
+/** Photos this close together are probably a burst. */
 const BURST_WINDOW_MS = 3 * 1000;
 
-// Fetching 500 assets and dHash-analyzing all of them was enough real-
-// device CPU pressure to trip iOS's hang watchdog. A smaller cap trades
-// completeness (200 most recent, not 500) for safety.
+/**
+ * Fetching 500 assets and dHash-analyzing all of them was enough real-
+ * device CPU pressure to trip iOS's hang watchdog. A smaller cap trades
+ * completeness (200 most recent, not 500) for safety.
+ */
 const FETCH_LIMIT = 200;
 
-// No fast native shortcut exists for this category — finding a duplicate
-// requires comparing photos against each other, so the preview reuses the
-// same detection on a smaller sample (see findDuplicates) with the most
-// generous timeout of any category. 15, not 60: these calls effectively
-// serialize on iOS's main thread regardless of JS concurrency, so total
-// time scales with raw count.
+/**
+ * No fast native shortcut exists for this category — finding a duplicate
+ * requires comparing photos against each other, so the preview reuses the
+ * same detection on a smaller sample (see findDuplicates) with the most
+ * generous timeout of any category. 15, not 60: these calls effectively
+ * serialize on iOS's main thread regardless of JS concurrency, so total
+ * time scales with raw count.
+ */
 const PREVIEW_FETCH_LIMIT = 15;
 const PREVIEW_TIMEOUT_MS = 5000;
 
@@ -38,8 +42,10 @@ const PREVIEW_TIMEOUT_MS = 5000;
  */
 export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
   async matchCandidates(_assets: Asset[], context?: ScanContext): Promise<Asset[]> {
-    // 'high' — only ever called from an active swipe session (match()),
-    // never from the Categories preview path (findPreviewAsset below).
+    /**
+     * 'high' — only ever called from an active swipe session (match()),
+     * never from the Categories preview path (findPreviewAsset below).
+     */
     const photos = await PhotoLibraryService.getAllPhotos({
       first: FETCH_LIMIT,
       onProgress: context?.onProgress,
@@ -102,8 +108,10 @@ export class DuplicatesAndSimilarStrategy extends CategoryStrategy {
       .map((asset) => ({ asset, hash: analysis.get(asset.id)?.dHash }))
       .filter((entry): entry is { asset: Asset; hash: string } => entry.hash !== undefined);
 
-    // O(n^2), but at FETCH_LIMIT=200 that's ~20k cheap integer ops — not
-    // worth an approximate-nearest-neighbor index at this scale.
+    /**
+     * O(n^2), but at FETCH_LIMIT=200 that's ~20k cheap integer ops — not
+     * worth an approximate-nearest-neighbor index at this scale.
+     */
     const similarIds = new Set<string>();
     for (let i = 0; i < hashed.length; i++) {
       for (let j = i + 1; j < hashed.length; j++) {

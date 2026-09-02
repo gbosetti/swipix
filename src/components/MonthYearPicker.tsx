@@ -9,7 +9,7 @@ const DEFAULT_MIN_YEAR = 2000;
 
 interface MonthYearPickerProps {
   year: number;
-  month: number; // 0-11
+  month: number; /** 0-11 */
   onChange: (year: number, month: number) => void;
   minYear?: number;
 }

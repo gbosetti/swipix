@@ -72,9 +72,11 @@ function Tabs({
           return <Ionicons name={focused ? icon.focused : icon.unfocused} size={size} color={color} />;
         },
       })}
-      // Blocks switching tabs during a bulk trash deletion (see
-      // BulkOperationContext) — every tab stays mounted, so a native
-      // delete dialog could otherwise surface on an unrelated screen.
+      /**
+       * Blocks switching tabs during a bulk trash deletion (see
+       * BulkOperationContext) — every tab stays mounted, so a native
+       * delete dialog could otherwise surface on an unrelated screen.
+       */
       screenListeners={{
         tabPress: (e) => {
           if (isBulkDeleteInProgress) {
@@ -86,9 +88,11 @@ function Tabs({
       <Tab.Screen
         name="CategoriesTab"
         component={CategoriesStackNavigator}
-        // Reset the nested stack to the category list whenever this tab
-        // loses focus, so returning to it never drops the user back into a
-        // half-finished swipe session left open on another tab.
+        /**
+         * Reset the nested stack to the category list whenever this tab
+         * loses focus, so returning to it never drops the user back into a
+         * half-finished swipe session left open on another tab.
+         */
         options={{ title: t('tabs.categories'), popToTopOnBlur: true }}
       />
       <Tab.Screen name="SwipeTab" component={SwipeTabNavigator} options={{ title: t('tabs.swipe') }} />

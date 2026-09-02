@@ -18,11 +18,13 @@ jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) =>
 jest.mock('expo', () => ({ useEvent: jest.fn(() => ({})) }));
 jest.mock('expo-video', () => ({ VideoView: 'VideoView', useVideoPlayer: jest.fn(() => ({})) }));
 
-// Renders as a plain host View exposing onLoad/onError as fireable events,
-// so a test can simulate expo-image's real load/error callbacks without a
-// real native image decode. Uses createElement, not JSX — jest.mock
-// factories are hoisted above the file's own imports, which isn't safe
-// for JSX's auto-imported runtime.
+/**
+ * Renders as a plain host View exposing onLoad/onError as fireable events,
+ * so a test can simulate expo-image's real load/error callbacks without a
+ * real native image decode. Uses createElement, not JSX — jest.mock
+ * factories are hoisted above the file's own imports, which isn't safe
+ * for JSX's auto-imported runtime.
+ */
 jest.mock('expo-image', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories are hoisted above imports, so this must be require(), not import
   const { createElement } = require('react');

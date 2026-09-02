@@ -3,15 +3,17 @@ import { PhotoLibraryService } from '../services/PhotoLibraryService';
 import { Asset, CategoryMeta, ScanContext } from '../types';
 import i18n from '../i18n';
 
-// `detailed: true` below means each of these costs a real getAssetInfoAsync
-// call, which serializes on iOS's main thread regardless of JS concurrency.
-// Kept small since this preview, Big Videos', and Duplicates & Similar's
-// all fire together on one Categories mount — their combined total is
-// what matters.
+/**
+ * `detailed: true` below means each of these costs a real getAssetInfoAsync
+ * call, which serializes on iOS's main thread regardless of JS concurrency.
+ * Kept small since this preview, Big Videos', and Duplicates & Similar's
+ * all fire together on one Categories mount — their combined total is
+ * what matters.
+ */
 const PREVIEW_SAMPLE_SIZE = 5;
 
-const DEFAULT_MIN_BYTES = 20 * 1024 * 1024; // 20 MB
-const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
+const DEFAULT_MIN_BYTES = 20 * 1024 * 1024; /** 20 MB */
+const DEFAULT_MAX_BYTES = 200 * 1024 * 1024; /** 200 MB */
 
 /**
  * Large photos — split from the old combined "Big Files" category so
@@ -58,7 +60,7 @@ export class BigPicturesStrategy extends CategoryStrategy {
     return true;
   }
 
-  // 3s (the default) wasn't enough for even 20 detailed fetches.
+  /** 3s (the default) wasn't enough for even 20 detailed fetches. */
   protected previewTimeoutMs = 6000;
 
   protected async findPreviewAsset(context?: ScanContext): Promise<Asset | null> {

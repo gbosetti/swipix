@@ -49,7 +49,7 @@ describe('showInterstitialAd', () => {
 
   it('resolves true after the ad loads, shows, and closes normally', async () => {
     const promise = showInterstitialAd();
-    await Promise.resolve(); // let ensureInitialized()'s await settle
+    await Promise.resolve(); /** let ensureInitialized()'s await settle */
     await Promise.resolve();
     listeners.loaded();
     await Promise.resolve();
@@ -114,7 +114,7 @@ describe('showInterstitialAd', () => {
     const promise = showInterstitialAd();
     await Promise.resolve();
     await Promise.resolve();
-    listeners.error(); // settle the promise so the test doesn't hang
+    listeners.error(); /** settle the promise so the test doesn't hang */
     await promise;
     expect(InterstitialAd.createForAdRequest).toHaveBeenCalledWith(
       expect.any(String),

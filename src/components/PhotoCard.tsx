@@ -7,15 +7,19 @@ import { ColorPalette } from '../theme/colors';
 import { useColors } from '../theme/ThemeContext';
 import VideoCard from './VideoCard';
 
-// A photo the OS won't grant read access to doesn't always surface as an
-// expo-image `onError` — it can just sit there never loading. This timeout
-// is the real backstop: treat a never-loaded image the same as an error.
+/**
+ * A photo the OS won't grant read access to doesn't always surface as an
+ * expo-image `onError` — it can just sit there never loading. This timeout
+ * is the real backstop: treat a never-loaded image the same as an error.
+ */
 const LOAD_TIMEOUT_MS = 8000;
 
-// SwipeDeck already mounts the next 2 cards ahead of time, so a normal
-// decode finishes before a card ever becomes top — showing the retry
-// overlay immediately just flashes noise on every swipe. Only a load that
-// outlasts this grace period is worth surfacing.
+/**
+ * SwipeDeck already mounts the next 2 cards ahead of time, so a normal
+ * decode finishes before a card ever becomes top — showing the retry
+ * overlay immediately just flashes noise on every swipe. Only a load that
+ * outlasts this grace period is worth surfacing.
+ */
 const RETRY_INDICATOR_DELAY_MS = 400;
 
 interface PhotoCardProps {
@@ -58,9 +62,11 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [sharing, setSharing] = useState(false);
   const [loading, setLoading] = useState(asset.mediaType !== 'video');
-  // Bumping this remounts the <Image> below (via its `key`), forcing a
-  // genuinely fresh load attempt rather than reusing whatever internal
-  // state expo-image was stuck in.
+  /**
+   * Bumping this remounts the <Image> below (via its `key`), forcing a
+   * genuinely fresh load attempt rather than reusing whatever internal
+   * state expo-image was stuck in.
+   */
   const [reloadKey, setReloadKey] = useState(0);
   const [showRetry, setShowRetry] = useState(false);
 
@@ -68,8 +74,10 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
     setLoading(asset.mediaType !== 'video');
   }, [asset.id, asset.mediaType]);
 
-  // Delays the retry overlay itself, separately from `loading` — see
-  // RETRY_INDICATOR_DELAY_MS above.
+  /**
+   * Delays the retry overlay itself, separately from `loading` — see
+   * RETRY_INDICATOR_DELAY_MS above.
+   */
   useEffect(() => {
     if (!loading) {
       setShowRetry(false);
@@ -91,8 +99,10 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
     }
   };
 
-  // Latest-ref: onLoadError is a fresh closure every render, but this
-  // effect should only reset its timer when the asset itself changes.
+  /**
+   * Latest-ref: onLoadError is a fresh closure every render, but this
+   * effect should only reset its timer when the asset itself changes.
+   */
   const onLoadErrorRef = useRef(onLoadError);
   onLoadErrorRef.current = onLoadError;
   const settledRef = useRef(false);
@@ -125,9 +135,11 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
     onLoadErrorRef.current?.();
   };
 
-  // Lets the user force a fresh attempt on a slow/stuck load (e.g. an
-  // iCloud-only photo still downloading) instead of waiting out the full
-  // LOAD_TIMEOUT_MS backstop.
+  /**
+   * Lets the user force a fresh attempt on a slow/stuck load (e.g. an
+   * iCloud-only photo still downloading) instead of waiting out the full
+   * LOAD_TIMEOUT_MS backstop.
+   */
   const handleRetry = () => {
     settledRef.current = false;
     setLoading(true);
@@ -145,19 +157,23 @@ function PhotoCard({ asset, isTop = true, onLoadError, onShare, screenFocused = 
             screenFocused={screenFocused}
           />
         ) : (
-          // Background cards never mount a real player — useVideoPlayer
-          // decodes/buffers immediately, wasting memory for what's unseen.
+          /**
+           * Background cards never mount a real player — useVideoPlayer
+           * decodes/buffers immediately, wasting memory for what's unseen.
+           */
           <View style={[styles.image, styles.videoPlaceholder]}>
             <Ionicons name="videocam" size={28} color={colors.textSecondary} />
           </View>
         )
       ) : (
-        // expo-image, not core <Image> — it renders a raw ph:// reference
-        // directly, decoding lazily off the main thread. cachePolicy=none
-        // and recyclingKey: a swipe-deck card is shown once and decided,
-        // never revisited this session — confirmed via a real Sentry
-        // report (RAM-overuse watchdog kill after ~100 swipes) that
-        // caching full-resolution decodes here was pure overhead.
+        /**
+         * expo-image, not core <Image> — it renders a raw ph:// reference
+         * directly, decoding lazily off the main thread. cachePolicy=none
+         * and recyclingKey: a swipe-deck card is shown once and decided,
+         * never revisited this session — confirmed via a real Sentry
+         * report (RAM-overuse watchdog kill after ~100 swipes) that
+         * caching full-resolution decodes here was pure overhead.
+         */
         <Image
           key={reloadKey}
           source={{ uri: asset.uri }}
@@ -214,9 +230,11 @@ function createStyles(colors: ColorPalette) {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    // Mirrors VideoCard's mute button, opposite corner — same treatment
-    // for a photo or a video, so it doesn't collide with the mute button
-    // VideoCard already renders on its own top-right.
+    /**
+     * Mirrors VideoCard's mute button, opposite corner — same treatment
+     * for a photo or a video, so it doesn't collide with the mute button
+     * VideoCard already renders on its own top-right.
+     */
     shareButton: {
       position: 'absolute',
       top: 12,
@@ -228,8 +246,10 @@ function createStyles(colors: ColorPalette) {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    // Centered, not corner-anchored like shareButton — this is a "this
-    // needs your attention" affordance, not a persistent action button.
+    /**
+     * Centered, not corner-anchored like shareButton — this is a "this
+     * needs your attention" affordance, not a persistent action button.
+     */
     retryButton: {
       position: 'absolute',
       top: '50%',

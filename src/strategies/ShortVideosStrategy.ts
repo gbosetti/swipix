@@ -5,9 +5,11 @@ import i18n from '../i18n';
 
 const DEFAULT_MIN_SECONDS = 0;
 const DEFAULT_MAX_SECONDS = 3;
-// Duration isn't a native query filter, so this scans a small recent
-// sample client-side instead — duration is already on the raw asset, no
-// per-item native call needed, so even this many stays fast.
+/**
+ * Duration isn't a native query filter, so this scans a small recent
+ * sample client-side instead — duration is already on the raw asset, no
+ * per-item native call needed, so even this many stays fast.
+ */
 const PREVIEW_SAMPLE_SIZE = 30;
 
 /**

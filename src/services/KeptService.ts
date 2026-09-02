@@ -11,8 +11,10 @@ const KEPT_KEY = '@swipix/kept';
 export const KeptService = {
   async addKept(asset: Asset): Promise<void> {
     const kept = await this._load();
-    // Reconsidering an already-kept photo (swiping right on it again in
-    // the Kept tab) shouldn't duplicate the entry.
+    /**
+     * Reconsidering an already-kept photo (swiping right on it again in
+     * the Kept tab) shouldn't duplicate the entry.
+     */
     if (kept.some((item) => item.id === asset.id)) {
       return;
     }
@@ -46,7 +48,7 @@ export const KeptService = {
   async _load(): Promise<Asset[]> {
     const raw = await AsyncStorage.getItem(KEPT_KEY);
     const kept: Asset[] = raw ? JSON.parse(raw) : [];
-    // Self-healing de-dupe — see TrashService._load().
+    /** Self-healing de-dupe — see TrashService._load(). */
     const byId = new Map(kept.map((item) => [item.id, item]));
     return Array.from(byId.values());
   },

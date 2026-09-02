@@ -23,8 +23,10 @@ export class AlbumStrategy extends CategoryStrategy {
 
   get meta(): CategoryMeta {
     return {
-      // Fixed label — the album name belongs in AlbumPicker's own row,
-      // not the card title. id stays per-album for its own preview cache.
+      /**
+       * Fixed label — the album name belongs in AlbumPicker's own row,
+       * not the card title. id stays per-album for its own preview cache.
+       */
       id: `album-${this.id}`,
       title: i18n.t('categories.album'),
       icon: 'folder-outline',
