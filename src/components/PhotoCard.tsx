@@ -178,6 +178,23 @@ function PhotoImage({
   }, [asset.id, reloadKey]);
 
   /**
+   * `useImage` resolving to a non-null ref IS the load completing — that's the
+   * reliable signal. `<Image>`'s `onLoad` does NOT dependably fire for an
+   * already-decoded ref source, so relying on it left `loading` stuck true,
+   * which tripped the timeout below and dropped perfectly healthy cards (a
+   * real bug: the deck auto-advanced every few seconds with a flashing
+   * spinner, no swipe needed).
+   */
+  useEffect(() => {
+    if (image) {
+      handleLoaded();
+    }
+    // handleLoaded only flips a flag/state; re-running it on identity change
+    // is harmless, so it needn't be a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [image]);
+
+  /**
    * Delays the retry overlay itself, separately from `loading` — see
    * RETRY_INDICATOR_DELAY_MS above.
    */
@@ -220,19 +237,18 @@ function PhotoImage({
     <>
       {/**
        * `image` is expo-image's already-decoded, size-capped ref (null until
-       * the first successful decode). Rendering it — rather than the raw uri —
-       * is what bounds memory; onLoad still fires here to settle `loading`.
+       * the first successful decode) — rendering it, rather than the raw uri,
+       * is what bounds memory. Rendered even while null (shows nothing then):
+       * `loading` is settled by the ref resolving above, not by this onLoad.
        */}
-      {image && (
-        <Image
-          source={image}
-          style={styles.image}
-          contentFit="cover"
-          recyclingKey={asset.id}
-          onLoad={handleLoaded}
-          onError={handleError}
-        />
-      )}
+      <Image
+        source={image}
+        style={styles.image}
+        contentFit="cover"
+        recyclingKey={asset.id}
+        onLoad={handleLoaded}
+        onError={handleError}
+      />
       {isTop && showRetry && (
         <Pressable testID="photo-retry-button" style={styles.retryButton} onPress={handleRetry} hitSlop={10}>
           <ActivityIndicator size="small" color="#ffffff" />

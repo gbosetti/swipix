@@ -31,15 +31,14 @@ jest.mock('expo-image', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   /**
-   * useImage normally decodes and returns a native ref once loaded; a stable
-   * truthy stand-in is enough here so the <Image> renders and tests can drive
-   * its onLoad/onError exactly as before. The real decode-size cap it applies
-   * has no observable surface in these tests.
+   * Return null so the component stays in its "loading" state and the tests
+   * drive completion/failure through the <Image>'s onLoad/onError exactly as
+   * before — the <Image> is rendered even while the ref is null. The real
+   * decode-size cap useImage applies has no observable surface here.
    */
-  const fakeImageRef = { __expoImageMockRef: true };
   return {
     Image: (props: Record<string, unknown>) => createElement(View, { testID: 'mock-photo-image', ...props }),
-    useImage: () => fakeImageRef,
+    useImage: () => null,
   };
 });
 
