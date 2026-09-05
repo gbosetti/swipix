@@ -116,6 +116,15 @@
         "organization": "gabriela-bosetti",
         "project": "swipix"
       }
+    ],
+    [
+      "expo-build-properties",
+      {
+        "android": {
+          "enableMinifyInReleaseBuilds": true,
+          "enableShrinkResourcesInReleaseBuilds": true
+        }
+      }
     ]
   ],
   "ios": {
