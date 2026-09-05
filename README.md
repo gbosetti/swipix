@@ -35,7 +35,7 @@ npm run release:ios              # bump patch + build + submit to App Store Conn
 npm run release:ios -- minor     # or: major, or an exact version e.g. 1.4.0
 ```
 
-The version bump is mandatory (Apple rejects a reused marketing version) — the script does it automatically. Then finish in App Store Connect: attach the build to a version and submit for review. If the app is already live, create a new version via the chevron next to the app name and fill in "What's New" (required).
+The version bump is mandatory (Apple rejects a reused marketing version) — the script does it automatically. Then finish in [App Store Connect](https://appstoreconnect.apple.com/apps/6797083484/distribution/ios/version/inflight): attach the build to a version and submit for review. If the app is already live, create a new version via the chevron next to the app name and fill in "What's New" (required). Track processing under [TestFlight](https://appstoreconnect.apple.com/apps/6797083484/testflight/ios).
 
 ## Release — Android (Google Play, closed testing)
 
@@ -43,4 +43,4 @@ The version bump is mandatory (Apple rejects a reused marketing version) — the
 npm run release:android          # builds the .aab (auto-submit not wired up yet)
 ```
 
-Then upload the `.aab` in Play Console → Testing → Closed testing → Create new release. `versionCode` auto-increments; the marketing version can stay the same. Closed-testing gate for new accounts: 12 opted-in, actively-using testers for 14 continuous days before requesting production.
+Then upload the `.aab` in [Play Console → Closed testing → Releases](https://play.google.com/console/u/0/developers/7407506542647442823/app/4975761887056941769/tracks/4699144307344879825?tab=releases) → Create new release. `versionCode` auto-increments; the marketing version can stay the same. Closed-testing gate for new accounts: 12 opted-in, actively-using testers for 14 continuous days before requesting production.
