@@ -8,7 +8,7 @@ Standalone release build that opens straight into the app (no Metro, no dev laun
 
 ```bash
 npm run ios:reset-demo    # iPhone — uninstalls, then reinstalls a Release build
-npm run android:device    # connected Android device — Release build
+npm run android:reset-demo  # connected Android device — uninstalls, then reinstalls a Release build
 ```
 
 ## Develop (fast JS iteration)

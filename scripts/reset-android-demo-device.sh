@@ -12,15 +12,14 @@ set -euo pipefail
 # signed with the debug keystore (see android/app/build.gradle release
 # buildType), which is fine for on-device testing.
 #
-# It first clears any higher-versionCode build that would block the install:
-# once an EAS build is on the device (versionCode 5, 6, …), a local build —
-# always versionCode 1, since the real number lives on EAS via
-# appVersionSource:remote — can't install over it (Android rejects it as a
-# downgrade, and -d can't override that for a release build), so a clean
-# uninstall is the only fix. Photos live in the gallery (MediaStore), not app
-# data, so they survive; only Swipix's own state (Trash/Kept/onboarding) clears.
+# It always uninstalls first, like ios:reset-demo — a guaranteed-clean install
+# every time: fresh onboarding/permissions, and no versionCode-downgrade block
+# from an existing store build (a local build is always versionCode 1, and
+# Android won't install that over a higher store versionCode). Photos live in
+# the gallery (MediaStore), not app data, so they survive; only Swipix's own
+# state (Trash/Kept/onboarding) is cleared.
 #
-# Usage: scripts/run-android-device.sh [device-id]
+# Usage: scripts/reset-android-demo-device.sh [device-id]
 #   device-id defaults to the single connected device (from `adb devices`).
 
 cd "$(dirname "$0")/.."
@@ -71,14 +70,13 @@ echo "==> Target device: $DEVICE"
 # adb.js. Passing the serial fails as "Could not find device with name: <serial>".
 EXPO_NAME="$("$ADB" devices -l | awk -v s="$DEVICE" '$1 == s { for (i = 1; i <= NF; i++) if ($i ~ /^model:/) { sub(/^model:/, "", $i); print $i } }')"
 
-# A release build is always versionCode 1 locally, so any existing higher
-# versionCode (an EAS build) blocks the install as a downgrade — clear it first.
-INSTALLED_VC="$("$ADB" -s "$DEVICE" shell dumpsys package "$PACKAGE" 2>/dev/null | sed -n 's/.*versionCode=\([0-9]*\).*/\1/p' | head -1)"
-if [ -n "$INSTALLED_VC" ] && [ "$INSTALLED_VC" -gt 1 ]; then
-  echo "==> Installed versionCode $INSTALLED_VC would block this build (versionCode 1) as a downgrade."
-  echo "    Uninstalling first — your gallery photos are untouched; only Swipix's own state clears."
-  "$ADB" -s "$DEVICE" uninstall "$PACKAGE" || true
-fi
+# Always uninstall first for a guaranteed-clean install (like ios:reset-demo):
+# fresh onboarding/permissions, and no versionCode-downgrade block from an
+# existing store build. `|| true` so a first-ever install (nothing to remove)
+# isn't treated as an error. Gallery photos are untouched (MediaStore, not app
+# data); only Swipix's own state clears.
+echo "==> Uninstalling any existing install for a clean slate…"
+"$ADB" -s "$DEVICE" uninstall "$PACKAGE" || true
 
 echo "==> Building and installing the standalone release app…"
 if [ -n "$EXPO_NAME" ]; then
